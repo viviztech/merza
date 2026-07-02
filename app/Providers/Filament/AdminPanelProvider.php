@@ -8,6 +8,7 @@ use Filament\Http\Middleware\DisableBladeIconComponents;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
 use Filament\Navigation\NavigationGroup;
 use App\Filament\Pages\AnalyticsDashboard;
+use App\Filament\Pages\Auth\Login;
 use Filament\Pages\Dashboard;
 use Filament\Panel;
 use Filament\PanelProvider;
@@ -31,7 +32,8 @@ class AdminPanelProvider extends PanelProvider
             ->default()
             ->id('admin')
             ->path('admin')
-            ->login()
+            ->login(Login::class)
+            ->revealablePasswords(false)
             ->brandName('Merza CRM')
             ->brandLogo(null)
             ->favicon(asset('favicon.ico'))
