@@ -16,6 +16,7 @@ RUN apk add --no-cache \
     libzip-dev \
     icu-dev \
     oniguruma-dev \
+    libxml2-dev \
     imagemagick-dev \
     imagemagick \
     $PHPIZE_DEPS
