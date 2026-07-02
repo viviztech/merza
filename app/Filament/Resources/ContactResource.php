@@ -1,0 +1,238 @@
+<?php
+
+namespace App\Filament\Resources;
+
+use App\Filament\Resources\ContactResource\Pages;
+use App\Models\Contact;
+use App\Models\User;
+use Filament\Actions;
+use Filament\Actions\Action;
+use Filament\Forms;
+use Filament\Infolists;
+use Filament\Resources\Resource;
+use Filament\Schemas\Components\Group as SchemaGroup;
+use Filament\Schemas\Components\Section as SchemaSection;
+use Filament\Schemas\Schema;
+use Filament\Tables;
+use Filament\Tables\Table;
+
+class ContactResource extends Resource
+{
+    protected static ?string $model = Contact::class;
+    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-users';
+    protected static string|\UnitEnum|null $navigationGroup = 'Sales & CRM';
+    protected static ?int $navigationSort = 1;
+    protected static ?string $recordTitleAttribute = 'name';
+
+    public static function form(Schema $schema): Schema
+    {
+        return $schema->components([
+            SchemaGroup::make()->schema([
+                SchemaSection::make('Contact Info')->schema([
+                    Forms\Components\TextInput::make('name')
+                        ->required()->maxLength(120),
+
+                    Forms\Components\TextInput::make('phone')
+                        ->required()->tel()->unique(ignoreRecord: true)->maxLength(20),
+
+                    Forms\Components\TextInput::make('email')
+                        ->email()->unique(ignoreRecord: true)->nullable(),
+
+                    Forms\Components\Select::make('source')
+                        ->options([
+                            'meta_ads'  => 'Meta Ads',
+                            'whatsapp'  => 'WhatsApp',
+                            'referral'  => 'Referral',
+                            'walk_in'   => 'Walk-in',
+                            'website'   => 'Website',
+                            'other'     => 'Other',
+                        ])
+                        ->default('other'),
+
+                    Forms\Components\TextInput::make('city')->nullable(),
+                    Forms\Components\TextInput::make('state')->nullable(),
+
+                    Forms\Components\TagsInput::make('tags')
+                        ->placeholder('Add tag')
+                        ->columnSpanFull(),
+
+                    Forms\Components\Textarea::make('notes')
+                        ->rows(3)->columnSpanFull(),
+                ])->columns(2),
+            ])->columnSpan(2),
+
+            SchemaGroup::make()->schema([
+                SchemaSection::make('Assignment & Status')->schema([
+                    Forms\Components\Select::make('assigned_to')
+                        ->label('Assigned To')
+                        ->options(User::pluck('name', 'id'))
+                        ->searchable()
+                        ->nullable(),
+
+                    Forms\Components\Toggle::make('is_customer')
+                        ->label('Is a customer'),
+
+                    Forms\Components\Toggle::make('is_blocked')
+                        ->label('Blocked'),
+
+                    Forms\Components\DateTimePicker::make('last_contacted_at')
+                        ->label('Last Contacted'),
+                ]),
+            ])->columnSpan(1),
+        ])->columns(3);
+    }
+
+    public static function infolist(Schema $schema): Schema
+    {
+        return $schema->components([
+            SchemaGroup::make()->schema([
+                SchemaSection::make('Contact Details')->schema([
+                    Infolists\Components\TextEntry::make('name'),
+                    Infolists\Components\TextEntry::make('phone')
+                        ->url(fn (Contact $r) => $r->whatsapp_url)
+                        ->openUrlInNewTab()
+                        ->icon('heroicon-m-chat-bubble-left-ellipsis'),
+                    Infolists\Components\TextEntry::make('email')->icon('heroicon-m-envelope'),
+                    Infolists\Components\TextEntry::make('source')->badge(),
+                    Infolists\Components\TextEntry::make('city'),
+                    Infolists\Components\TextEntry::make('state'),
+                    Infolists\Components\TextEntry::make('tags')
+                        ->badge()
+                        ->separator(','),
+                    Infolists\Components\TextEntry::make('notes')->columnSpanFull(),
+                ])->columns(2),
+
+                SchemaSection::make('Orders')->schema([
+                    Infolists\Components\RepeatableEntry::make('orders')
+                        ->schema([
+                            Infolists\Components\TextEntry::make('order_number'),
+                            Infolists\Components\TextEntry::make('status')->badge(),
+                            Infolists\Components\TextEntry::make('total')->money('INR'),
+                            Infolists\Components\TextEntry::make('created_at')->dateTime('d M Y'),
+                        ])
+                        ->columns(4)
+                        ->label(''),
+                ]),
+
+                SchemaSection::make('Recent Conversations')->schema([
+                    Infolists\Components\RepeatableEntry::make('conversations')
+                        ->schema([
+                            Infolists\Components\TextEntry::make('channel')->badge(),
+                            Infolists\Components\TextEntry::make('direction')->badge()
+                                ->color(fn ($state) => $state === 'inbound' ? 'info' : 'success'),
+                            Infolists\Components\TextEntry::make('message')
+                                ->columnSpan(2)
+                                ->limit(120),
+                            Infolists\Components\TextEntry::make('sent_at')->dateTime('d M Y H:i'),
+                        ])
+                        ->columns(5)
+                        ->label(''),
+                ]),
+            ])->columnSpan(2),
+
+            SchemaGroup::make()->schema([
+                SchemaSection::make('CRM Status')->schema([
+                    Infolists\Components\IconEntry::make('is_customer')->boolean()->label('Customer'),
+                    Infolists\Components\IconEntry::make('is_blocked')->boolean()->label('Blocked'),
+                    Infolists\Components\TextEntry::make('assignedTo.name')->label('Assigned To'),
+                    Infolists\Components\TextEntry::make('last_contacted_at')->dateTime('d M Y H:i')->label('Last Contacted'),
+                    Infolists\Components\TextEntry::make('leads_count')
+                        ->label('Total Leads')
+                        ->state(fn (Contact $r) => $r->leads()->count()),
+                    Infolists\Components\TextEntry::make('orders_count')
+                        ->label('Total Orders')
+                        ->state(fn (Contact $r) => $r->orders()->count()),
+                    Infolists\Components\TextEntry::make('total_spent')
+                        ->label('Total Spent')
+                        ->state(fn (Contact $r) => "\u{20B9}" . number_format($r->orders()->sum('total'), 2)),
+                ]),
+            ])->columnSpan(1),
+        ])->columns(3);
+    }
+
+    public static function table(Table $table): Table
+    {
+        return $table
+            ->columns([
+                Tables\Columns\TextColumn::make('name')
+                    ->searchable()->sortable()
+                    ->description(fn (Contact $r) => $r->phone),
+
+                Tables\Columns\TextColumn::make('source')
+                    ->badge()
+                    ->color(fn ($state) => match ($state) {
+                        'meta_ads' => 'warning',
+                        'whatsapp' => 'success',
+                        'referral' => 'info',
+                        default    => 'gray',
+                    }),
+
+                Tables\Columns\TextColumn::make('city')
+                    ->searchable()->toggleable(),
+
+                Tables\Columns\IconColumn::make('is_customer')->boolean()->label('Customer'),
+
+                Tables\Columns\TextColumn::make('leads_count')->counts('leads')->label('Leads'),
+                Tables\Columns\TextColumn::make('orders_count')->counts('orders')->label('Orders'),
+
+                Tables\Columns\TextColumn::make('last_contacted_at')
+                    ->dateTime('d M Y')
+                    ->sortable()
+                    ->label('Last Contact'),
+
+                Tables\Columns\TextColumn::make('assignedTo.name')
+                    ->label('Assigned')
+                    ->toggleable(),
+            ])
+            ->defaultSort('created_at', 'desc')
+            ->filters([
+                Tables\Filters\SelectFilter::make('source')
+                    ->options([
+                        'meta_ads' => 'Meta Ads', 'whatsapp' => 'WhatsApp',
+                        'referral' => 'Referral', 'walk_in' => 'Walk-in',
+                        'website' => 'Website', 'other' => 'Other',
+                    ]),
+                Tables\Filters\TernaryFilter::make('is_customer')->label('Customer'),
+                Tables\Filters\TernaryFilter::make('is_blocked')->label('Blocked'),
+                Tables\Filters\SelectFilter::make('assigned_to')
+                    ->label('Assigned To')
+                    ->options(User::pluck('name', 'id')),
+            ])
+            ->actions([
+                Action::make('whatsapp')
+                    ->label('WhatsApp')
+                    ->icon('heroicon-o-chat-bubble-left-ellipsis')
+                    ->color('success')
+                    ->url(fn (Contact $r) => $r->whatsapp_url)
+                    ->openUrlInNewTab(),
+                Actions\ViewAction::make(),
+                Actions\EditAction::make(),
+            ])
+            ->bulkActions([
+                Actions\BulkActionGroup::make([
+                    Actions\DeleteBulkAction::make(),
+                    Actions\BulkAction::make('assign')
+                        ->label('Assign to…')
+                        ->icon('heroicon-o-user-plus')
+                        ->form([
+                            Forms\Components\Select::make('assigned_to')
+                                ->label('Sales Rep')
+                                ->options(User::pluck('name', 'id'))
+                                ->required(),
+                        ])
+                        ->action(fn ($records, array $data) =>
+                            $records->each->update(['assigned_to' => $data['assigned_to']])),
+                ]),
+            ]);
+    }
+
+    public static function getPages(): array
+    {
+        return [
+            'index'  => Pages\ListContacts::route('/'),
+            'create' => Pages\CreateContact::route('/create'),
+            'view'   => Pages\ViewContact::route('/{record}'),
+            'edit'   => Pages\EditContact::route('/{record}/edit'),
+        ];
+    }
+}

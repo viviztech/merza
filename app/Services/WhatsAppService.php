@@ -1,0 +1,117 @@
+<?php
+
+namespace App\Services;
+
+use App\Models\BotSetting;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
+
+class WhatsAppService
+{
+    private const GRAPH_URL = 'https://graph.facebook.com/v21.0';
+
+    public function __construct(private readonly BotSetting $settings) {}
+
+    /**
+     * Send a text message via WhatsApp Cloud API.
+     * Returns the wa_message_id on success, null on failure.
+     */
+    public function sendTextMessage(string $toPhone, string $body): ?string
+    {
+        $phoneNumberId = $this->settings->whatsapp_phone_number_id;
+        $token         = $this->settings->whatsapp_access_token;
+
+        if (empty($phoneNumberId) || empty($token)) {
+            Log::warning('WhatsAppService: Missing phone_number_id or access_token');
+            return null;
+        }
+
+        // Normalise phone: strip non-digit except leading +
+        $to = preg_replace('/[^0-9]/', '', $toPhone);
+
+        $response = Http::timeout(15)
+            ->withToken($token)
+            ->post(self::GRAPH_URL . "/{$phoneNumberId}/messages", [
+                'messaging_product' => 'whatsapp',
+                'to'                => $to,
+                'type'              => 'text',
+                'text'              => ['body' => $body],
+            ]);
+
+        if ($response->failed()) {
+            Log::error('WhatsAppService: Send failed', [
+                'to'     => $to,
+                'status' => $response->status(),
+                'body'   => $response->body(),
+            ]);
+            return null;
+        }
+
+        return $response->json('messages.0.id');
+    }
+
+    /**
+     * Mark a message as read (shows double blue tick to customer).
+     */
+    public function markRead(string $waMessageId): void
+    {
+        $phoneNumberId = $this->settings->whatsapp_phone_number_id;
+        $token         = $this->settings->whatsapp_access_token;
+
+        if (empty($phoneNumberId) || empty($token)) {
+            return;
+        }
+
+        Http::timeout(10)
+            ->withToken($token)
+            ->post(self::GRAPH_URL . "/{$phoneNumberId}/messages", [
+                'messaging_product' => 'whatsapp',
+                'status'            => 'read',
+                'message_id'        => $waMessageId,
+            ]);
+    }
+
+    /**
+     * Parse the webhook payload for inbound WhatsApp message events.
+     *
+     * @return array<array{from: string, wa_message_id: string, body: string, timestamp: string}>
+     */
+    public function parseInboundMessages(array $payload): array
+    {
+        $messages = [];
+
+        foreach ($payload['entry'] ?? [] as $entry) {
+            foreach ($entry['changes'] ?? [] as $change) {
+                if (($change['field'] ?? '') !== 'messages') {
+                    continue;
+                }
+
+                $value = $change['value'] ?? [];
+
+                foreach ($value['messages'] ?? [] as $msg) {
+                    if (($msg['type'] ?? '') !== 'text') {
+                        continue; // Phase 7 handles text only; media can be Phase 8
+                    }
+
+                    $messages[] = [
+                        'from'          => $msg['from'] ?? '',
+                        'wa_message_id' => $msg['id'] ?? '',
+                        'body'          => $msg['text']['body'] ?? '',
+                        'timestamp'     => $msg['timestamp'] ?? now()->timestamp,
+                        'phone_number_id' => $value['metadata']['phone_number_id'] ?? '',
+                    ];
+                }
+            }
+        }
+
+        return $messages;
+    }
+
+    /**
+     * Check if a webhook payload is a WhatsApp messages event.
+     */
+    public function isWhatsAppWebhook(array $payload): bool
+    {
+        return ($payload['object'] ?? '') === 'whatsapp_business_account';
+    }
+}

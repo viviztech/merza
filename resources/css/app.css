@@ -1,0 +1,19 @@
+@import 'tailwindcss';
+
+@source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
+@source '../../vendor/filament/**/*.blade.php';
+@source '../../storage/framework/views/*.php';
+@source '../**/*.blade.php';
+@source '../**/*.js';
+
+@theme {
+    --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol';
+    --color-green-700: #1B6B2F;
+    --color-green-800: #155124;
+    --color-green-900: #0F3A1A;
+}
+
+/* Safe area padding for mobile bottom nav */
+.safe-area-pb {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+}
