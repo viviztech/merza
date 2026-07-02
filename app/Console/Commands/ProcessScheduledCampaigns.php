@@ -77,7 +77,7 @@ class ProcessScheduledCampaigns extends Command
                 $query->where('source', $campaign->filter_source);
             }
             if ($campaign->filter_city) {
-                $query->where('city', 'ilike', "%{$campaign->filter_city}%");
+                $query->where('city', 'like', "%{$campaign->filter_city}%");
             }
 
             $contacts = $query->get();

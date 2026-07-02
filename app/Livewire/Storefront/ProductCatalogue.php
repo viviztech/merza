@@ -33,8 +33,8 @@ class ProductCatalogue extends Component
             ->with(['category', 'activeVariants'])
             ->withCount('activeVariants')
             ->when($this->search, fn($q) =>
-                $q->where('name', 'ilike', "%{$this->search}%")
-                  ->orWhere('short_description', 'ilike', "%{$this->search}%"))
+                $q->where('name', 'like', "%{$this->search}%")
+                  ->orWhere('short_description', 'like', "%{$this->search}%"))
             ->when($this->categorySlug, fn($q) =>
                 $q->whereHas('category', fn($c) => $c->where('slug', $this->categorySlug)))
             ->orderBy('sort_order')
