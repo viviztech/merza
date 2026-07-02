@@ -144,11 +144,11 @@
                 <div>
                     <h4 class="font-bold text-sm text-emerald-100 mb-3 uppercase tracking-wider">Company</h4>
                     <ul class="space-y-2 text-sm">
-                        <li><a href="#" class="text-emerald-300 hover:text-amber-400 transition-colors">About Us</a></li>
-                        <li><a href="#" class="text-emerald-300 hover:text-amber-400 transition-colors">Blog & Recipes</a></li>
-                        <li><a href="#" class="text-emerald-300 hover:text-amber-400 transition-colors">B2B Wholesale</a></li>
-                        <li><a href="#" class="text-emerald-300 hover:text-amber-400 transition-colors">Careers</a></li>
-                        <li><a href="#" class="text-emerald-300 hover:text-amber-400 transition-colors">Privacy Policy</a></li>
+                        <li><a href="{{ route('about') }}" class="text-emerald-300 hover:text-amber-400 transition-colors">About Us</a></li>
+                        <li><a href="{{ route('blog') }}" class="text-emerald-300 hover:text-amber-400 transition-colors">Blog & Recipes</a></li>
+                        <li><a href="{{ route('wholesale') }}" class="text-emerald-300 hover:text-amber-400 transition-colors">B2B Wholesale</a></li>
+                        <li><a href="{{ route('careers') }}" class="text-emerald-300 hover:text-amber-400 transition-colors">Careers</a></li>
+                        <li><a href="{{ route('privacy') }}" class="text-emerald-300 hover:text-amber-400 transition-colors">Privacy Policy</a></li>
                     </ul>
                 </div>
 
@@ -224,14 +224,14 @@
                 <span>WhatsApp</span>
             </a>
 
-            {{-- Account --}}
-            <a href="{{ auth()->check() ? route('account.orders') : route('login') }}"
+            {{-- About --}}
+            <a href="{{ route('about') }}"
                class="flex flex-col items-center justify-center gap-0.5 text-[10px] font-medium transition-colors
-                      {{ request()->routeIs('account.*') ? 'text-amber-600' : 'text-stone-400 hover:text-amber-500' }}">
-                <svg class="w-6 h-6" fill="{{ request()->routeIs('account.*') ? 'currentColor' : 'none' }}" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+                      {{ request()->routeIs('about') ? 'text-amber-600' : 'text-stone-400 hover:text-amber-500' }}">
+                <svg class="w-6 h-6" fill="{{ request()->routeIs('about') ? 'currentColor' : 'none' }}" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
                 </svg>
-                <span>Account</span>
+                <span>About</span>
             </a>
         </div>
     </nav>

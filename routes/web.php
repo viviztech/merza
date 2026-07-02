@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Storefront\HomeController;
+use App\Http\Controllers\Storefront\PagesController;
 use App\Http\Controllers\Webhook\MetaWebhookController;
 use App\Livewire\Storefront\CartPanel;
 use App\Livewire\Storefront\CheckoutForm;
@@ -27,6 +28,13 @@ Route::get('/checkout', CheckoutForm::class)->name('checkout.index');
 Route::middleware('auth')->prefix('account')->name('account.')->group(function () {
     Route::get('/orders', fn () => view('storefront.home'))->name('orders');
 });
+
+// Static pages
+Route::get('/about',     [PagesController::class, 'about'])     ->name('about');
+Route::get('/blog',      [PagesController::class, 'blog'])      ->name('blog');
+Route::get('/wholesale', [PagesController::class, 'wholesale']) ->name('wholesale');
+Route::get('/careers',   [PagesController::class, 'careers'])   ->name('careers');
+Route::get('/privacy',   [PagesController::class, 'privacy'])   ->name('privacy');
 
 // Redirect /login to Filament admin panel
 Route::redirect('/login', '/admin/login')->name('login');
