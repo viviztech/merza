@@ -22,7 +22,7 @@ class User extends Authenticatable implements FilamentUser
 
     public function canAccessPanel(Panel $panel): bool
     {
-        return $this->hasAnyRole(['Admin', 'Sales', 'Operations', 'Delivery']);
+        return $this->roles()->whereIn('name', ['Admin', 'Sales', 'Operations', 'Delivery'])->exists();
     }
 
     /**
