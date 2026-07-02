@@ -77,7 +77,7 @@
         </div>
         <div class="grid md:grid-cols-3 gap-6">
             @foreach([
-                ['🌱', 'Freshness First', 'We only sell what's in season and at peak ripeness. If it doesn\'t meet our standard, it doesn\'t go out.'],
+                ['🌱', 'Freshness First', 'We only sell what\'s in season and at peak ripeness. If it doesn\'t meet our standard, it doesn\'t go out.'],
                 ['🤝', 'Honest Business', 'No hidden charges. What you see is what you pay. We communicate clearly about delivery timelines and product availability.'],
                 ['❤️', 'Customer First', 'Every order matters. If something isn\'t right, we\'ll make it right. Reach us on WhatsApp anytime.'],
             ] as [$icon, $title, $desc])
