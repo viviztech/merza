@@ -28,8 +28,8 @@ Route::middleware('auth')->prefix('account')->name('account.')->group(function (
     Route::get('/orders', fn () => view('storefront.home'))->name('orders');
 });
 
-// Auth (Phase 4)
-Route::get('/login', fn () => view('storefront.home'))->name('login');
+// Redirect /login to Filament admin panel
+Route::redirect('/login', '/admin/login')->name('login');
 
 /*
 |--------------------------------------------------------------------------
