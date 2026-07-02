@@ -32,7 +32,8 @@ RUN docker-php-ext-configure gd --with-freetype --with-jpeg --with-webp \
         intl \
         bcmath \
         opcache \
-        pcntl
+        pcntl \
+        exif
 
 RUN pecl install redis imagick \
     && docker-php-ext-enable redis imagick \
