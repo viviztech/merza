@@ -4,6 +4,9 @@ set -e
 echo "==> Running migrations..."
 php /var/www/html/artisan migrate --force
 
+echo "==> Seeding roles and admin user..."
+php /var/www/html/artisan db:seed --class=RolesAndAdminSeeder --force
+
 echo "==> Linking storage..."
 php /var/www/html/artisan storage:link --force 2>/dev/null || true
 
