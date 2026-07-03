@@ -1,5 +1,7 @@
 <?php
 
+use App\Http\Controllers\Storefront\AccountController;
+use App\Http\Controllers\Storefront\AuthController;
 use App\Http\Controllers\Storefront\HomeController;
 use App\Http\Controllers\Storefront\PagesController;
 use App\Http\Controllers\Webhook\MetaWebhookController;
@@ -24,14 +26,6 @@ Route::get('/cart', CartPanel::class)->name('cart.index');
 Route::get('/cart/count', fn () => response()->json(['count' => session('cart_count', 0)]))->name('cart.count');
 Route::get('/checkout', CheckoutForm::class)->name('checkout.index');
 
-// Customer account (Phase 4)
-Route::middleware('auth')->prefix('account')->name('account.')->group(function () {
-    Route::get('/orders', function () {
-        $orders = auth()->user()->orders()->with('items')->latest()->get();
-        return view('storefront.account.orders', compact('orders'));
-    })->name('orders');
-});
-
 // Static pages
 Route::get('/about',     [PagesController::class, 'about'])     ->name('about');
 Route::get('/blog',      [PagesController::class, 'blog'])      ->name('blog');
@@ -39,8 +33,33 @@ Route::get('/wholesale', [PagesController::class, 'wholesale']) ->name('wholesal
 Route::get('/careers',   [PagesController::class, 'careers'])   ->name('careers');
 Route::get('/privacy',   [PagesController::class, 'privacy'])   ->name('privacy');
 
-// Redirect /login to Filament admin panel
-Route::redirect('/login', '/admin/login')->name('login');
+/*
+|--------------------------------------------------------------------------
+| Customer Auth Routes
+|--------------------------------------------------------------------------
+*/
+
+// Named 'login' so Laravel's auth middleware redirects here for unauthenticated users
+Route::get('/login',    [AuthController::class, 'showLogin'])    ->name('login');
+Route::post('/login',   [AuthController::class, 'login'])        ->middleware('guest');
+Route::get('/register', [AuthController::class, 'showRegister'])->name('customer.register')->middleware('guest');
+Route::post('/register',[AuthController::class, 'register'])    ->middleware('guest');
+Route::post('/logout',  [AuthController::class, 'logout'])      ->name('customer.logout')->middleware('auth');
+
+/*
+|--------------------------------------------------------------------------
+| Customer Account Routes (auth protected)
+|--------------------------------------------------------------------------
+*/
+
+Route::middleware('auth')->prefix('account')->name('account.')->group(function () {
+    Route::get('/',               [AccountController::class, 'dashboard'])    ->name('dashboard');
+    Route::get('/orders',         [AccountController::class, 'orders'])       ->name('orders');
+    Route::get('/orders/{order}', [AccountController::class, 'orderDetail'])  ->name('order.detail');
+    Route::get('/profile',        [AccountController::class, 'profile'])      ->name('profile');
+    Route::patch('/profile',      [AccountController::class, 'updateProfile'])->name('profile.update');
+    Route::put('/password',       [AccountController::class, 'updatePassword'])->name('password.update');
+});
 
 /*
 |--------------------------------------------------------------------------

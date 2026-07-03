@@ -76,8 +76,8 @@
                    class="px-3 py-2 rounded-lg transition-colors {{ request()->routeIs('products.*') ? 'text-amber-700 bg-amber-50' : 'text-stone-600 hover:text-amber-700 hover:bg-amber-50' }}">
                     Products
                 </a>
-                <a href="#about"
-                   class="px-3 py-2 rounded-lg text-stone-600 hover:text-amber-700 hover:bg-amber-50 transition-colors">
+                <a href="{{ route('about') }}"
+                   class="px-3 py-2 rounded-lg text-stone-600 hover:text-amber-700 hover:bg-amber-50 transition-colors {{ request()->routeIs('about') ? 'text-amber-700 bg-amber-50' : '' }}">
                     About
                 </a>
                 <a href="https://wa.me/918667696278?text=Hi%2C+I+want+to+enquire+about+Merza!" target="_blank"
@@ -114,13 +114,46 @@
                     WhatsApp
                 </a>
 
-                {{-- Account --}}
+                {{-- Account / Login --}}
                 @auth
-                    <a href="{{ route('account.orders') }}" class="hidden md:flex items-center gap-1 text-sm text-stone-600 hover:text-amber-700 transition-colors px-2 py-2">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
-                        </svg>
-                    </a>
+                    <div class="hidden md:block relative" x-data="{ open: false }">
+                        <button @click="open = !open" @click.away="open = false"
+                                class="flex items-center gap-2 text-sm text-stone-600 hover:text-amber-700 transition-colors px-3 py-2 rounded-xl hover:bg-amber-50 border border-transparent hover:border-amber-200">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+                            </svg>
+                            <span class="font-semibold max-w-[100px] truncate">{{ auth()->user()->name }}</span>
+                            <svg class="w-3.5 h-3.5 text-stone-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                        </button>
+                        <div x-show="open" x-transition
+                             class="absolute right-0 mt-2 w-44 bg-white rounded-xl shadow-lg border border-stone-100 py-1 z-50">
+                            <a href="{{ route('account.dashboard') }}" class="flex items-center gap-2 px-4 py-2 text-sm text-stone-700 hover:bg-amber-50 hover:text-amber-700 transition-colors">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+                                Dashboard
+                            </a>
+                            <a href="{{ route('account.orders') }}" class="flex items-center gap-2 px-4 py-2 text-sm text-stone-700 hover:bg-amber-50 hover:text-amber-700 transition-colors">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+                                My Orders
+                            </a>
+                            <a href="{{ route('account.profile') }}" class="flex items-center gap-2 px-4 py-2 text-sm text-stone-700 hover:bg-amber-50 hover:text-amber-700 transition-colors">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+                                Profile
+                            </a>
+                            <div class="border-t border-stone-100 my-1"></div>
+                            <form method="POST" action="{{ route('customer.logout') }}">
+                                @csrf
+                                <button type="submit" class="flex items-center gap-2 w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
+                                    Sign out
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                @else
+                    <div class="hidden md:flex items-center gap-2">
+                        <a href="{{ route('login') }}" class="text-sm font-semibold text-stone-600 hover:text-amber-700 px-3 py-2 rounded-xl hover:bg-amber-50 transition-colors">Sign In</a>
+                        <a href="{{ route('customer.register') }}" class="text-sm font-bold text-white bg-amber-500 hover:bg-amber-600 px-4 py-2 rounded-xl transition-all shadow-sm">Register</a>
+                    </div>
                 @endauth
             </div>
         </div>
@@ -255,15 +288,25 @@
                 <span>WhatsApp</span>
             </a>
 
-            {{-- About --}}
-            <a href="{{ route('about') }}"
-               class="flex flex-col items-center justify-center gap-0.5 text-[10px] font-medium transition-colors
-                      {{ request()->routeIs('about') ? 'text-amber-600' : 'text-stone-400 hover:text-amber-500' }}">
-                <svg class="w-6 h-6" fill="{{ request()->routeIs('about') ? 'currentColor' : 'none' }}" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                </svg>
-                <span>About</span>
-            </a>
+            {{-- Account / Login --}}
+            @auth
+                <a href="{{ route('account.dashboard') }}"
+                   class="flex flex-col items-center justify-center gap-0.5 text-[10px] font-medium transition-colors
+                          {{ request()->routeIs('account.*') ? 'text-amber-600' : 'text-stone-400 hover:text-amber-500' }}">
+                    <svg class="w-6 h-6" fill="{{ request()->routeIs('account.*') ? 'currentColor' : 'none' }}" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+                    </svg>
+                    <span>Account</span>
+                </a>
+            @else
+                <a href="{{ route('login') }}"
+                   class="flex flex-col items-center justify-center gap-0.5 text-[10px] font-medium transition-colors text-stone-400 hover:text-amber-500">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"/>
+                    </svg>
+                    <span>Sign In</span>
+                </a>
+            @endauth
         </div>
     </nav>
 
