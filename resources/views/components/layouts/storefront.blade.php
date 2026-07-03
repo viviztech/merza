@@ -8,10 +8,44 @@
 
     <title>{{ isset($title) ? $title . ' | Merza' : 'Merza — Premium Tropical Fruits' }}</title>
 
+    <!-- Favicon -->
+    <link rel="icon" type="image/x-icon" href="/favicon.ico">
+    <link rel="icon" type="image/png" sizes="16x16" href="/images/icon-16.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="/images/icon-32.png">
+    <link rel="icon" type="image/png" sizes="48x48" href="/images/icon-48.png">
+
+    <!-- Apple Touch Icons -->
+    <link rel="apple-touch-icon" sizes="57x57"  href="/images/icon-57.png">
+    <link rel="apple-touch-icon" sizes="60x60"  href="/images/icon-60.png">
+    <link rel="apple-touch-icon" sizes="72x72"  href="/images/icon-72.png">
+    <link rel="apple-touch-icon" sizes="76x76"  href="/images/icon-76.png">
+    <link rel="apple-touch-icon" sizes="114x114" href="/images/icon-114.png">
+    <link rel="apple-touch-icon" sizes="120x120" href="/images/icon-120.png">
+    <link rel="apple-touch-icon" sizes="144x144" href="/images/icon-144.png">
+    <link rel="apple-touch-icon" sizes="152x152" href="/images/icon-152.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="/images/icon-180.png">
+
     <!-- PWA -->
     <link rel="manifest" href="/manifest.json">
     <meta name="theme-color" content="#D97706">
-    <link rel="apple-touch-icon" href="/images/icon-192.png">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="Merza">
+    <meta name="application-name" content="Merza">
+
+    <!-- Microsoft Tiles -->
+    <meta name="msapplication-TileColor" content="#D97706">
+    <meta name="msapplication-TileImage" content="/images/icon-144.png">
+    <meta name="msapplication-square70x70logo" content="/images/icon-70.png">
+    <meta name="msapplication-square150x150logo" content="/images/icon-150.png">
+    <meta name="msapplication-square310x310logo" content="/images/icon-310.png">
+
+    <!-- Open Graph -->
+    <meta property="og:title" content="{{ isset($title) ? $title . ' | Merza' : 'Merza — Premium Tropical Fruits' }}">
+    <meta property="og:description" content="{{ $description ?? 'Merza — Premium Tropical Fruits delivered fresh to your door. Mangoes, Jackfruit, Banana & more.' }}">
+    <meta property="og:image" content="/images/icon-512.png">
+    <meta property="og:type" content="website">
 
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -28,11 +62,8 @@
         <div class="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between gap-4">
 
             {{-- Logo --}}
-            <a href="{{ route('home') }}" class="flex items-center gap-2 flex-shrink-0">
-                <span class="flex items-center justify-center w-8 h-8 rounded-lg bg-gradient-to-br from-amber-400 to-orange-500 text-white text-base shadow-sm">🥭</span>
-                <span class="text-xl font-extrabold tracking-tight">
-                    <span class="text-amber-600">Merza</span><span class="text-emerald-700">.</span>
-                </span>
+            <a href="{{ route('home') }}" class="flex items-center flex-shrink-0">
+                <img src="/images/logo.png" alt="Merza Natural Squash" class="h-10 w-auto">
             </a>
 
             {{-- Desktop nav --}}
@@ -107,9 +138,8 @@
 
                 {{-- Brand --}}
                 <div class="md:col-span-1">
-                    <div class="flex items-center gap-2 mb-3">
-                        <span class="flex items-center justify-center w-9 h-9 rounded-xl bg-gradient-to-br from-amber-400 to-orange-500 text-white text-lg shadow">🥭</span>
-                        <span class="text-xl font-extrabold"><span class="text-amber-400">Merza</span><span class="text-emerald-400">.</span></span>
+                    <div class="flex items-center mb-3">
+                        <img src="/images/logo.png" alt="Merza Natural Squash" class="h-10 w-auto brightness-0 invert">
                     </div>
                     <p class="text-emerald-300 text-sm leading-relaxed">
                         Premium tropical fruits delivered fresh from the farm to your door. Quality you can taste.

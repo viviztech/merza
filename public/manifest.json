@@ -1,23 +1,33 @@
 {
-    "name": "Merza Fresh Fruits",
+    "name": "Merza Natural Squash",
     "short_name": "Merza",
-    "description": "Fresh premium tropical fruits delivered to your door",
+    "description": "Fresh premium tropical fruits delivered to your door — Bodinayakanur, Tamil Nadu",
     "start_url": "/",
     "display": "standalone",
+    "orientation": "portrait",
     "background_color": "#ffffff",
-    "theme_color": "#1B6B2F",
+    "theme_color": "#D97706",
+    "categories": ["food", "shopping"],
+    "lang": "en",
     "icons": [
+        { "src": "/images/icon-72.png",  "sizes": "72x72",   "type": "image/png", "purpose": "any" },
+        { "src": "/images/icon-96.png",  "sizes": "96x96",   "type": "image/png", "purpose": "any" },
+        { "src": "/images/icon-128.png", "sizes": "128x128", "type": "image/png", "purpose": "any" },
+        { "src": "/images/icon-144.png", "sizes": "144x144", "type": "image/png", "purpose": "any" },
+        { "src": "/images/icon-152.png", "sizes": "152x152", "type": "image/png", "purpose": "any" },
+        { "src": "/images/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+        { "src": "/images/icon-384.png", "sizes": "384x384", "type": "image/png", "purpose": "any" },
+        { "src": "/images/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+        { "src": "/images/icon-maskable-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+        { "src": "/images/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+    ],
+    "shortcuts": [
         {
-            "src": "/images/icon-192.png",
-            "sizes": "192x192",
-            "type": "image/png",
-            "purpose": "any maskable"
-        },
-        {
-            "src": "/images/icon-512.png",
-            "sizes": "512x512",
-            "type": "image/png",
-            "purpose": "any maskable"
+            "name": "Shop Fruits",
+            "short_name": "Shop",
+            "description": "Browse our fresh fruit catalogue",
+            "url": "/products",
+            "icons": [{ "src": "/images/icon-96.png", "sizes": "96x96" }]
         }
     ]
 }

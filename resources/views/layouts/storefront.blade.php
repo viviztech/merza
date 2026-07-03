@@ -8,10 +8,17 @@
 
     <title>{{ isset($title) ? $title . ' | Merza' : 'Merza — Premium Tropical Fruits' }}</title>
 
+    <!-- Favicon -->
+    <link rel="icon" type="image/x-icon" href="/favicon.ico">
+    <link rel="icon" type="image/png" sizes="32x32" href="/images/icon-32.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="/images/icon-180.png">
+
     <!-- PWA -->
     <link rel="manifest" href="/manifest.json">
-    <meta name="theme-color" content="#1B6B2F">
-    <link rel="apple-touch-icon" href="/images/icon-192.png">
+    <meta name="theme-color" content="#D97706">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="Merza">
 
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -27,8 +34,8 @@
         <div class="max-w-7xl mx-auto px-4 h-14 flex items-center justify-between">
 
             {{-- Logo --}}
-            <a href="{{ route('home') }}" class="flex items-center gap-2">
-                <span class="text-xl font-bold text-green-800 tracking-tight">🌿 Merza</span>
+            <a href="{{ route('home') }}" class="flex items-center flex-shrink-0">
+                <img src="/images/logo.png" alt="Merza Natural Squash" class="h-9 w-auto">
             </a>
 
             {{-- Desktop nav --}}
