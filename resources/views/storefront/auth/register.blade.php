@@ -63,7 +63,7 @@
 
                 <p class="text-center text-sm text-stone-500 mt-6">
                     Already have an account?
-                    <a href="{{ route('customer.login') }}" class="text-amber-600 font-semibold hover:text-amber-700">Sign in</a>
+                    <a href="{{ route('login') }}" class="text-amber-600 font-semibold hover:text-amber-700">Sign in</a>
                 </p>
             </div>
         </div>
