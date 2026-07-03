@@ -15,17 +15,17 @@
             <div class="flex-1 text-center md:text-left z-10">
                 <span class="inline-flex items-center gap-2 bg-white/15 backdrop-blur-sm border border-white/25 text-amber-300 text-xs font-bold px-4 py-1.5 rounded-full mb-5 uppercase tracking-widest">
                     <span class="w-2 h-2 rounded-full bg-green-400 pulse-dot"></span>
-                    Farm Fresh · Daily Harvest
+                    Farm Fresh · 100% Natural · Bodinayakanur
                 </span>
 
                 <h1 class="text-4xl md:text-6xl font-extrabold leading-[1.1] text-white mb-4">
-                    Tropical Fruits<br>
-                    <span class="text-gradient">You'll Crave</span><br>
-                    <span class="text-white">Every Day.</span>
+                    Mukkani Fruits<br>
+                    <span class="text-gradient">Pure. Natural.</span><br>
+                    <span class="text-white">Farm Fresh.</span>
                 </h1>
 
                 <p class="text-emerald-100 text-base md:text-lg mb-8 max-w-md mx-auto md:mx-0 leading-relaxed">
-                    Premium Mangoes, Jackfruit, Banana Red & more — harvested ripe and delivered straight to your door across India.
+                    Imam Pasand Mangoes, Red Bananas & Vietnam Early Gold Jackfruit — grown on our own farm with sustainable methods, free from artificial flavours and colours.
                 </p>
 
                 <div class="flex flex-col sm:flex-row gap-3 justify-center md:justify-start">
@@ -90,57 +90,66 @@
     {{-- ═══════════════════════════════════════════════════════════ --}}
     <section class="max-w-7xl mx-auto px-4 py-12">
         <div class="text-center mb-8">
-            <span class="text-xs font-bold text-amber-600 uppercase tracking-widest">What We Grow</span>
-            <h2 class="text-3xl md:text-4xl font-extrabold text-stone-900 mt-1">Our Tropical Selection</h2>
-            <p class="text-stone-500 mt-2">Hand-picked from the finest farms across Southeast Asia</p>
+            <span class="text-xs font-bold text-amber-600 uppercase tracking-widest">Mukkani & More</span>
+            <h2 class="text-3xl md:text-4xl font-extrabold text-stone-900 mt-1">Fruits & Farm Products</h2>
+            <p class="text-stone-500 mt-2">Grown on our own fields in Bodinayakanur — 100% natural, zero artificial ingredients</p>
         </div>
 
-        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
             @foreach([
                 [
                     'emoji' => '🥭',
-                    'name'  => 'Premium Mangoes',
-                    'sub'   => 'Alphonso & Harum Manis',
+                    'name'  => 'Imam Pasand Mango',
+                    'sub'   => 'King of Mangoes',
                     'from'  => '#fef9c3', 'to' => '#fef08a',
                     'ring'  => 'ring-yellow-300',
                     'badge' => 'bg-yellow-100 text-yellow-700',
-                    'label' => 'Bestseller',
+                    'label' => 'Mukkani',
                 ],
                 [
                     'emoji' => '🍌',
-                    'name'  => 'Banana Red',
+                    'name'  => 'Red Banana',
                     'sub'   => 'Sweet & Nutritious',
                     'from'  => '#fce7f3', 'to' => '#fbcfe8',
                     'ring'  => 'ring-pink-300',
                     'badge' => 'bg-pink-100 text-pink-700',
-                    'label' => 'Popular',
+                    'label' => 'Mukkani',
                 ],
                 [
                     'emoji' => '🍈',
-                    'name'  => 'Vietnam Gold Jackfruit',
-                    'sub'   => 'Premium Variety',
+                    'name'  => 'Vietnam Early Gold Jackfruit',
+                    'sub'   => 'Golden Flesh, Sweet Aroma',
                     'from'  => '#d1fae5', 'to' => '#a7f3d0',
                     'ring'  => 'ring-emerald-300',
                     'badge' => 'bg-emerald-100 text-emerald-700',
-                    'label' => 'Fresh Pick',
+                    'label' => 'Mukkani',
                 ],
                 [
-                    'emoji' => '🍋',
-                    'name'  => 'Freeze Dried',
-                    'sub'   => 'Long Shelf Life',
-                    'from'  => '#fef3c7', 'to' => '#fde68a',
-                    'ring'  => 'ring-amber-300',
-                    'badge' => 'bg-amber-100 text-amber-700',
-                    'label' => 'New',
-                ],
-                [
-                    'emoji' => '🧃',
-                    'name'  => 'Pulp & Puree',
-                    'sub'   => 'Mango & Jackfruit',
+                    'emoji' => '🍊',
+                    'name'  => 'Orange Squash',
+                    'sub'   => 'No Artificial Colour',
                     'from'  => '#ffedd5', 'to' => '#fed7aa',
                     'ring'  => 'ring-orange-300',
                     'badge' => 'bg-orange-100 text-orange-700',
-                    'label' => 'B2B',
+                    'label' => 'Farm Made',
+                ],
+                [
+                    'emoji' => '🍦',
+                    'name'  => 'Banana Ice Cream',
+                    'sub'   => 'Creamy & Natural',
+                    'from'  => '#fce7f3', 'to' => '#fae8ff',
+                    'ring'  => 'ring-purple-300',
+                    'badge' => 'bg-purple-100 text-purple-700',
+                    'label' => 'Farm Made',
+                ],
+                [
+                    'emoji' => '🍯',
+                    'name'  => 'Mango Jam',
+                    'sub'   => 'Pure Tropical Sweetness',
+                    'from'  => '#fef3c7', 'to' => '#fde68a',
+                    'ring'  => 'ring-amber-300',
+                    'badge' => 'bg-amber-100 text-amber-700',
+                    'label' => 'Farm Made',
                 ],
             ] as $cat)
                 <a href="{{ route('products.index') }}"
@@ -250,9 +259,9 @@
                         <div class="flex items-center justify-between">
                             <span class="text-amber-600 font-extrabold text-base">
                                 @if($product->activeVariants->isNotEmpty())
-                                    From RM{{ number_format($product->activeVariants->min('price'), 2) }}
+                                    From ₹{{ number_format($product->activeVariants->min('price'), 2) }}
                                 @else
-                                    RM{{ number_format($product->base_price, 2) }}
+                                    ₹{{ number_format($product->base_price, 2) }}
                                 @endif
                             </span>
                             <span class="w-8 h-8 rounded-xl bg-amber-500 flex items-center justify-center text-white shadow group-hover:bg-orange-500 transition-colors">

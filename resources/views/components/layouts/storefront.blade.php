@@ -194,7 +194,8 @@
                         Chat on WhatsApp
                     </a>
                     <div class="mt-4 space-y-1 text-xs text-emerald-400">
-                        <p>📍 Bodinayakanur, Theni - 625513, Tamil Nadu, India</p>
+                        <p>📍 HP Petrol Bunk, Pankajam School Opp.,</p>
+                        <p class="pl-5">Thevaram Road, Bodinayakanur — 625513</p>
                         <p>📞 +91 86676 96278</p>
                         <p>✉️ merzabodinayakanur@gmail.com</p>
                     </div>
