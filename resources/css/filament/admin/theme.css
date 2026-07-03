@@ -1,0 +1,75 @@
+@import '../../../../vendor/filament/filament/resources/css/theme.css';
+
+@source '../../../../app/Filament/**/*';
+@source '../../../../resources/views/filament/**/*';
+
+/* ── Merza Admin Theme ─────────────────────────────────────── */
+
+/* Sidebar background — warm off-white with subtle border */
+.fi-sidebar {
+    background-color: #FAFAF9 !important;
+    border-right: 1px solid #E7E5E4;
+}
+
+/* Sidebar nav item active state — amber highlight */
+.fi-sidebar-item-active .fi-sidebar-item-button {
+    background-color: #FEF3C7 !important;
+    color: #92400E !important;
+}
+
+.fi-sidebar-item-active .fi-sidebar-item-button svg {
+    color: #D97706 !important;
+}
+
+/* Topbar — white with bottom border */
+.fi-topbar {
+    background-color: #FFFFFF !important;
+    border-bottom: 1px solid #E7E5E4;
+    box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.05);
+}
+
+/* Brand logo spacing */
+.fi-logo {
+    padding: 0.25rem 0;
+}
+
+/* Sidebar group labels */
+.fi-sidebar-group-label {
+    color: #A8A29E;
+    font-size: 0.625rem;
+    letter-spacing: 0.1em;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+/* Card corners — slightly more rounded */
+.fi-card {
+    border-radius: 0.75rem !important;
+}
+
+/* Stats widget cards */
+.fi-wi-stats-overview-stat {
+    border-radius: 0.75rem !important;
+}
+
+/* Tables — cleaner header */
+.fi-ta-header-cell {
+    background-color: #F5F5F4 !important;
+    font-size: 0.7rem !important;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: #78716C !important;
+}
+
+/* Primary buttons */
+.fi-btn-color-primary {
+    background: linear-gradient(135deg, #F59E0B, #D97706) !important;
+    box-shadow: 0 1px 3px rgb(217 119 6 / 0.3);
+}
+
+/* Page heading */
+.fi-header-heading {
+    font-size: 1.375rem !important;
+    font-weight: 800 !important;
+    color: #1C1917 !important;
+}

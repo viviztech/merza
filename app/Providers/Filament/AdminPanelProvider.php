@@ -32,16 +32,24 @@ class AdminPanelProvider extends PanelProvider
             ->default()
             ->id('admin')
             ->path('admin')
+            ->viteTheme('resources/css/filament/admin/theme.css')
             ->login(Login::class)
             ->revealablePasswords(false)
-            ->brandName('Merza CRM')
-            ->brandLogo(null)
+            ->brandName('Merza')
+            ->brandLogo(asset('images/logo.png'))
+            ->brandLogoHeight('2rem')
+            ->darkModeBrandLogo(asset('images/icon-192.png'))
             ->favicon(asset('favicon.ico'))
             ->colors([
-                'primary' => Color::hex('#1B6B2F'),
-                'gray'    => Color::Slate,
+                'primary' => Color::hex('#D97706'),
+                'success' => Color::hex('#059669'),
+                'warning' => Color::hex('#F59E0B'),
+                'danger'  => Color::hex('#DC2626'),
+                'info'    => Color::hex('#0EA5E9'),
+                'gray'    => Color::Zinc,
             ])
-            ->font('Inter')
+            ->font('Plus Jakarta Sans', provider: \Filament\FontProviders\GoogleFontProvider::class)
+            ->darkMode(false)
             ->navigationGroups([
                 NavigationGroup::make('Sales & CRM'),
                 NavigationGroup::make('Catalogue'),
