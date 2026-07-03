@@ -103,8 +103,8 @@ class UserResource extends Resource
                     ->hidden(fn (User $record) => $record->id === auth()->id()),
             ])
             ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
+                Actions\BulkActionGroup::make([
+                    Actions\DeleteBulkAction::make(),
                 ]),
             ])
             ->defaultSort('created_at', 'desc');
