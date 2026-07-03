@@ -26,7 +26,10 @@ Route::get('/checkout', CheckoutForm::class)->name('checkout.index');
 
 // Customer account (Phase 4)
 Route::middleware('auth')->prefix('account')->name('account.')->group(function () {
-    Route::get('/orders', fn () => view('storefront.home'))->name('orders');
+    Route::get('/orders', function () {
+        $orders = auth()->user()->orders()->with('items')->latest()->get();
+        return view('storefront.account.orders', compact('orders'));
+    })->name('orders');
 });
 
 // Static pages
