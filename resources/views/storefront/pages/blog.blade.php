@@ -12,7 +12,7 @@
     {{-- Coming Soon Banner --}}
     <div class="bg-amber-50 border-b border-amber-100 py-3 px-4 text-center text-sm text-amber-700">
         🚧 Full blog coming soon — follow us on WhatsApp for weekly recipe tips!
-        <a href="https://wa.me/60123456789?text=Hi%2C+I%27d+like+to+get+recipe+tips+from+Merza!" target="_blank" class="underline font-semibold ml-1">Join now →</a>
+        <a href="https://wa.me/918667696278?text=Hi%2C+I%27d+like+to+get+recipe+tips+from+Merza!" target="_blank" class="underline font-semibold ml-1">Join now →</a>
     </div>
 
     {{-- Recipe Cards --}}
@@ -50,7 +50,7 @@
                     'title' => 'Tropical Mango Lassi',
                     'time' => '5 min',
                     'difficulty' => 'Easy',
-                    'desc' => 'A creamy, refreshing Indian-style mango drink. Perfect for hot Malaysian afternoons.',
+                    'desc' => 'A creamy, refreshing mango drink. Perfect for hot Indian summer afternoons.',
                     'ingredients' => ['2 ripe mangoes (or 200ml pulp)', '1 cup plain yogurt', '½ cup cold milk', '2 tbsp sugar', 'Cardamom pinch, ice'],
                     'steps' => 'Blend all ingredients until smooth. Adjust sweetness to taste. Serve immediately over ice. Top with a pinch of cardamom.',
                 ],

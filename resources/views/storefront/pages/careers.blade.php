@@ -1,4 +1,4 @@
-<x-layouts.storefront title="Careers" description="Join the Merza team. We're growing fast and looking for passionate people to help us deliver premium tropical fruits across Malaysia.">
+<x-layouts.storefront title="Careers" description="Join the Merza team. We're growing fast and looking for passionate people to help us deliver premium tropical fruits across India.">
 
     {{-- Hero --}}
     <section class="bg-gradient-to-br from-emerald-900 to-emerald-700 text-white py-20 px-4">
@@ -34,7 +34,7 @@
     <section class="bg-amber-50 py-16 px-4">
         <div class="max-w-3xl mx-auto">
             <h2 class="text-2xl font-extrabold text-stone-900 mb-2 text-center">Open Positions</h2>
-            <p class="text-stone-500 text-sm text-center mb-10">All roles are based in Kuala Lumpur unless noted. Apply via WhatsApp.</p>
+            <p class="text-stone-500 text-sm text-center mb-10">All roles are based in Bodinayakanur unless noted. Apply via WhatsApp.</p>
 
             <div class="space-y-4">
                 @foreach([
@@ -42,15 +42,15 @@
                         'title' => 'Delivery Rider',
                         'type' => 'Full-time / Part-time',
                         'icon' => '🚚',
-                        'desc' => 'Deliver fresh fruit orders across Klang Valley. Own motorcycle required. Mileage allowance + commission per delivery.',
-                        'req' => ['Valid Malaysian driving licence (B2)', 'Own motorcycle in good condition', 'Smartphone for delivery app', 'Reliable and punctual'],
+                        'desc' => 'Deliver fresh fruit orders across Bodinayakanur and surrounding areas. Own two-wheeler required. Fuel allowance + commission per delivery.',
+                        'req' => ['Valid Indian driving licence', 'Own two-wheeler in good condition', 'Smartphone for delivery app', 'Reliable and punctual'],
                     ],
                     [
                         'title' => 'Sales & Customer Service',
                         'type' => 'Full-time',
                         'icon' => '💬',
                         'desc' => 'Handle WhatsApp orders, follow up on leads, and ensure customers are delighted. No cold calling — our customers come to us.',
-                        'req' => ['Good written Bahasa Malaysia & English', 'Friendly and responsive communication', 'Basic smartphone literacy', 'Sales experience a bonus but not required'],
+                        'req' => ['Good written Tamil & English', 'Friendly and responsive communication', 'Basic smartphone literacy', 'Sales experience a bonus but not required'],
                     ],
                     [
                         'title' => 'Social Media & Content',
@@ -76,7 +76,7 @@
                                     <span class="text-xs text-emerald-700 font-semibold bg-emerald-50 px-2 py-0.5 rounded-full">{{ $role['type'] }}</span>
                                 </div>
                             </div>
-                            <a href="https://wa.me/60123456789?text=Hi%2C+I%27d+like+to+apply+for+the+{{ urlencode($role['title']) }}+position+at+Merza."
+                            <a href="https://wa.me/918667696278?text=Hi%2C+I%27d+like+to+apply+for+the+{{ urlencode($role['title']) }}+position+at+Merza."
                                target="_blank"
                                class="flex-shrink-0 bg-green-500 hover:bg-green-400 text-white font-bold px-4 py-2 rounded-xl text-xs transition-all">
                                 Apply
@@ -94,7 +94,7 @@
 
             <div class="text-center mt-8 p-6 bg-white rounded-2xl border border-amber-100">
                 <p class="text-stone-600 text-sm mb-3">Don't see a role that fits? We're always open to talented people.</p>
-                <a href="https://wa.me/60123456789?text=Hi%2C+I%27d+like+to+introduce+myself+and+explore+opportunities+at+Merza."
+                <a href="https://wa.me/918667696278?text=Hi%2C+I%27d+like+to+introduce+myself+and+explore+opportunities+at+Merza."
                    target="_blank"
                    class="inline-flex items-center gap-2 text-sm font-semibold text-emerald-700 hover:text-emerald-800">
                     Send us your introduction →

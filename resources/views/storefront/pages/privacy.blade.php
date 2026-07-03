@@ -1,4 +1,4 @@
-<x-layouts.storefront title="Privacy Policy" description="Merza's privacy policy — how we collect, use and protect your personal data in compliance with Malaysia's PDPA 2010.">
+<x-layouts.storefront title="Privacy Policy" description="Merza's privacy policy — how we collect, use and protect your personal data in compliance with India's IT Act and DPDP Act 2023.">
 
     <section class="max-w-3xl mx-auto px-4 py-16">
 
@@ -10,13 +10,13 @@
         <div class="prose prose-stone prose-sm max-w-none space-y-8">
 
             <div class="bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm text-amber-800">
-                This Privacy Policy is prepared in accordance with the <strong>Personal Data Protection Act 2010 (PDPA)</strong> of Malaysia. By using our website or placing an order with Merza, you agree to the practices described here.
+                This Privacy Policy is prepared in accordance with the <strong>Digital Personal Data Protection Act 2023 (DPDP Act)</strong> and the Information Technology Act, 2000 of India. By using our website or placing an order with Merza, you agree to the practices described here.
             </div>
 
             @foreach([
                 [
                     'title' => '1. Who We Are',
-                    'content' => 'Merza Bodi ("Merza", "we", "us", "our") is a Malaysian tropical fruit retailer operating at merzabodi.com. Our business address is Kuala Lumpur, Malaysia. For any privacy-related enquiries, contact us at <a href="mailto:hello@merzabodi.com" class="text-amber-700 underline">hello@merzabodi.com</a> or via WhatsApp at +60 12-345 6789.',
+                    'content' => 'Merza Bodi ("Merza", "we", "us", "our") is an Indian tropical fruit retailer operating at merzabodi.com. Our business address is No.9, Jeeva Nagar North Street, Bodinayakanur, Theni - 625513, Tamil Nadu, India. For any privacy-related enquiries, contact us at <a href="mailto:merzabodinayakanur@gmail.com" class="text-amber-700 underline">merzabodinayakanur@gmail.com</a> or via WhatsApp at +91 86676 96278.',
                 ],
                 [
                     'title' => '2. Personal Data We Collect',
@@ -29,7 +29,7 @@
                         <li>Order history and product preferences</li>
                         <li>WhatsApp/Facebook messages sent to us</li>
                     </ul>
-                    <p class="mt-2">We do not collect payment card details. All payments are processed via bank transfer or cash on delivery.</p>',
+                    <p class="mt-2">We do not collect payment card details. All payments are processed via UPI, bank transfer or cash on delivery.</p>',
                 ],
                 [
                     'title' => '3. How We Use Your Data',
@@ -48,8 +48,8 @@
                     'content' => 'We do not sell your personal data. We may share limited data with:
                     <ul class="list-disc list-inside mt-2 space-y-1 text-stone-600">
                         <li><strong>Delivery partners</strong> — name, phone, and address only, for the purpose of completing your delivery.</li>
-                        <li><strong>Service providers</strong> — technology platforms (cloud hosting, messaging) that help us operate. These providers are contractually bound to keep your data confidential.</li>
-                        <li><strong>Legal authorities</strong> — if required by Malaysian law or a valid court order.</li>
+                        <li><strong>Service providers</strong> — technology platforms (cloud hosting, messaging) that help us operate. These providers are bound to keep your data confidential.</li>
+                        <li><strong>Legal authorities</strong> — if required by Indian law or a valid court order.</li>
                     </ul>',
                 ],
                 [
@@ -57,15 +57,16 @@
                     'content' => 'We retain your personal data for as long as necessary to fulfil the purposes stated in this policy, or as required by law. Order records are kept for a minimum of 7 years for accounting and compliance purposes. WhatsApp conversation history is retained within the WhatsApp platform subject to their terms.',
                 ],
                 [
-                    'title' => '6. Your Rights Under PDPA',
-                    'content' => 'As a data subject under the PDPA 2010, you have the right to:
+                    'title' => '6. Your Rights Under DPDP Act 2023',
+                    'content' => 'As a Data Principal under India\'s Digital Personal Data Protection Act 2023, you have the right to:
                     <ul class="list-disc list-inside mt-2 space-y-1 text-stone-600">
                         <li>Access the personal data we hold about you</li>
                         <li>Correct inaccurate or incomplete data</li>
                         <li>Withdraw consent for marketing communications at any time</li>
-                        <li>Request deletion of your data (subject to legal retention requirements)</li>
+                        <li>Request erasure of your data (subject to legal retention requirements)</li>
+                        <li>Nominate a person to act on your behalf</li>
                     </ul>
-                    <p class="mt-2">To exercise any of these rights, contact us at <a href="mailto:hello@merzabodi.com" class="text-amber-700 underline">hello@merzabodi.com</a> or WhatsApp +60 12-345 6789. We will respond within 14 business days.</p>',
+                    <p class="mt-2">To exercise any of these rights, contact us at <a href="mailto:merzabodinayakanur@gmail.com" class="text-amber-700 underline">merzabodinayakanur@gmail.com</a> or WhatsApp +91 86676 96278. We will respond within 14 business days.</p>',
                 ],
                 [
                     'title' => '7. Cookies',
@@ -87,9 +88,9 @@
                     'title' => '11. Contact Us',
                     'content' => 'For any questions about this Privacy Policy or how we handle your data:
                     <div class="mt-2 space-y-1 text-stone-600">
-                        <p>📧 <a href="mailto:hello@merzabodi.com" class="text-amber-700 underline">hello@merzabodi.com</a></p>
-                        <p>📞 +60 12-345 6789</p>
-                        <p>📍 Kuala Lumpur, Malaysia</p>
+                        <p>📧 <a href="mailto:merzabodinayakanur@gmail.com" class="text-amber-700 underline">merzabodinayakanur@gmail.com</a></p>
+                        <p>📞 +91 86676 96278</p>
+                        <p>📍 No.9, Jeeva Nagar North Street, Bodinayakanur, Theni - 625513, Tamil Nadu, India</p>
                     </div>',
                 ],
             ] as $section)
