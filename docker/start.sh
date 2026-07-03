@@ -7,6 +7,9 @@ php /var/www/html/artisan migrate --force
 echo "==> Seeding roles and admin user..."
 php /var/www/html/artisan db:seed --class=RolesAndAdminSeeder --force
 
+echo "==> Seeding roles and permissions..."
+php /var/www/html/artisan db:seed --class=RolesAndPermissionsSeeder --force
+
 echo "==> Linking storage..."
 php /var/www/html/artisan storage:link --force 2>/dev/null || true
 
