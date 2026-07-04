@@ -73,8 +73,9 @@ class WhatsAppService
 
     /**
      * Parse the webhook payload for inbound WhatsApp message events.
+     * Handles both text and audio (voice) messages.
      *
-     * @return array<array{from: string, wa_message_id: string, body: string, timestamp: string}>
+     * @return array<array{from: string, wa_message_id: string, body: string, timestamp: string, type: string, media_id: string|null}>
      */
     public function parseInboundMessages(array $payload): array
     {
@@ -89,22 +90,78 @@ class WhatsAppService
                 $value = $change['value'] ?? [];
 
                 foreach ($value['messages'] ?? [] as $msg) {
-                    if (($msg['type'] ?? '') !== 'text') {
-                        continue; // Phase 7 handles text only; media can be Phase 8
-                    }
+                    $type = $msg['type'] ?? '';
 
-                    $messages[] = [
-                        'from'          => $msg['from'] ?? '',
-                        'wa_message_id' => $msg['id'] ?? '',
-                        'body'          => $msg['text']['body'] ?? '',
-                        'timestamp'     => $msg['timestamp'] ?? now()->timestamp,
-                        'phone_number_id' => $value['metadata']['phone_number_id'] ?? '',
-                    ];
+                    if ($type === 'text') {
+                        $messages[] = [
+                            'from'            => $msg['from'] ?? '',
+                            'wa_message_id'   => $msg['id'] ?? '',
+                            'body'            => $msg['text']['body'] ?? '',
+                            'timestamp'       => $msg['timestamp'] ?? now()->timestamp,
+                            'type'            => 'text',
+                            'media_id'        => null,
+                            'phone_number_id' => $value['metadata']['phone_number_id'] ?? '',
+                        ];
+                    } elseif ($type === 'audio') {
+                        $messages[] = [
+                            'from'            => $msg['from'] ?? '',
+                            'wa_message_id'   => $msg['id'] ?? '',
+                            'body'            => '',
+                            'timestamp'       => $msg['timestamp'] ?? now()->timestamp,
+                            'type'            => 'audio',
+                            'media_id'        => $msg['audio']['id'] ?? null,
+                            'phone_number_id' => $value['metadata']['phone_number_id'] ?? '',
+                        ];
+                    }
                 }
             }
         }
 
         return $messages;
+    }
+
+    /**
+     * Download a WhatsApp media file. Returns ['content' => binary, 'mime_type' => '...'] or null.
+     */
+    public function downloadMedia(string $mediaId): ?array
+    {
+        $token = $this->settings->whatsapp_access_token;
+
+        if (empty($token)) {
+            return null;
+        }
+
+        // Step 1: resolve the media URL
+        $meta = Http::timeout(15)
+            ->withToken($token)
+            ->get(self::GRAPH_URL . "/{$mediaId}");
+
+        if ($meta->failed()) {
+            Log::error('WhatsAppService: failed to resolve media URL', ['media_id' => $mediaId]);
+            return null;
+        }
+
+        $url      = $meta->json('url');
+        $mimeType = $meta->json('mime_type', 'audio/ogg');
+
+        if (empty($url)) {
+            return null;
+        }
+
+        // Step 2: download the binary content
+        $file = Http::timeout(30)
+            ->withToken($token)
+            ->get($url);
+
+        if ($file->failed()) {
+            Log::error('WhatsAppService: failed to download media', ['url' => $url]);
+            return null;
+        }
+
+        return [
+            'content'   => $file->body(),
+            'mime_type' => $mimeType,
+        ];
     }
 
     /**

@@ -95,6 +95,8 @@ class MetaWebhookController extends Controller
                 $msg['wa_message_id'],
                 $msg['body'],
                 (int) $msg['timestamp'],
+                $msg['type']     ?? 'text',
+                $msg['media_id'] ?? null,
             );
         }
     }

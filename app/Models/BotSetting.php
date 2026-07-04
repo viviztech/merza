@@ -11,9 +11,10 @@ class BotSetting extends Model
         'meta_page_access_token', 'meta_verify_token', 'meta_lead_form_id',
         'whatsapp_phone_number_id', 'whatsapp_access_token',
         'anthropic_api_key', 'anthropic_model',
+        'ai_provider', 'groq_api_key', 'groq_model', 'sarvam_api_key',
         'follow_up_prompt_template', 'wa_reply_prompt_template',
         'bot_enabled', 'auto_create_contact', 'auto_create_lead',
-        'wa_bot_enabled', 'wa_auto_send',
+        'wa_bot_enabled', 'wa_auto_send', 'voice_bot_enabled',
     ];
 
     protected $casts = [
@@ -22,6 +23,7 @@ class BotSetting extends Model
         'auto_create_lead'    => 'boolean',
         'wa_bot_enabled'      => 'boolean',
         'wa_auto_send'        => 'boolean',
+        'voice_bot_enabled'   => 'boolean',
     ];
 
     public static function current(): self

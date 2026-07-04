@@ -7,6 +7,7 @@ use App\Models\BotSetting;
 use App\Models\Contact;
 use App\Models\Conversation;
 use App\Services\BotReplyService;
+use App\Services\SarvamService;
 use App\Services\WhatsAppService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -19,27 +20,49 @@ class ProcessInboundWhatsAppJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    public int $tries = 3;
+    public int $tries   = 3;
     public int $backoff = 30;
 
     public function __construct(
-        public readonly string $fromPhone,
-        public readonly string $waMessageId,
-        public readonly string $body,
-        public readonly int    $timestamp,
+        public readonly string  $fromPhone,
+        public readonly string  $waMessageId,
+        public readonly string  $body,
+        public readonly int     $timestamp,
+        public readonly string  $messageType = 'text',  // 'text' | 'audio'
+        public readonly ?string $mediaId     = null,
     ) {}
 
     public function handle(): void
     {
-        // Deduplicate by wa_message_id
+        // Deduplicate
         if (Conversation::where('wa_message_id', $this->waMessageId)->exists()) {
-            Log::info('ProcessInboundWhatsAppJob: Duplicate message, skipping', ['wa_id' => $this->waMessageId]);
+            Log::info('ProcessInboundWhatsAppJob: duplicate, skipping', ['wa_id' => $this->waMessageId]);
             return;
         }
 
         $settings = BotSetting::current();
 
-        // Find or create contact by phone
+        // ── Resolve message text ──────────────────────────────────────────────
+        $messageText = $this->body;
+        $wasVoice    = false;
+
+        if ($this->messageType === 'audio' && $this->mediaId) {
+            $messageText = $this->transcribeAudio($settings);
+
+            if (empty($messageText)) {
+                Log::warning('ProcessInboundWhatsAppJob: audio transcription failed', [
+                    'media_id' => $this->mediaId,
+                    'from'     => $this->fromPhone,
+                ]);
+                // Still record the conversation as "[Voice message]" and skip bot reply
+                $messageText = '[Voice message — transcription unavailable]';
+            } else {
+                $wasVoice = true;
+                Log::info('ProcessInboundWhatsAppJob: voice transcribed', ['text' => $messageText]);
+            }
+        }
+
+        // ── Find or create contact ────────────────────────────────────────────
         $phone   = preg_replace('/[^0-9+]/', '', $this->fromPhone);
         $contact = Contact::where('phone', $phone)
                           ->orWhere('phone', ltrim($phone, '+'))
@@ -54,39 +77,54 @@ class ProcessInboundWhatsAppJob implements ShouldQueue
             ]);
         }
 
-        // Store the inbound message
+        // ── Store inbound conversation ────────────────────────────────────────
         $conversation = Conversation::create([
             'contact_id'    => $contact->id,
             'channel'       => 'whatsapp',
             'direction'     => 'inbound',
-            'message'       => $this->body,
+            'message'       => $wasVoice ? "🎤 {$messageText}" : $messageText,
             'wa_message_id' => $this->waMessageId,
             'is_bot'        => false,
             'sent_at'       => now()->setTimestamp($this->timestamp),
             'status'        => 'read',
         ]);
 
-        // Mark as read (blue ticks)
+        // Mark read (double blue tick)
         $waService = new WhatsAppService($settings);
         $waService->markRead($this->waMessageId);
 
-        // Log
+        // ── Activity log ──────────────────────────────────────────────────────
         BotActivityLog::create([
             'event_type'   => 'webhook_received',
             'meta_lead_id' => $this->waMessageId,
             'contact_id'   => $contact->id,
             'raw_payload'  => [
-                'from'    => $this->fromPhone,
-                'message' => $this->body,
-                'wa_id'   => $this->waMessageId,
+                'from'      => $this->fromPhone,
+                'message'   => $messageText,
+                'wa_id'     => $this->waMessageId,
+                'type'      => $this->messageType,
+                'was_voice' => $wasVoice,
             ],
             'status' => 'success',
         ]);
 
-        // Trigger bot auto-reply if enabled
-        if ($settings->wa_bot_enabled) {
+        // ── Bot auto-reply ────────────────────────────────────────────────────
+        $botEnabled   = $settings->wa_bot_enabled;
+        $voiceEnabled = $settings->voice_bot_enabled;
+
+        // Skip bot reply for untranscribable audio
+        if ($this->messageType === 'audio' && ! $wasVoice) {
+            return;
+        }
+
+        // Skip voice bot reply if voice bot is not enabled
+        if ($wasVoice && ! $voiceEnabled) {
+            return;
+        }
+
+        if ($botEnabled) {
             $replyService = new BotReplyService($settings);
-            $replyMessage = $replyService->generateReply($contact, $this->body, $conversation);
+            $replyMessage = $replyService->generateReply($contact, $messageText, $conversation);
 
             if ($replyMessage) {
                 $draft = Conversation::create([
@@ -96,7 +134,7 @@ class ProcessInboundWhatsAppJob implements ShouldQueue
                     'message'       => $replyMessage,
                     'is_bot'        => true,
                     'replied_to_id' => $conversation->id,
-                    'sent_at'       => null, // draft until sent
+                    'sent_at'       => null,
                     'status'        => 'sent',
                 ]);
 
@@ -109,11 +147,35 @@ class ProcessInboundWhatsAppJob implements ShouldQueue
                     'status'            => 'success',
                 ]);
 
-                // Auto-send if configured
                 if ($settings->wa_auto_send) {
                     SendWhatsAppMessageJob::dispatch($draft->id);
                 }
             }
         }
+    }
+
+    // ── Private: audio transcription ──────────────────────────────────────────
+
+    private function transcribeAudio(BotSetting $settings): ?string
+    {
+        if (empty($settings->sarvam_api_key)) {
+            Log::warning('ProcessInboundWhatsAppJob: sarvam_api_key not configured');
+            return null;
+        }
+
+        $waService = new WhatsAppService($settings);
+        $media     = $waService->downloadMedia($this->mediaId);
+
+        if (! $media) {
+            return null;
+        }
+
+        $sarvam = new SarvamService($settings->sarvam_api_key);
+
+        return $sarvam->transcribe(
+            audioContent: $media['content'],
+            mimeType:     $media['mime_type'],
+            languageCode: 'unknown', // auto-detect Tamil / English
+        );
     }
 }
