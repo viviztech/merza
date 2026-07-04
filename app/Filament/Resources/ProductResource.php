@@ -8,6 +8,7 @@ use App\Models\Category;
 use App\Models\Product;
 use App\Services\GroqService;
 use Filament\Actions;
+use Filament\Actions\Action;
 use Filament\Forms;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
@@ -54,7 +55,7 @@ class ProductResource extends Resource
                         ->maxLength(300)
                         ->columnSpanFull()
                         ->hintAction(
-                            Forms\Components\Actions\Action::make('genShortDesc')
+                            Action::make('genShortDesc')
                                 ->label('✨ Generate')
                                 ->icon('heroicon-o-sparkles')
                                 ->action(function (Forms\Get $get, Forms\Set $set) {
@@ -85,7 +86,7 @@ class ProductResource extends Resource
                         ->toolbarButtons(['bold', 'italic', 'bulletList', 'orderedList', 'link'])
                         ->columnSpanFull()
                         ->hintAction(
-                            Forms\Components\Actions\Action::make('genDescription')
+                            Action::make('genDescription')
                                 ->label('✨ Generate')
                                 ->icon('heroicon-o-sparkles')
                                 ->action(function (Forms\Get $get, Forms\Set $set) {
