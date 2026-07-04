@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\OrderPdfController;
 use App\Http\Controllers\Storefront\AccountController;
 use App\Http\Controllers\Storefront\AuthController;
 use App\Http\Controllers\Storefront\HomeController;
@@ -60,6 +61,17 @@ Route::middleware('auth')->prefix('account')->name('account.')->group(function (
     Route::patch('/profile',      [AccountController::class, 'updateProfile'])->name('profile.update');
     Route::put('/password',       [AccountController::class, 'updatePassword'])->name('password.update');
 });
+
+/*
+|--------------------------------------------------------------------------
+| Admin PDF Download Routes
+|--------------------------------------------------------------------------
+*/
+Route::middleware('auth')->prefix('admin/orders')->name('admin.orders.')->group(function () {
+    Route::get('/{order}/invoice',       [OrderPdfController::class, 'invoice'])      ->name('invoice');
+    Route::get('/{order}/delivery-slip', [OrderPdfController::class, 'deliverySlip']) ->name('delivery-slip');
+});
+Route::middleware('auth')->get('/admin/orders/daily-report', [OrderPdfController::class, 'dailyReport'])->name('admin.orders.daily-report');
 
 /*
 |--------------------------------------------------------------------------

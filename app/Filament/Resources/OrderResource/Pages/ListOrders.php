@@ -4,6 +4,8 @@ namespace App\Filament\Resources\OrderResource\Pages;
 
 use App\Filament\Resources\OrderResource;
 use App\Models\Order;
+use Filament\Actions\Action;
+use Filament\Forms;
 use Filament\Schemas\Components\Tabs\Tab;
 use Filament\Resources\Pages\ListRecords;
 
@@ -13,7 +15,21 @@ class ListOrders extends ListRecords
 
     protected function getHeaderActions(): array
     {
-        return [];
+        return [
+            Action::make('dailyReport')
+                ->label('Daily Report PDF')
+                ->icon('heroicon-o-document-chart-bar')
+                ->color('gray')
+                ->form([
+                    Forms\Components\DatePicker::make('date')
+                        ->label('Report Date')
+                        ->default(today())
+                        ->required(),
+                ])
+                ->action(function (array $data) {
+                    $this->redirect(route('admin.orders.daily-report', ['date' => $data['date']]));
+                }),
+        ];
     }
 
     protected function getHeaderWidgets(): array

@@ -71,6 +71,20 @@ class ViewOrder extends ViewRecord
                 ->requiresConfirmation()
                 ->action(fn () => $this->record->update(['payment_status' => 'paid'])),
 
+            Action::make('downloadInvoice')
+                ->label('Invoice PDF')
+                ->icon('heroicon-o-document-text')
+                ->color('gray')
+                ->url(fn () => route('admin.orders.invoice', $this->record))
+                ->openUrlInNewTab(),
+
+            Action::make('downloadDeliverySlip')
+                ->label('Delivery Slip')
+                ->icon('heroicon-o-truck')
+                ->color('gray')
+                ->url(fn () => route('admin.orders.delivery-slip', $this->record))
+                ->openUrlInNewTab(),
+
             Actions\EditAction::make(),
 
             Action::make('cancel')

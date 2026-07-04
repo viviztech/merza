@@ -303,6 +303,22 @@ class OrderResource extends Resource
                     ->requiresConfirmation()
                     ->action(fn (Order $r) => $r->update(['payment_status' => 'paid'])),
 
+                Action::make('invoice')
+                    ->label('')
+                    ->tooltip('Download Invoice PDF')
+                    ->icon('heroicon-o-document-text')
+                    ->color('gray')
+                    ->url(fn (Order $r) => route('admin.orders.invoice', $r))
+                    ->openUrlInNewTab(),
+
+                Action::make('deliverySlip')
+                    ->label('')
+                    ->tooltip('Download Delivery Slip')
+                    ->icon('heroicon-o-truck')
+                    ->color('gray')
+                    ->url(fn (Order $r) => route('admin.orders.delivery-slip', $r))
+                    ->openUrlInNewTab(),
+
                 Actions\ViewAction::make(),
                 Actions\EditAction::make(),
 
