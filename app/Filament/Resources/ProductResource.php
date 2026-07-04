@@ -3,10 +3,13 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\ProductResource\Pages;
+use App\Models\BotSetting;
 use App\Models\Category;
 use App\Models\Product;
+use App\Services\GroqService;
 use Filament\Actions;
 use Filament\Forms;
+use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Schemas\Components\Group as SchemaGroup;
 use Filament\Schemas\Components\Section as SchemaSection;
@@ -49,11 +52,70 @@ class ProductResource extends Resource
                     Forms\Components\Textarea::make('short_description')
                         ->rows(2)
                         ->maxLength(300)
-                        ->columnSpanFull(),
+                        ->columnSpanFull()
+                        ->hintAction(
+                            Forms\Components\Actions\Action::make('genShortDesc')
+                                ->label('✨ Generate')
+                                ->icon('heroicon-o-sparkles')
+                                ->action(function (Forms\Get $get, Forms\Set $set) {
+                                    $name = $get('name');
+                                    if (empty($name)) {
+                                        Notification::make()->title('Enter a product name first')->warning()->send();
+                                        return;
+                                    }
+                                    $settings = BotSetting::current();
+                                    if (empty($settings->groq_api_key)) {
+                                        Notification::make()->title('Groq API key not configured in Bot Settings')->warning()->send();
+                                        return;
+                                    }
+                                    $groq   = new GroqService($settings->groq_api_key, $settings->groq_model ?? 'llama-3.1-8b-instant');
+                                    $result = $groq->chat(
+                                        'You are a product copywriter for Merza Bodi, a premium tropical fruit brand from Tamil Nadu. Write concise, appealing product descriptions in English. No emojis or hashtags.',
+                                        [['role' => 'user', 'content' => "Write a 1-sentence short product description for '{$name}'. Maximum 150 characters. Be specific about the fruit's quality or taste."]],
+                                        80
+                                    );
+                                    if ($result) {
+                                        $set('short_description', trim($result, " \n\r\"'"));
+                                        Notification::make()->title('Short description generated')->success()->send();
+                                    }
+                                })
+                        ),
 
                     Forms\Components\RichEditor::make('description')
                         ->toolbarButtons(['bold', 'italic', 'bulletList', 'orderedList', 'link'])
-                        ->columnSpanFull(),
+                        ->columnSpanFull()
+                        ->hintAction(
+                            Forms\Components\Actions\Action::make('genDescription')
+                                ->label('✨ Generate')
+                                ->icon('heroicon-o-sparkles')
+                                ->action(function (Forms\Get $get, Forms\Set $set) {
+                                    $name     = $get('name');
+                                    $category = Category::find($get('category_id'))?->name ?? 'fruit';
+                                    if (empty($name)) {
+                                        Notification::make()->title('Enter a product name first')->warning()->send();
+                                        return;
+                                    }
+                                    $settings = BotSetting::current();
+                                    if (empty($settings->groq_api_key)) {
+                                        Notification::make()->title('Groq API key not configured in Bot Settings')->warning()->send();
+                                        return;
+                                    }
+                                    $groq   = new GroqService($settings->groq_api_key, $settings->groq_model ?? 'llama-3.1-8b-instant');
+                                    $result = $groq->chat(
+                                        'You are a product copywriter for Merza Bodi, a premium tropical fruit brand from Tamil Nadu. Write engaging, informative product descriptions in English. Format response as clean HTML using only <p> tags (no headings, no divs, no markdown). No emojis.',
+                                        [['role' => 'user', 'content' => "Write a 2-3 paragraph product description for '{$name}' (category: {$category}). Cover: what it is and its origin, taste and quality, usage and storage tips. Format as HTML <p> tags only."]],
+                                        400
+                                    );
+                                    if ($result) {
+                                        $html = strip_tags($result, '<p><b><i><ul><ol><li><strong><em>');
+                                        if (! str_contains($html, '<p>')) {
+                                            $html = '<p>' . str_replace("\n\n", '</p><p>', trim($html)) . '</p>';
+                                        }
+                                        $set('description', $html);
+                                        Notification::make()->title('Description generated — review and edit before saving')->success()->send();
+                                    }
+                                })
+                        ),
                 ])->columns(2),
 
                 SchemaSection::make('Variants & Pricing')->schema([

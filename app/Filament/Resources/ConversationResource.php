@@ -4,12 +4,15 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\ConversationResource\Pages;
 use App\Jobs\SendWhatsAppMessageJob;
+use App\Models\BotSetting;
 use App\Models\Conversation;
 use App\Models\User;
+use App\Services\BotReplyService;
 use Filament\Actions;
 use Filament\Actions\Action;
 use Filament\Forms;
 use Filament\Infolists\Components\TextEntry;
+use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Schemas\Components\Section as SchemaSection;
 use Filament\Schemas\Schema;
@@ -146,6 +149,56 @@ class ConversationResource extends Resource
                     ->query(fn ($query) => $query->where('is_bot', true)->whereNull('sent_at')),
             ])
             ->actions([
+                Action::make('aiReply')
+                    ->label('AI Reply')
+                    ->icon('heroicon-o-sparkles')
+                    ->color('warning')
+                    ->visible(fn (Conversation $r) => $r->direction === 'inbound' && $r->channel === 'whatsapp')
+                    ->fillForm(function (Conversation $r): array {
+                        $settings = BotSetting::current();
+                        if (empty($settings->groq_api_key)) {
+                            return ['reply_text' => 'No Groq API key configured. Go to Bot Settings to add one.', 'send_now' => false];
+                        }
+                        $service = new BotReplyService($settings);
+                        $reply   = $service->generateReply($r->contact, $r->message, $r);
+                        return [
+                            'reply_text' => $reply ?? 'Could not generate a reply. Please write manually.',
+                            'send_now'   => false,
+                        ];
+                    })
+                    ->form([
+                        Forms\Components\Textarea::make('reply_text')
+                            ->label('AI Generated Reply')
+                            ->rows(5)
+                            ->required(),
+                        Forms\Components\Toggle::make('send_now')
+                            ->label('Send immediately via WhatsApp')
+                            ->helperText('Off = save as draft for review')
+                            ->default(false)
+                            ->onColor('success'),
+                    ])
+                    ->modalHeading('AI Reply')
+                    ->modalDescription(fn (Conversation $r) => "Reply to {$r->contact?->name} ({$r->contact?->phone})")
+                    ->modalSubmitActionLabel('Save Draft')
+                    ->action(function (Conversation $r, array $data) {
+                        $draft = Conversation::create([
+                            'contact_id'    => $r->contact_id,
+                            'channel'       => $r->channel,
+                            'direction'     => 'outbound',
+                            'message'       => $data['reply_text'],
+                            'is_bot'        => true,
+                            'replied_to_id' => $r->id,
+                            'status'        => 'sent',
+                        ]);
+
+                        if ($data['send_now'] ?? false) {
+                            SendWhatsAppMessageJob::dispatch($draft->id);
+                            Notification::make()->title('Reply sent via WhatsApp')->success()->send();
+                        } else {
+                            Notification::make()->title('Reply saved as draft')->success()->send();
+                        }
+                    }),
+
                 Action::make('send')
                     ->label('Send')
                     ->icon('heroicon-o-paper-airplane')

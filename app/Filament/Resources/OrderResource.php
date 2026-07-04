@@ -3,12 +3,18 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\OrderResource\Pages;
+use App\Jobs\SendWhatsAppMessageJob;
+use App\Models\BotSetting;
+use App\Models\Contact;
+use App\Models\Conversation;
 use App\Models\Order;
+use App\Services\GroqService;
 use Filament\Actions;
 use Filament\Actions\Action;
 use Filament\Forms;
 use Filament\Infolists\Components\RepeatableEntry;
 use Filament\Infolists\Components\TextEntry;
+use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section as SchemaSection;
@@ -299,6 +305,86 @@ class OrderResource extends Resource
 
                 Actions\ViewAction::make(),
                 Actions\EditAction::make(),
+
+                Action::make('whatsappUpdate')
+                    ->label('WhatsApp Update')
+                    ->icon('heroicon-o-chat-bubble-left-ellipsis')
+                    ->color('success')
+                    ->visible(fn (Order $r) => ! in_array($r->status, ['cancelled']) && ! empty($r->customer_phone))
+                    ->fillForm(function (Order $r): array {
+                        $settings = BotSetting::current();
+                        $statusDescriptions = [
+                            'pending'    => 'received and is pending confirmation',
+                            'confirmed'  => 'has been confirmed and we\'re getting it ready',
+                            'preparing'  => 'is currently being prepared',
+                            'delivering' => 'is out for delivery',
+                            'delivered'  => 'has been delivered successfully',
+                        ];
+                        $statusDesc = $statusDescriptions[$r->status] ?? $r->status;
+
+                        if (empty($settings->groq_api_key)) {
+                            $fallback = "Hi {$r->customer_name}! Your order {$r->order_number} {$statusDesc}."
+                                . ($r->tracking_number ? " Tracking: {$r->tracking_number}." : '')
+                                . " Thank you for choosing Merza Bodi! 🥭";
+                            return ['wa_message' => $fallback];
+                        }
+
+                        $groq   = new GroqService($settings->groq_api_key, $settings->groq_model ?? 'llama-3.1-8b-instant');
+                        $prompt = "Generate a friendly WhatsApp order status update message.
+Customer name: {$r->customer_name}
+Order number: {$r->order_number}
+Order status: {$statusDesc}
+Order total: ₹{$r->total}"
+                            . ($r->tracking_number ? "\nTracking number: {$r->tracking_number}" : '')
+                            . "\n\nWrite 2-4 sentences. Warm and professional. Include the order number. End with 'Merza Bodi Team'. Plain text only, no markdown or asterisks.";
+
+                        $message = $groq->chat(
+                            'You are a customer service representative for Merza Bodi, a premium tropical fruit brand. Write warm, professional WhatsApp order update messages in plain text.',
+                            [['role' => 'user', 'content' => $prompt]],
+                            200
+                        );
+                        return ['wa_message' => $message ?? "Hi {$r->customer_name}! Your order {$r->order_number} {$statusDesc}. Thank you for choosing Merza Bodi!"];
+                    })
+                    ->form([
+                        Forms\Components\Textarea::make('wa_message')
+                            ->label('WhatsApp Message')
+                            ->rows(6)
+                            ->required(),
+                    ])
+                    ->modalHeading('Send WhatsApp Order Update')
+                    ->modalDescription(fn (Order $r) => "Send order update to {$r->customer_name} ({$r->customer_phone})")
+                    ->modalSubmitActionLabel('Send via WhatsApp')
+                    ->action(function (Order $r, array $data) {
+                        $phone   = preg_replace('/[^0-9+]/', '', $r->customer_phone);
+                        $contact = Contact::where('phone', $phone)
+                                         ->orWhere('phone', ltrim($phone, '+'))
+                                         ->first();
+
+                        if (! $contact) {
+                            $contact = Contact::create([
+                                'name'   => $r->customer_name,
+                                'phone'  => $phone,
+                                'email'  => $r->customer_email,
+                                'source' => 'storefront',
+                            ]);
+                        }
+
+                        $conversation = Conversation::create([
+                            'contact_id' => $contact->id,
+                            'channel'    => 'whatsapp',
+                            'direction'  => 'outbound',
+                            'message'    => $data['wa_message'],
+                            'is_bot'     => false,
+                            'status'     => 'sent',
+                        ]);
+
+                        SendWhatsAppMessageJob::dispatch($conversation->id);
+
+                        Notification::make()
+                            ->title('WhatsApp message queued for ' . $r->customer_name)
+                            ->success()
+                            ->send();
+                    }),
 
                 Action::make('cancel')
                     ->label('')

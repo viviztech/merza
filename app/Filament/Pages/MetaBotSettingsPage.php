@@ -94,8 +94,53 @@ class MetaBotSettingsPage extends Page
                             ->content(fn () => url('/webhook/meta')),
                     ]),
 
-                SchemaSection::make('Claude AI (Anthropic)')
-                    ->description('Used to generate personalised follow-up messages for each lead.')
+                SchemaSection::make('🤖 Groq AI (Primary — Free)')
+                    ->description('Fast, free LLM API for WhatsApp auto-replies. Get your key at console.groq.com.')
+                    ->schema([
+                        Forms\Components\Select::make('ai_provider')
+                            ->label('Active AI Provider')
+                            ->options([
+                                'groq'      => '⚡ Groq (Recommended — Free)',
+                                'anthropic' => '🤖 Anthropic Claude (Paid)',
+                            ])
+                            ->default('groq')
+                            ->required(),
+
+                        Forms\Components\Select::make('groq_model')
+                            ->label('Groq Model')
+                            ->options([
+                                'llama-3.1-8b-instant'    => 'Llama 3.1 8B Instant (Fast, Free)',
+                                'llama-3.3-70b-versatile' => 'Llama 3.3 70B Versatile (Better quality)',
+                                'mixtral-8x7b-32768'      => 'Mixtral 8x7B (Long context)',
+                            ])
+                            ->default('llama-3.1-8b-instant'),
+
+                        Forms\Components\TextInput::make('groq_api_key')
+                            ->label('Groq API Key')
+                            ->password()->revealable()
+                            ->placeholder('gsk_...')
+                            ->helperText('From console.groq.com — free account, no card required.')
+                            ->columnSpanFull(),
+                    ])->columns(2),
+
+                SchemaSection::make('🎤 Sarvam AI (Voice Bot — Indian Languages)')
+                    ->description('Speech-to-Text for Tamil/Hindi/English WhatsApp voice messages. Get your key at dashboard.sarvam.ai.')
+                    ->schema([
+                        Forms\Components\Toggle::make('voice_bot_enabled')
+                            ->label('Enable Voice Bot')
+                            ->helperText('Transcribe incoming voice messages and reply with AI.')
+                            ->onColor('success'),
+
+                        Forms\Components\TextInput::make('sarvam_api_key')
+                            ->label('Sarvam API Key')
+                            ->password()->revealable()
+                            ->placeholder('sk_...')
+                            ->helperText('From dashboard.sarvam.ai — supports Tamil, Hindi, English.')
+                            ->columnSpanFull(),
+                    ])->columns(2),
+
+                SchemaSection::make('Claude AI (Anthropic — Fallback)')
+                    ->description('Used as fallback when Groq is unavailable, or for Meta Lead follow-ups.')
                     ->schema([
                         Forms\Components\TextInput::make('anthropic_api_key')
                             ->label('Anthropic API Key')
@@ -105,11 +150,11 @@ class MetaBotSettingsPage extends Page
                         Forms\Components\Select::make('anthropic_model')
                             ->label('Claude Model')
                             ->options([
-                                'claude-sonnet-4-6'          => 'Claude Sonnet 4.6 (Recommended)',
-                                'claude-haiku-4-5-20251001'  => 'Claude Haiku 4.5 (Faster)',
-                                'claude-opus-4-8'            => 'Claude Opus 4.8 (Most capable)',
+                                'claude-haiku-4-5-20251001'  => 'Claude Haiku 4.5 (Fastest)',
+                                'claude-sonnet-4-6'          => 'Claude Sonnet 4.6',
+                                'claude-opus-4-8'            => 'Claude Opus 4.8 (Best)',
                             ])
-                            ->default('claude-sonnet-4-6'),
+                            ->default('claude-haiku-4-5-20251001'),
                     ])->columns(2),
 
                 SchemaSection::make('WhatsApp Business API')
