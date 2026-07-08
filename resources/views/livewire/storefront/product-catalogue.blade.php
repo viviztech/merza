@@ -105,9 +105,9 @@
                                 <div>
                                     <span class="text-amber-600 font-extrabold text-base">
                                         @if($product->activeVariants->isNotEmpty())
-                                            From RM{{ number_format($product->activeVariants->min('price'), 2) }}
+                                            From ₹{{ number_format($product->activeVariants->min('price'), 2) }}
                                         @else
-                                            RM{{ number_format($product->base_price, 2) }}
+                                            ₹{{ number_format($product->base_price, 2) }}
                                         @endif
                                     </span>
                                     @if($product->active_variants_count > 1)

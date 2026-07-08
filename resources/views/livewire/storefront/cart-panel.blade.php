@@ -49,7 +49,7 @@
                         <div class="flex-1 min-w-0">
                             <h4 class="font-extrabold text-sm text-stone-800 truncate">{{ $item->product_name }}</h4>
                             <p class="text-xs text-stone-400 mt-0.5">{{ $item->variant_name }}</p>
-                            <p class="text-amber-600 font-extrabold text-sm mt-1">RM{{ number_format($item->price, 2) }} each</p>
+                            <p class="text-amber-600 font-extrabold text-sm mt-1">₹{{ number_format($item->price, 2) }} each</p>
                         </div>
 
                         {{-- Qty stepper --}}
@@ -63,7 +63,7 @@
 
                         {{-- Line total + remove --}}
                         <div class="text-right flex-shrink-0">
-                            <p class="font-extrabold text-sm text-stone-800">RM{{ number_format($item->line_total, 2) }}</p>
+                            <p class="font-extrabold text-sm text-stone-800">₹{{ number_format($item->line_total, 2) }}</p>
                             <button wire:click="remove({{ $item->variant_id }})"
                                     class="text-[10px] text-red-400 hover:text-red-600 mt-1 transition-colors font-medium">
                                 Remove
@@ -94,7 +94,7 @@
                         @if($deliveryFee > 0)
                             <div class="bg-amber-50 border border-amber-100 rounded-2xl p-3 mb-1">
                                 <p class="text-xs font-bold text-amber-700 mb-2">
-                                    🚚 Add RM{{ number_format($freeAt - $subtotal, 2) }} more for FREE delivery!
+                                    🚚 Add ₹{{ number_format($freeAt - $subtotal, 2) }} more for FREE delivery!
                                 </p>
                                 <div class="bg-amber-100 rounded-full h-2 overflow-hidden">
                                     <div class="h-full bg-gradient-to-r from-amber-500 to-orange-500 rounded-full transition-all duration-500"
@@ -112,12 +112,12 @@
                         <div class="space-y-2 text-sm">
                             <div class="flex justify-between text-stone-500">
                                 <span>Subtotal</span>
-                                <span class="font-semibold text-stone-700">RM{{ number_format($subtotal, 2) }}</span>
+                                <span class="font-semibold text-stone-700">₹{{ number_format($subtotal, 2) }}</span>
                             </div>
                             <div class="flex justify-between text-stone-500">
                                 <span>Delivery</span>
                                 <span class="{{ $deliveryFee === 0 ? 'text-emerald-600 font-bold' : 'font-semibold text-stone-700' }}">
-                                    {{ $deliveryFee === 0 ? '🎉 FREE' : 'RM' . number_format($deliveryFee, 2) }}
+                                    {{ $deliveryFee === 0 ? '🎉 FREE' : '₹' . number_format($deliveryFee, 2) }}
                                 </span>
                             </div>
                         </div>
@@ -125,7 +125,7 @@
                         <div class="border-t border-amber-100 pt-3">
                             <div class="flex justify-between items-center">
                                 <span class="font-extrabold text-stone-800">Total</span>
-                                <span class="text-2xl font-extrabold text-amber-600">RM{{ number_format($total, 2) }}</span>
+                                <span class="text-2xl font-extrabold text-amber-600">₹{{ number_format($total, 2) }}</span>
                             </div>
                         </div>
 

@@ -71,7 +71,7 @@
             <div class="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-100 rounded-2xl p-4 mb-5">
                 @if($selectedVariant)
                     <div class="flex items-end gap-2">
-                        <span class="text-4xl font-extrabold text-amber-600">RM{{ number_format($selectedVariant->price, 2) }}</span>
+                        <span class="text-4xl font-extrabold text-amber-600">₹{{ number_format($selectedVariant->price, 2) }}</span>
                         <span class="text-sm text-stone-400 pb-1">per {{ $selectedVariant->weight_value }}{{ $selectedVariant->weight_unit }}</span>
                     </div>
                 @else
@@ -112,7 +112,7 @@
                                               : 'border-stone-200 text-stone-700 hover:border-amber-300 hover:bg-amber-50' }}">
                                 {{ $variant->name }}
                                 <span class="block text-xs font-medium {{ $selectedVariantId == $variant->id ? 'text-amber-100' : 'text-stone-400' }}">
-                                    RM{{ number_format($variant->price, 2) }}
+                                    ₹{{ number_format($variant->price, 2) }}
                                 </span>
                             </button>
                         @endforeach
