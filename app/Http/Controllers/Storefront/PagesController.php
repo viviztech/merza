@@ -31,4 +31,9 @@ class PagesController extends Controller
     {
         return view('storefront.pages.privacy');
     }
+
+    public function terms(): View
+    {
+        return view('storefront.pages.terms');
+    }
 }

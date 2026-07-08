@@ -33,6 +33,7 @@ Route::get('/blog',      [PagesController::class, 'blog'])      ->name('blog');
 Route::get('/wholesale', [PagesController::class, 'wholesale']) ->name('wholesale');
 Route::get('/careers',   [PagesController::class, 'careers'])   ->name('careers');
 Route::get('/privacy',   [PagesController::class, 'privacy'])   ->name('privacy');
+Route::get('/terms',     [PagesController::class, 'terms'])     ->name('terms');
 
 /*
 |--------------------------------------------------------------------------

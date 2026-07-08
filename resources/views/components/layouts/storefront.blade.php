@@ -343,6 +343,7 @@
                         <li><a href="{{ route('wholesale') }}" class="text-emerald-300 hover:text-amber-400 transition-colors">B2B Wholesale</a></li>
                         <li><a href="{{ route('careers') }}" class="text-emerald-300 hover:text-amber-400 transition-colors">Careers</a></li>
                         <li><a href="{{ route('privacy') }}" class="text-emerald-300 hover:text-amber-400 transition-colors">Privacy Policy</a></li>
+                        <li><a href="{{ route('terms') }}" class="text-emerald-300 hover:text-amber-400 transition-colors">Terms &amp; Conditions</a></li>
                     </ul>
                 </div>
 
