@@ -89,24 +89,10 @@
 
                     <div class="p-5 space-y-3">
 
-                        {{-- Free delivery progress --}}
-                        @php $freeAt = 150; $progress = min(100, ($subtotal / $freeAt) * 100); @endphp
-                        @if($deliveryFee > 0)
-                            <div class="bg-amber-50 border border-amber-100 rounded-2xl p-3 mb-1">
-                                <p class="text-xs font-bold text-amber-700 mb-2">
-                                    🚚 Add ₹{{ number_format($freeAt - $subtotal, 2) }} more for FREE delivery!
-                                </p>
-                                <div class="bg-amber-100 rounded-full h-2 overflow-hidden">
-                                    <div class="h-full bg-gradient-to-r from-amber-500 to-orange-500 rounded-full transition-all duration-500"
-                                         style="width: {{ $progress }}%"></div>
-                                </div>
-                            </div>
-                        @else
-                            <div class="bg-emerald-50 border border-emerald-100 rounded-2xl p-3 mb-1 flex items-center gap-2">
-                                <span class="text-emerald-600">✓</span>
-                                <p class="text-xs font-bold text-emerald-700">You've unlocked FREE delivery!</p>
-                            </div>
-                        @endif
+                        {{-- Delivery note --}}
+                        <div class="bg-amber-50 border border-amber-100 rounded-2xl p-3 mb-1">
+                            <p class="text-xs font-bold text-amber-700">🚚 Delivery charges calculated at checkout based on your location.</p>
+                        </div>
 
                         {{-- Line items --}}
                         <div class="space-y-2 text-sm">
@@ -114,18 +100,16 @@
                                 <span>Subtotal</span>
                                 <span class="font-semibold text-stone-700">₹{{ number_format($subtotal, 2) }}</span>
                             </div>
-                            <div class="flex justify-between text-stone-500">
+                            <div class="flex justify-between text-stone-400 text-xs">
                                 <span>Delivery</span>
-                                <span class="{{ $deliveryFee === 0 ? 'text-emerald-600 font-bold' : 'font-semibold text-stone-700' }}">
-                                    {{ $deliveryFee === 0 ? '🎉 FREE' : '₹' . number_format($deliveryFee, 2) }}
-                                </span>
+                                <span>At checkout</span>
                             </div>
                         </div>
 
                         <div class="border-t border-amber-100 pt-3">
                             <div class="flex justify-between items-center">
-                                <span class="font-extrabold text-stone-800">Total</span>
-                                <span class="text-2xl font-extrabold text-amber-600">₹{{ number_format($total, 2) }}</span>
+                                <span class="font-extrabold text-stone-800">Subtotal</span>
+                                <span class="text-2xl font-extrabold text-amber-600">₹{{ number_format($subtotal, 2) }}</span>
                             </div>
                         </div>
 

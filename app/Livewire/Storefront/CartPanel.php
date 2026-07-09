@@ -33,9 +33,6 @@ class CartPanel extends Component
         $items    = $cart->items();
         $subtotal = $cart->subtotal();
 
-        $deliveryFee = $subtotal >= 150 ? 0 : 10;
-        $total       = $subtotal + $deliveryFee;
-
-        return view('livewire.storefront.cart-panel', compact('items', 'subtotal', 'deliveryFee', 'total'));
+        return view('livewire.storefront.cart-panel', compact('items', 'subtotal'));
     }
 }

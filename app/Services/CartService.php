@@ -22,6 +22,10 @@ class CartService
         if (isset($cart[$variantId])) {
             $cart[$variantId]['qty'] = min($cart[$variantId]['qty'] + $qty, $variant->stock_qty);
         } else {
+            $weightKg = $variant->weight_unit === 'g'
+                ? ($variant->weight_value / 1000)
+                : (float) $variant->weight_value;
+
             $cart[$variantId] = [
                 'variant_id'     => $variantId,
                 'product_id'     => $variant->product_id,
@@ -31,6 +35,7 @@ class CartService
                 'price'          => (float) $variant->price,
                 'qty'            => $qty,
                 'thumbnail_url'  => $variant->product->thumbnail_url,
+                'weight_kg'      => $weightKg,
             ];
         }
 
@@ -77,6 +82,14 @@ class CartService
     {
         return array_sum(array_map(
             fn($item) => $item['price'] * $item['qty'],
+            $this->all()
+        ));
+    }
+
+    public function totalWeightKg(): float
+    {
+        return array_sum(array_map(
+            fn($item) => ($item['weight_kg'] ?? 0) * $item['qty'],
             $this->all()
         ));
     }

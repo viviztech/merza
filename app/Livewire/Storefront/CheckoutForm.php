@@ -5,6 +5,7 @@ namespace App\Livewire\Storefront;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Services\CartService;
+use App\Services\DeliveryCalculatorService;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Component;
@@ -13,7 +14,6 @@ use Livewire\Component;
 #[Title('Checkout — Merza')]
 class CheckoutForm extends Component
 {
-    // Customer fields
     public string $customer_name    = '';
     public string $customer_phone   = '';
     public string $customer_email   = '';
@@ -24,8 +24,8 @@ class CheckoutForm extends Component
     public string $payment_method   = 'cod';
     public string $notes            = '';
 
-    public bool $orderPlaced = false;
-    public string $orderNumber = '';
+    public bool   $orderPlaced  = false;
+    public string $orderNumber  = '';
 
     protected function rules(): array
     {
@@ -42,6 +42,22 @@ class CheckoutForm extends Component
         ];
     }
 
+    public function updatedCity(): void {}
+    public function updatedState(): void {}
+
+    private function getDeliveryBreakdown(): ?array
+    {
+        if (empty(trim($this->city)) && empty(trim($this->state))) {
+            return null;
+        }
+
+        $cart        = app(CartService::class);
+        $weightKg    = $cart->totalWeightKg();
+        $calculator  = new DeliveryCalculatorService();
+
+        return $calculator->calculate($this->city, $this->state, $weightKg);
+    }
+
     public function placeOrder(): void
     {
         $this->validate();
@@ -53,8 +69,9 @@ class CheckoutForm extends Component
             return;
         }
 
+        $breakdown   = $this->getDeliveryBreakdown();
         $subtotal    = $cart->subtotal();
-        $deliveryFee = $subtotal >= 150 ? 0 : 10;
+        $deliveryFee = $breakdown ? $breakdown['total_fee'] : 0;
         $total       = $subtotal + $deliveryFee;
 
         $order = Order::create([
@@ -94,20 +111,27 @@ class CheckoutForm extends Component
 
     public function render()
     {
-        $cart        = app(CartService::class);
-        $items       = $cart->items();
-        $subtotal    = $cart->subtotal();
-        $deliveryFee = $subtotal >= 150 ? 0 : 10;
-        $total       = $subtotal + $deliveryFee;
+        $cart      = app(CartService::class);
+        $items     = $cart->items();
+        $subtotal  = $cart->subtotal();
+        $weightKg  = $cart->totalWeightKg();
+        $breakdown = $this->getDeliveryBreakdown();
+
+        $deliveryFee = $breakdown ? $breakdown['total_fee'] : null;
+        $total       = $subtotal + ($deliveryFee ?? 0);
 
         $states = [
-            'Johor','Kedah','Kelantan','Melaka','Negeri Sembilan',
-            'Pahang','Perak','Perlis','Pulau Pinang','Sabah',
-            'Sarawak','Selangor','Terengganu',
-            'W.P. Kuala Lumpur','W.P. Labuan','W.P. Putrajaya',
+            'Andhra Pradesh', 'Arunachal Pradesh', 'Assam', 'Bihar',
+            'Chhattisgarh', 'Goa', 'Gujarat', 'Haryana', 'Himachal Pradesh',
+            'Jharkhand', 'Karnataka', 'Kerala', 'Madhya Pradesh', 'Maharashtra',
+            'Manipur', 'Meghalaya', 'Mizoram', 'Nagaland', 'Odisha', 'Punjab',
+            'Rajasthan', 'Sikkim', 'Tamil Nadu', 'Telangana', 'Tripura',
+            'Uttar Pradesh', 'Uttarakhand', 'West Bengal',
+            'Andaman and Nicobar Islands', 'Chandigarh', 'Dadra and Nagar Haveli and Daman and Diu',
+            'Delhi', 'Jammu and Kashmir', 'Ladakh', 'Lakshadweep', 'Puducherry',
         ];
 
         return view('livewire.storefront.checkout-form',
-            compact('items', 'subtotal', 'deliveryFee', 'total', 'states'));
+            compact('items', 'subtotal', 'weightKg', 'breakdown', 'deliveryFee', 'total', 'states'));
     }
 }

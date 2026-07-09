@@ -16,6 +16,9 @@ php /var/www/html/artisan db:seed --class=BotSettingsSeeder --force
 echo "==> Seeding products..."
 php /var/www/html/artisan db:seed --class=ProductSeeder --force
 
+echo "==> Seeding delivery zones..."
+php /var/www/html/artisan db:seed --class=DeliverySeeder --force
+
 echo "==> Linking storage..."
 php /var/www/html/artisan storage:link --force 2>/dev/null || true
 

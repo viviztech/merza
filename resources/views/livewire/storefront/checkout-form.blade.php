@@ -262,11 +262,51 @@
                                     <span>₹{{ number_format($subtotal, 2) }}</span>
                                 </div>
                                 <div class="flex justify-between text-stone-500">
-                                    <span>Delivery</span>
-                                    <span class="{{ $deliveryFee == 0 ? 'text-emerald-600 font-bold' : '' }}">
-                                        {{ $deliveryFee == 0 ? '🎉 FREE' : '₹' . number_format($deliveryFee, 2) }}
-                                    </span>
+                                    <span>Total weight</span>
+                                    <span>{{ number_format($weightKg, 2) }} kg</span>
                                 </div>
+
+                                @if($breakdown)
+                                    {{-- Delivery breakdown --}}
+                                    <div class="bg-amber-50 rounded-lg p-2.5 space-y-1 text-xs text-stone-500">
+                                        <div class="flex justify-between">
+                                            <span>Zone ({{ $breakdown['zone'] }})</span>
+                                            <span>₹{{ number_format($breakdown['rate_per_kg'], 0) }}/kg</span>
+                                        </div>
+                                        @if($breakdown['packing_weight_kg'] > 0)
+                                            <div class="flex justify-between">
+                                                <span>Packing weight</span>
+                                                <span>+{{ $breakdown['packing_weight_kg'] }} kg</span>
+                                            </div>
+                                        @endif
+                                        @if($breakdown['free_weight_kg'] > 0)
+                                            <div class="flex justify-between text-emerald-600">
+                                                <span>Free weight</span>
+                                                <span>−{{ $breakdown['free_weight_kg'] }} kg</span>
+                                            </div>
+                                        @endif
+                                        <div class="flex justify-between font-semibold text-stone-600 border-t border-amber-100 pt-1">
+                                            <span>Chargeable ({{ number_format($breakdown['chargeable_weight'], 2) }} kg)</span>
+                                            <span>₹{{ number_format($breakdown['shipping_cost'], 2) }}</span>
+                                        </div>
+                                        @if($breakdown['packing_charge'] > 0)
+                                            <div class="flex justify-between">
+                                                <span>Packing charge</span>
+                                                <span>₹{{ number_format($breakdown['packing_charge'], 2) }}</span>
+                                            </div>
+                                        @endif
+                                    </div>
+                                    <div class="flex justify-between font-semibold text-stone-600">
+                                        <span>Delivery</span>
+                                        <span>₹{{ number_format($breakdown['total_fee'], 2) }}</span>
+                                    </div>
+                                @else
+                                    <div class="flex justify-between text-stone-400 text-xs">
+                                        <span>Delivery</span>
+                                        <span>Enter city &amp; state to calculate</span>
+                                    </div>
+                                @endif
+
                                 <div class="flex justify-between font-extrabold text-stone-900 pt-1 border-t border-amber-100">
                                     <span>Total</span>
                                     <span class="text-amber-600 text-lg">₹{{ number_format($total, 2) }}</span>
