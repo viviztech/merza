@@ -203,16 +203,13 @@ class ProductResource extends Resource
                 SchemaSection::make('Product Images')->schema([
                     Forms\Components\SpatieMediaLibraryFileUpload::make('thumbnail')
                         ->collection('thumbnail')
-                        ->disk(config('media-library.disk_name', 'r2'))
                         ->label('Thumbnail (main)')
                         ->image()
-                        ->imageEditor()
                         ->maxFiles(1)
-                        ->helperText('Primary image shown in listings'),
+                        ->helperText('Primary image shown in listings — JPG/PNG/WebP, min 800×800px'),
 
                     Forms\Components\SpatieMediaLibraryFileUpload::make('images')
                         ->collection('images')
-                        ->disk(config('media-library.disk_name', 'r2'))
                         ->label('Gallery Images')
                         ->image()
                         ->multiple()
