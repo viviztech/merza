@@ -92,6 +92,16 @@ class WhatsAppService
                 foreach ($value['messages'] ?? [] as $msg) {
                     $type = $msg['type'] ?? '';
 
+                    $referral = isset($msg['referral']) ? [
+                        'source_url'  => $msg['referral']['source_url'] ?? null,
+                        'source_id'   => $msg['referral']['source_id'] ?? null,
+                        'source_type' => $msg['referral']['source_type'] ?? null,
+                        'headline'    => $msg['referral']['headline'] ?? null,
+                        'body'        => $msg['referral']['body'] ?? null,
+                        'media_type'  => $msg['referral']['media_type'] ?? null,
+                        'ctwa_clid'   => $msg['referral']['ctwa_clid'] ?? null,
+                    ] : null;
+
                     if ($type === 'text') {
                         $messages[] = [
                             'from'            => $msg['from'] ?? '',
@@ -101,6 +111,7 @@ class WhatsAppService
                             'type'            => 'text',
                             'media_id'        => null,
                             'phone_number_id' => $value['metadata']['phone_number_id'] ?? '',
+                            'referral'        => $referral,
                         ];
                     } elseif ($type === 'audio') {
                         $messages[] = [
@@ -111,6 +122,7 @@ class WhatsAppService
                             'type'            => 'audio',
                             'media_id'        => $msg['audio']['id'] ?? null,
                             'phone_number_id' => $value['metadata']['phone_number_id'] ?? '',
+                            'referral'        => $referral,
                         ];
                     }
                 }

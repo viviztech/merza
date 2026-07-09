@@ -94,6 +94,26 @@ class ConversationResource extends Resource
                 TextEntry::make('wa_message_id')->label('WA Message ID')->placeholder('—'),
                 TextEntry::make('message')->columnSpanFull(),
             ])->columns(3),
+
+            SchemaSection::make('Click-to-WhatsApp Ad Source')
+                ->visible(fn ($record) => ! empty($record->ctwa_referral))
+                ->schema([
+                    TextEntry::make('ctwa_referral.headline')
+                        ->label('Ad Headline')->placeholder('—'),
+                    TextEntry::make('ctwa_referral.source_type')
+                        ->label('Source Type')->badge()->color('info'),
+                    TextEntry::make('ctwa_referral.media_type')
+                        ->label('Media Type')->placeholder('—'),
+                    TextEntry::make('ctwa_referral.body')
+                        ->label('Ad Body')->columnSpanFull()->placeholder('—'),
+                    TextEntry::make('ctwa_referral.source_url')
+                        ->label('Ad URL')->columnSpanFull()->placeholder('—')
+                        ->url(fn ($record) => $record->ctwa_referral['source_url'] ?? null),
+                    TextEntry::make('ctwa_referral.ctwa_clid')
+                        ->label('Click ID (ctwa_clid)')->placeholder('—'),
+                    TextEntry::make('ctwa_referral.source_id')
+                        ->label('Ad ID')->placeholder('—'),
+                ])->columns(3),
         ]);
     }
 

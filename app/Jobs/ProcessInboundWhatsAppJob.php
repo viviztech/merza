@@ -6,6 +6,7 @@ use App\Models\BotActivityLog;
 use App\Models\BotSetting;
 use App\Models\Contact;
 use App\Models\Conversation;
+use App\Models\Lead;
 use App\Services\BotReplyService;
 use App\Services\SarvamService;
 use App\Services\WhatsAppService;
@@ -30,6 +31,7 @@ class ProcessInboundWhatsAppJob implements ShouldQueue
         public readonly int     $timestamp,
         public readonly string  $messageType = 'text',  // 'text' | 'audio'
         public readonly ?string $mediaId     = null,
+        public readonly ?array  $referral    = null,    // CTWA ad referral data
     ) {}
 
     public function handle(): void
@@ -68,13 +70,21 @@ class ProcessInboundWhatsAppJob implements ShouldQueue
                           ->orWhere('phone', ltrim($phone, '+'))
                           ->first();
 
+        $isCTWA = ! empty($this->referral);
+
         if (! $contact) {
             $contact = Contact::create([
                 'name'   => 'WA: ' . $phone,
                 'phone'  => $phone,
-                'source' => 'whatsapp',
-                'tags'   => ['whatsapp_inbound'],
+                'source' => $isCTWA ? 'meta_ads' : 'whatsapp',
+                'tags'   => $isCTWA ? ['whatsapp_inbound', 'ctwa_lead'] : ['whatsapp_inbound'],
             ]);
+        } elseif ($isCTWA) {
+            // Tag existing contact as coming from ad if not already tagged
+            $tags = $contact->tags ?? [];
+            if (! in_array('ctwa_lead', $tags)) {
+                $contact->update(['tags' => array_merge($tags, ['ctwa_lead'])]);
+            }
         }
 
         // ── Store inbound conversation ────────────────────────────────────────
@@ -84,6 +94,7 @@ class ProcessInboundWhatsAppJob implements ShouldQueue
             'direction'     => 'inbound',
             'message'       => $wasVoice ? "🎤 {$messageText}" : $messageText,
             'wa_message_id' => $this->waMessageId,
+            'ctwa_referral' => $this->referral,
             'is_bot'        => false,
             'sent_at'       => now()->setTimestamp($this->timestamp),
             'status'        => 'read',
@@ -104,9 +115,37 @@ class ProcessInboundWhatsAppJob implements ShouldQueue
                 'wa_id'     => $this->waMessageId,
                 'type'      => $this->messageType,
                 'was_voice' => $wasVoice,
+                'ctwa'      => $isCTWA,
+                'referral'  => $this->referral,
             ],
             'status' => 'success',
         ]);
+
+        // ── CTWA: auto-create Lead ────────────────────────────────────────────
+        if ($isCTWA && $settings->auto_create_lead) {
+            $alreadyHasLead = Lead::where('contact_id', $contact->id)
+                ->where('source', 'meta_ads')
+                ->whereDate('created_at', today())
+                ->exists();
+
+            if (! $alreadyHasLead) {
+                $lead = Lead::create([
+                    'contact_id' => $contact->id,
+                    'stage'      => 'new',
+                    'source'     => 'meta_ads',
+                    'notes'      => 'Auto-created from Click-to-WhatsApp ad.'
+                        . ($this->referral['headline'] ? ' Ad: ' . $this->referral['headline'] : ''),
+                ]);
+
+                BotActivityLog::create([
+                    'event_type'   => 'lead_created',
+                    'meta_lead_id' => $this->waMessageId,
+                    'contact_id'   => $contact->id,
+                    'lead_id'      => $lead->id,
+                    'status'       => 'success',
+                ]);
+            }
+        }
 
         // ── Bot auto-reply ────────────────────────────────────────────────────
         $botEnabled   = $settings->wa_bot_enabled;

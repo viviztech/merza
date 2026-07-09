@@ -10,12 +10,13 @@ class Conversation extends Model
     protected $fillable = [
         'contact_id', 'handled_by', 'channel', 'direction',
         'message', 'media_url', 'status', 'is_bot', 'sent_at',
-        'wa_message_id', 'replied_to_id',
+        'wa_message_id', 'replied_to_id', 'ctwa_referral',
     ];
 
     protected $casts = [
-        'is_bot'  => 'boolean',
-        'sent_at' => 'datetime',
+        'is_bot'        => 'boolean',
+        'sent_at'       => 'datetime',
+        'ctwa_referral' => 'array',
     ];
 
     public function contact(): BelongsTo
