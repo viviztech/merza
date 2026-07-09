@@ -59,22 +59,21 @@ class DeliveryCalculatorService
             return null;
         }
 
-        $ratePerKg      = $zone->rate_per_kg;
-        $packingCharge  = 0;
-        $packingWeight  = 0;
-        $freeWeight     = 0;
-        $chargeableWeight = $totalWeightKg;
+        $ratePerKg    = $zone->rate_per_kg;
+        $threshold    = $this->settings->free_weight_threshold_kg; // 5 kg
+        $belowThreshold = $totalWeightKg < $threshold;
 
-        if ($totalWeightKg < $this->settings->free_weight_threshold_kg) {
-            // Below threshold: add packing weight + packing charge
-            $packingWeight    = $this->settings->packing_weight_kg;
+        if ($belowThreshold) {
+            // Below 5 kg: charge actual weight + ₹50 packing charge (no packing weight added)
+            $chargeableWeight = $totalWeightKg;
+            $packingWeight    = 0;
             $packingCharge    = $this->settings->packing_charge;
-            $chargeableWeight = $totalWeightKg + $packingWeight;
         } else {
-            // At or above threshold: packing weight added but 1 kg free cancels it
-            $packingWeight    = $this->settings->packing_weight_kg;
-            $freeWeight       = $this->settings->free_weight_kg;
-            $chargeableWeight = $totalWeightKg + $packingWeight - $freeWeight;
+            // 5 kg and above: customer gets 1 kg free product (handled by business),
+            // packing material adds 1 kg to chargeable weight. No ₹50 packing charge.
+            $packingWeight    = $this->settings->packing_weight_kg; // 1 kg
+            $chargeableWeight = $totalWeightKg + $packingWeight;
+            $packingCharge    = 0;
         }
 
         $shippingCost = $chargeableWeight * $ratePerKg;
@@ -84,8 +83,8 @@ class DeliveryCalculatorService
             'zone'              => $zone->name,
             'rate_per_kg'       => $ratePerKg,
             'order_weight_kg'   => $totalWeightKg,
+            'below_threshold'   => $belowThreshold,
             'packing_weight_kg' => $packingWeight,
-            'free_weight_kg'    => $freeWeight,
             'chargeable_weight' => $chargeableWeight,
             'shipping_cost'     => round($shippingCost, 2),
             'packing_charge'    => $packingCharge,

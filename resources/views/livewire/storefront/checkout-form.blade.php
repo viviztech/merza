@@ -275,18 +275,12 @@
                                         </div>
                                         @if($breakdown['packing_weight_kg'] > 0)
                                             <div class="flex justify-between">
-                                                <span>Packing weight</span>
-                                                <span>+{{ $breakdown['packing_weight_kg'] }} kg</span>
-                                            </div>
-                                        @endif
-                                        @if($breakdown['free_weight_kg'] > 0)
-                                            <div class="flex justify-between text-emerald-600">
-                                                <span>Free weight</span>
-                                                <span>−{{ $breakdown['free_weight_kg'] }} kg</span>
+                                                <span>Packing material (+{{ $breakdown['packing_weight_kg'] }} kg)</span>
+                                                <span>included</span>
                                             </div>
                                         @endif
                                         <div class="flex justify-between font-semibold text-stone-600 border-t border-amber-100 pt-1">
-                                            <span>Chargeable ({{ number_format($breakdown['chargeable_weight'], 2) }} kg)</span>
+                                            <span>Courier ({{ number_format($breakdown['chargeable_weight'], 2) }} kg × ₹{{ number_format($breakdown['rate_per_kg'], 0) }})</span>
                                             <span>₹{{ number_format($breakdown['shipping_cost'], 2) }}</span>
                                         </div>
                                         @if($breakdown['packing_charge'] > 0)
