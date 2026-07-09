@@ -203,6 +203,7 @@ class ProductResource extends Resource
                 SchemaSection::make('Product Images')->schema([
                     Forms\Components\SpatieMediaLibraryFileUpload::make('thumbnail')
                         ->collection('thumbnail')
+                        ->disk(config('media-library.disk_name', 'r2'))
                         ->label('Thumbnail (main)')
                         ->image()
                         ->imageEditor()
@@ -211,6 +212,7 @@ class ProductResource extends Resource
 
                     Forms\Components\SpatieMediaLibraryFileUpload::make('images')
                         ->collection('images')
+                        ->disk(config('media-library.disk_name', 'r2'))
                         ->label('Gallery Images')
                         ->image()
                         ->multiple()
