@@ -69,10 +69,13 @@
                         {{-- Image --}}
                         <div class="relative aspect-square overflow-hidden"
                              style="background: linear-gradient(145deg, #fef9c3, #fef3c7);">
-                            @if($product->getFirstMediaUrl('thumbnail', 'thumb'))
-                                <img src="{{ $product->getFirstMediaUrl('thumbnail', 'thumb') }}"
+                            @php $thumbUrl = $product->getFirstMediaUrl('thumbnail', 'thumb') ?: $product->getFirstMediaUrl('images', 'thumb'); @endphp
+                            @if($thumbUrl)
+                                <img src="{{ $thumbUrl }}"
                                      alt="{{ $product->name }}"
-                                     class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500">
+                                     class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                                     onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+                                <div class="w-full h-full items-center justify-center text-6xl group-hover:scale-110 transition-transform duration-300" style="display:none">🥭</div>
                             @else
                                 <div class="w-full h-full flex items-center justify-center text-6xl group-hover:scale-110 transition-transform duration-300">🥭</div>
                             @endif

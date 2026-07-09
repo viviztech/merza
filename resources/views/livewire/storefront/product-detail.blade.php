@@ -15,10 +15,13 @@
         <div class="space-y-3">
             <div class="aspect-square rounded-3xl overflow-hidden border-2 border-amber-100 shadow-lg"
                  style="background: linear-gradient(145deg, #fef9c3, #fef3c7);">
-                @if($product->getFirstMediaUrl('thumbnail', 'card'))
-                    <img src="{{ $product->getFirstMediaUrl('thumbnail', 'card') }}"
+                @php $cardUrl = $product->getFirstMediaUrl('thumbnail', 'card') ?: $product->getFirstMediaUrl('images', 'card'); @endphp
+                @if($cardUrl)
+                    <img src="{{ $cardUrl }}"
                          alt="{{ $product->name }}"
-                         class="w-full h-full object-cover">
+                         class="w-full h-full object-cover"
+                         onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+                    <div class="w-full h-full items-center justify-center text-[8rem] float-fruit" style="display:none">🥭</div>
                 @else
                     <div class="w-full h-full flex items-center justify-center text-[8rem] float-fruit">🥭</div>
                 @endif
@@ -29,7 +32,8 @@
                     @foreach($product->getMedia('images') as $media)
                         <img src="{{ $media->getUrl('thumb') }}"
                              alt="{{ $product->name }}"
-                             class="w-16 h-16 object-cover rounded-xl border-2 border-transparent hover:border-amber-400 cursor-pointer flex-shrink-0 transition-all">
+                             class="w-16 h-16 object-cover rounded-xl border-2 border-transparent hover:border-amber-400 cursor-pointer flex-shrink-0 transition-all"
+                             onerror="this.style.display='none'">
                     @endforeach
                 </div>
             @endif
