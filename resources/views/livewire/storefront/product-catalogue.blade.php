@@ -85,10 +85,13 @@
                                 @if($product->is_featured)
                                     <span class="bg-gradient-to-r from-amber-500 to-orange-500 text-white text-[9px] font-extrabold px-2 py-0.5 rounded-full shadow">⭐ Featured</span>
                                 @endif
-                                @if($product->activeVariants->isNotEmpty() && $product->activeVariants->where('stock_qty', '>', 0)->count() === 0)
+                                @php
+                                    $lowQty = $product->activeVariants->where('stock_qty', '>', 0)->where('stock_qty', '<=', 5)->min('stock_qty');
+                                @endphp
+                                @if($product->activeVariants->isNotEmpty() && $product->activeVariants->where('stock_qty', '>', 0)->isEmpty())
                                     <span class="bg-stone-700 text-white text-[9px] font-bold px-2 py-0.5 rounded-full">Sold Out</span>
-                                @elseif($product->activeVariants->isNotEmpty() && $product->activeVariants->where('stock_qty', '<=', 5)->where('stock_qty', '>', 0)->count() > 0)
-                                    <span class="bg-red-500 text-white text-[9px] font-bold px-2 py-0.5 rounded-full">Low Stock</span>
+                                @elseif($lowQty)
+                                    <span class="bg-red-500 text-white text-[9px] font-bold px-2 py-0.5 rounded-full animate-pulse">🔥 Only {{ $lowQty }} left!</span>
                                 @endif
                             </div>
 

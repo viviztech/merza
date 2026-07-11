@@ -237,19 +237,33 @@
 
         <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
             @foreach($featured as $product)
+                @php
+                    $lowStockVariant = $product->activeVariants->where('stock_qty', '>', 0)->where('stock_qty', '<=', 5)->first();
+                    $soldOut = $product->activeVariants->where('stock_qty', '>', 0)->isEmpty();
+                    $thumbUrl = $product->getFirstMediaUrl('thumbnail', 'thumb') ?: $product->getFirstMediaUrl('images', 'thumb');
+                @endphp
                 <a href="{{ route('products.show', $product->slug) }}"
                    class="group bg-white rounded-3xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-1 border border-amber-100">
 
                     <div class="relative aspect-square overflow-hidden" style="background: linear-gradient(135deg, #fef9c3, #fef3c7);">
-                        @if($product->getFirstMediaUrl('thumbnail', 'thumb'))
-                            <img src="{{ $product->getFirstMediaUrl('thumbnail', 'thumb') }}"
+                        @if($thumbUrl)
+                            <img src="{{ $thumbUrl }}"
                                  alt="{{ $product->name }}"
-                                 class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500">
+                                 class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                                 onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+                            <div class="w-full h-full items-center justify-center text-7xl group-hover:scale-110 transition-transform duration-300" style="display:none">🥭</div>
                         @else
                             <div class="w-full h-full flex items-center justify-center text-7xl group-hover:scale-110 transition-transform duration-300">🥭</div>
                         @endif
-                        <div class="absolute top-3 left-3">
+
+                        {{-- Badges --}}
+                        <div class="absolute top-3 left-3 flex flex-col gap-1">
                             <span class="bg-gradient-to-r from-amber-500 to-orange-500 text-white text-[10px] font-bold px-2.5 py-1 rounded-full shadow">⭐ Featured</span>
+                            @if($soldOut)
+                                <span class="bg-stone-700 text-white text-[10px] font-bold px-2.5 py-1 rounded-full shadow">Sold Out</span>
+                            @elseif($lowStockVariant)
+                                <span class="bg-red-500 text-white text-[10px] font-bold px-2.5 py-1 rounded-full shadow animate-pulse">🔥 Only {{ $lowStockVariant->stock_qty }} left!</span>
+                            @endif
                         </div>
                     </div>
 
@@ -313,6 +327,76 @@
                         <span class="text-xs font-bold text-stone-400 uppercase tracking-widest mb-1">Step {{ $step['num'] }}</span>
                         <h3 class="font-extrabold text-lg text-stone-800 mb-2">{{ $step['title'] }}</h3>
                         <p class="text-sm text-stone-500 max-w-xs">{{ $step['desc'] }}</p>
+                    </div>
+                @endforeach
+            </div>
+        </div>
+    </section>
+
+    {{-- ═══════════════════════════════════════════════════════════ --}}
+    {{-- TESTIMONIALS --}}
+    {{-- ═══════════════════════════════════════════════════════════ --}}
+    <section class="bg-white py-12">
+        <div class="max-w-7xl mx-auto px-4">
+            <div class="text-center mb-10">
+                <span class="text-xs font-bold text-amber-600 uppercase tracking-widest">Customer Love</span>
+                <h2 class="text-3xl font-extrabold text-stone-900 mt-1">What Our Customers Say</h2>
+                <div class="flex items-center justify-center gap-1 mt-3">
+                    @for($i=0;$i<5;$i++)<svg class="w-5 h-5 text-amber-400" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>@endfor
+                    <span class="text-sm font-bold text-stone-600 ml-2">4.9 / 5 from 500+ orders</span>
+                </div>
+            </div>
+
+            <div class="grid md:grid-cols-3 gap-5">
+                @foreach([
+                    [
+                        'name'   => 'Priya S.',
+                        'loc'    => 'Chennai',
+                        'text'   => 'The Kasa Lattu Mangoes are unbelievably sweet! Ordered 10kg and the entire family finished it in 3 days. Will order every week during the season.',
+                        'rating' => 5,
+                        'emoji'  => '👩',
+                        'tag'    => 'Kasa Lattu Mango — 10kg',
+                    ],
+                    [
+                        'name'   => 'Rajan M.',
+                        'loc'    => 'Bengaluru',
+                        'text'   => 'Freshness is top-notch. Ordered from Bengaluru and the mangoes arrived perfectly packed. Courier charges are reasonable and delivery was on time.',
+                        'rating' => 5,
+                        'emoji'  => '👨',
+                        'tag'    => 'Kasa Lattu Mango — 5kg',
+                    ],
+                    [
+                        'name'   => 'Meena K.',
+                        'loc'    => 'Coimbatore',
+                        'text'   => 'Been ordering from Merza for 2 seasons now. The Vietnam Jackfruit is like nothing else — sweet, golden flesh. Customer support on WhatsApp is super responsive!',
+                        'rating' => 5,
+                        'emoji'  => '🧕',
+                        'tag'    => 'Vietnam Gold Jackfruit',
+                    ],
+                ] as $review)
+                    <div class="bg-amber-50 border border-amber-100 rounded-3xl p-6 relative">
+                        {{-- Quote mark --}}
+                        <div class="text-4xl text-amber-200 font-extrabold leading-none mb-2 select-none">"</div>
+
+                        <p class="text-stone-700 text-sm leading-relaxed mb-5">{{ $review['text'] }}</p>
+
+                        {{-- Stars --}}
+                        <div class="flex items-center gap-0.5 mb-4">
+                            @for($i=0;$i<$review['rating'];$i++)
+                                <svg class="w-4 h-4 text-amber-400" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                            @endfor
+                        </div>
+
+                        <div class="flex items-center gap-3">
+                            <span class="w-10 h-10 rounded-full bg-amber-200 flex items-center justify-center text-xl flex-shrink-0">{{ $review['emoji'] }}</span>
+                            <div>
+                                <p class="font-extrabold text-sm text-stone-800">{{ $review['name'] }}</p>
+                                <p class="text-xs text-stone-400">{{ $review['loc'] }}</p>
+                            </div>
+                        </div>
+
+                        {{-- Product tag --}}
+                        <span class="absolute top-5 right-5 text-[10px] font-bold bg-white border border-amber-200 text-amber-700 px-2 py-0.5 rounded-full">{{ $review['tag'] }}</span>
                     </div>
                 @endforeach
             </div>
