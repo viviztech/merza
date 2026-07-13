@@ -9,6 +9,7 @@ use App\Models\Conversation;
 use App\Models\Lead;
 use App\Services\BotReplyService;
 use App\Services\SarvamService;
+use App\Services\WhatsAppFlowService;
 use App\Services\WhatsAppService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -29,9 +30,10 @@ class ProcessInboundWhatsAppJob implements ShouldQueue
         public readonly string  $waMessageId,
         public readonly string  $body,
         public readonly int     $timestamp,
-        public readonly string  $messageType = 'text',  // 'text' | 'audio'
-        public readonly ?string $mediaId     = null,
-        public readonly ?array  $referral    = null,    // CTWA ad referral data
+        public readonly string  $messageType    = 'text',  // 'text' | 'audio' | 'interactive'
+        public readonly ?string $mediaId        = null,
+        public readonly ?array  $referral       = null,    // CTWA ad referral data
+        public readonly ?string $interactiveId  = null,   // button/list reply ID
     ) {}
 
     public function handle(): void
@@ -161,34 +163,56 @@ class ProcessInboundWhatsAppJob implements ShouldQueue
             return;
         }
 
-        if ($botEnabled) {
-            $replyService = new BotReplyService($settings);
-            $replyMessage = $replyService->generateReply($contact, $messageText, $conversation);
+        if (! $botEnabled) {
+            return;
+        }
 
-            if ($replyMessage) {
-                $draft = Conversation::create([
-                    'contact_id'    => $contact->id,
-                    'channel'       => 'whatsapp',
-                    'direction'     => 'outbound',
-                    'message'       => $replyMessage,
-                    'is_bot'        => true,
-                    'replied_to_id' => $conversation->id,
-                    'sent_at'       => null,
-                    'status'        => 'sent',
-                ]);
+        // ── Structured flow first ─────────────────────────────────────────────
+        $flowService = new WhatsAppFlowService($waService, $settings);
+        $flowHandled = $flowService->handle(
+            $contact,
+            $this->messageType,
+            $messageText,
+            $this->interactiveId ?? '',
+        );
 
-                BotActivityLog::create([
-                    'event_type'        => 'message_generated',
-                    'meta_lead_id'      => $this->waMessageId,
-                    'contact_id'        => $contact->id,
-                    'conversation_id'   => $draft->id,
-                    'generated_message' => $replyMessage,
-                    'status'            => 'success',
-                ]);
+        if ($flowHandled) {
+            BotActivityLog::create([
+                'event_type'   => 'flow_reply_sent',
+                'meta_lead_id' => $this->waMessageId,
+                'contact_id'   => $contact->id,
+                'status'       => 'success',
+            ]);
+            return;
+        }
 
-                if ($settings->wa_auto_send) {
-                    SendWhatsAppMessageJob::dispatch($draft->id);
-                }
+        // ── AI fallback for free text (ordering/talk-to-us states) ───────────
+        $replyService = new BotReplyService($settings);
+        $replyMessage = $replyService->generateReply($contact, $messageText, $conversation);
+
+        if ($replyMessage) {
+            $draft = Conversation::create([
+                'contact_id'    => $contact->id,
+                'channel'       => 'whatsapp',
+                'direction'     => 'outbound',
+                'message'       => $replyMessage,
+                'is_bot'        => true,
+                'replied_to_id' => $conversation->id,
+                'sent_at'       => null,
+                'status'        => 'sent',
+            ]);
+
+            BotActivityLog::create([
+                'event_type'        => 'message_generated',
+                'meta_lead_id'      => $this->waMessageId,
+                'contact_id'        => $contact->id,
+                'conversation_id'   => $draft->id,
+                'generated_message' => $replyMessage,
+                'status'            => 'success',
+            ]);
+
+            if ($settings->wa_auto_send) {
+                SendWhatsAppMessageJob::dispatch($draft->id);
             }
         }
     }

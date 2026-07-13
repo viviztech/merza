@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\Log;
 
 class WhatsAppService
 {
-    private const GRAPH_URL = 'https://graph.facebook.com/v21.0';
+    private const GRAPH_URL = 'https://graph.facebook.com/v25.0';
 
     public function __construct(private readonly BotSetting $settings) {}
 
@@ -40,6 +40,42 @@ class WhatsAppService
 
         if ($response->failed()) {
             Log::error('WhatsAppService: Send failed', [
+                'to'     => $to,
+                'status' => $response->status(),
+                'body'   => $response->body(),
+            ]);
+            return null;
+        }
+
+        return $response->json('messages.0.id');
+    }
+
+    /**
+     * Send an interactive message (button or list) via WhatsApp Cloud API.
+     */
+    public function sendInteractiveMessage(string $toPhone, array $interactive): ?string
+    {
+        $phoneNumberId = $this->settings->whatsapp_phone_number_id;
+        $token         = $this->settings->whatsapp_access_token;
+
+        if (empty($phoneNumberId) || empty($token)) {
+            Log::warning('WhatsAppService: Missing phone_number_id or access_token');
+            return null;
+        }
+
+        $to = preg_replace('/[^0-9]/', '', $toPhone);
+
+        $response = Http::timeout(15)
+            ->withToken($token)
+            ->post(self::GRAPH_URL . "/{$phoneNumberId}/messages", [
+                'messaging_product' => 'whatsapp',
+                'to'                => $to,
+                'type'              => 'interactive',
+                'interactive'       => $interactive,
+            ]);
+
+        if ($response->failed()) {
+            Log::error('WhatsAppService: Interactive send failed', [
                 'to'     => $to,
                 'status' => $response->status(),
                 'body'   => $response->body(),
@@ -110,6 +146,7 @@ class WhatsAppService
                             'timestamp'       => $msg['timestamp'] ?? now()->timestamp,
                             'type'            => 'text',
                             'media_id'        => null,
+                            'interactive_id'  => null,
                             'phone_number_id' => $value['metadata']['phone_number_id'] ?? '',
                             'referral'        => $referral,
                         ];
@@ -121,6 +158,27 @@ class WhatsAppService
                             'timestamp'       => $msg['timestamp'] ?? now()->timestamp,
                             'type'            => 'audio',
                             'media_id'        => $msg['audio']['id'] ?? null,
+                            'interactive_id'  => null,
+                            'phone_number_id' => $value['metadata']['phone_number_id'] ?? '',
+                            'referral'        => $referral,
+                        ];
+                    } elseif ($type === 'interactive') {
+                        $iType   = $msg['interactive']['type'] ?? '';
+                        $replyId = $iType === 'button_reply'
+                            ? ($msg['interactive']['button_reply']['id'] ?? '')
+                            : ($msg['interactive']['list_reply']['id'] ?? '');
+                        $replyTitle = $iType === 'button_reply'
+                            ? ($msg['interactive']['button_reply']['title'] ?? '')
+                            : ($msg['interactive']['list_reply']['title'] ?? '');
+
+                        $messages[] = [
+                            'from'            => $msg['from'] ?? '',
+                            'wa_message_id'   => $msg['id'] ?? '',
+                            'body'            => $replyTitle,
+                            'timestamp'       => $msg['timestamp'] ?? now()->timestamp,
+                            'type'            => 'interactive',
+                            'media_id'        => null,
+                            'interactive_id'  => $replyId,
                             'phone_number_id' => $value['metadata']['phone_number_id'] ?? '',
                             'referral'        => $referral,
                         ];
