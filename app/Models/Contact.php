@@ -12,14 +12,25 @@ class Contact extends Model
         'assigned_to', 'name', 'phone', 'email', 'source',
         'tags', 'notes', 'city', 'state',
         'is_customer', 'is_blocked', 'last_contacted_at',
+        'wa_opted_out', 'wa_opted_out_at',
     ];
 
     protected $casts = [
         'tags'               => 'array',
         'is_customer'        => 'boolean',
         'is_blocked'         => 'boolean',
+        'wa_opted_out'       => 'boolean',
         'last_contacted_at'  => 'datetime',
+        'wa_opted_out_at'    => 'datetime',
     ];
+
+    public function optOutWhatsApp(): void
+    {
+        $this->update([
+            'wa_opted_out'    => true,
+            'wa_opted_out_at' => now(),
+        ]);
+    }
 
     public function assignedTo(): BelongsTo
     {

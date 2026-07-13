@@ -167,6 +167,11 @@ class ProcessInboundWhatsAppJob implements ShouldQueue
             return;
         }
 
+        // ── Meta policy: never send automated messages to opted-out contacts ──
+        if ($contact->wa_opted_out) {
+            return;
+        }
+
         // ── Structured flow first ─────────────────────────────────────────────
         $flowService = new WhatsAppFlowService($waService, $settings);
         $flowHandled = $flowService->handle(

@@ -197,6 +197,9 @@
                                 <input wire:model="customer_phone" type="tel" placeholder="93600 64278"
                                        class="w-full border-2 {{ $errors->has('customer_phone') ? 'border-red-300 bg-red-50' : 'border-stone-200 focus:border-amber-400' }} rounded-xl px-4 py-3 text-base focus:outline-none transition-colors bg-white placeholder-stone-300">
                                 @error('customer_phone') <p class="text-red-500 text-xs mt-1 font-medium">{{ $message }}</p> @enderror
+                                <p class="text-[11px] text-stone-400 mt-1.5 leading-relaxed">
+                                    📱 We'll send order updates to this number via WhatsApp. Reply <strong>STOP</strong> to that message anytime to opt out.
+                                </p>
                             </div>
 
                             <div class="sm:col-span-2">

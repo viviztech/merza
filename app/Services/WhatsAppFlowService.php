@@ -19,6 +19,12 @@ class WhatsAppFlowService
         'hola', 'vanakkam', 'namaste', 'home', 'back',
     ];
 
+    // Per Meta WhatsApp Business Messaging Policy — must honour these opt-out keywords
+    private const OPT_OUT_KEYWORDS = [
+        'stop', 'unsubscribe', 'opt out', 'optout', 'opt-out',
+        'cancel', 'no messages', 'remove me', 'நிறுத்து',
+    ];
+
     public function __construct(
         private readonly WhatsAppService $waService,
         private readonly BotSetting $settings,
@@ -36,14 +42,39 @@ class WhatsAppFlowService
     ): bool {
         $session = WhatsAppSession::getOrCreate($contact->phone);
 
-        // Interactive button/list tap — always handle in flow
+        // Interactive button/list tap — always handle in flow (unless opted out)
         if ($messageType === 'interactive' && $interactiveId) {
-            $this->handleButton($contact, $session, $interactiveId);
+            if (! $contact->wa_opted_out) {
+                $this->handleButton($contact, $session, $interactiveId);
+            }
             return true;
         }
 
         // Text message
         $lower = mb_strtolower(trim($body));
+
+        // Opt-out keywords — Meta policy requires immediate honouring
+        if (in_array($lower, self::OPT_OUT_KEYWORDS, true)) {
+            $this->handleOptOut($contact, $session);
+            return true;
+        }
+
+        // Re-opt-in: if previously opted out and user sends START, re-enable
+        if ($contact->wa_opted_out && in_array($lower, ['start', 'hi', 'hello', 'yes', 'ஆம்'], true)) {
+            $contact->update(['wa_opted_out' => false, 'wa_opted_out_at' => null]);
+            $session->setState('start');
+            $this->waService->sendTextMessage(
+                $contact->phone,
+                "Welcome back! 🎉 You've been re-subscribed to Merza messages.\n\nReply *menu* to see what we have for you today. 🥭"
+            );
+            return true;
+        }
+
+        // If opted out, silently drop — do not send any automated message
+        if ($contact->wa_opted_out) {
+            Log::info('WhatsApp message from opted-out contact ignored', ['phone' => $contact->phone]);
+            return true;
+        }
 
         // Menu keyword → always show welcome
         if (in_array($lower, self::MENU_KEYWORDS, true)) {
@@ -316,7 +347,22 @@ class WhatsAppFlowService
 
         $this->waService->sendTextMessage(
             $contact->phone,
-            "Sure! 😊 Ask me anything about our products, delivery, pricing, or orders.\n\nI'll do my best to help you!\n\nType *menu* anytime to go back to the main menu.\n\n— Merza Team 🥭"
+            "Sure! 😊 You're now chatting with our *automated assistant*.\n\nAsk me anything about products, delivery, pricing, or orders and I'll help right away!\n\n📞 *Need a real person?*\nCall us: +91 93600 64278\nEmail: merzabodinayakanur@gmail.com\nHours: Mon–Sat, 9 AM – 6 PM\n\nType *menu* anytime to go back.\n\n— Merza Automated Assistant 🥭"
+        );
+    }
+
+    private function handleOptOut(Contact $contact, WhatsAppSession $session): void
+    {
+        $contact->optOutWhatsApp();
+
+        // Expire the session so no further automated flows trigger
+        $session->update(['state' => 'opted_out', 'expires_at' => now()->addYears(10)]);
+
+        Log::info('WhatsApp opt-out received', ['phone' => $contact->phone]);
+
+        $this->waService->sendTextMessage(
+            $contact->phone,
+            "You have been unsubscribed from Merza automated messages. ✅\n\nYou will no longer receive automated WhatsApp messages from us.\n\nIf you ever want to reconnect, simply send *START* and we'll be happy to help!\n\n— Merza Team 🥭"
         );
     }
 
