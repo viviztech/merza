@@ -70,11 +70,11 @@ class DeliveryZoneResource extends Resource
                     }),
                 Tables\Columns\TextColumn::make('match_values')
                     ->label('Matches')
-                    ->formatStateUsing(fn ($state) => implode(', ', $state ?? [])),
+                    ->formatStateUsing(fn ($state) => implode(', ', is_array($state) ? $state : (json_decode($state ?? '[]', true) ?? []))),
                 Tables\Columns\TextColumn::make('rate_per_kg')
                     ->label('Rate / kg')
-                    ->formatStateUsing(fn ($state) => '₹' . number_format($state, 0)),
-                Tables\Columns\ToggleColumn::make('is_active')->label('Active'),
+                    ->formatStateUsing(fn ($state) => "\u{20B9}" . number_format((float) $state, 0)),
+                Tables\Columns\IconColumn::make('is_active')->boolean()->label('Active'),
                 Tables\Columns\TextColumn::make('sort_order')->label('Order')->sortable(),
             ])
             ->defaultSort('sort_order')
