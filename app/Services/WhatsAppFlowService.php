@@ -199,7 +199,7 @@ class WhatsAppFlowService
 
         $rows = $products->map(function ($p) {
             $minPrice = $p->activeVariants->min('price') ?? $p->base_price;
-            $price    = $minPrice ? 'From \u{20B9}' . number_format((float) $minPrice, 0) : '';
+            $price    = $minPrice ? 'From ₹' . number_format((float) $minPrice, 0) : '';
             $desc     = trim(($price ? $price . ' ' : '') . ($p->short_description ?? ''));
 
             return [
