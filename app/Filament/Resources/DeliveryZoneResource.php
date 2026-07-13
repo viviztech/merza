@@ -61,8 +61,13 @@ class DeliveryZoneResource extends Resource
         return $table
             ->columns([
                 Tables\Columns\TextColumn::make('name')->searchable()->sortable(),
-                Tables\Columns\BadgeColumn::make('match_type')
-                    ->colors(['info' => 'state', 'warning' => 'city']),
+                Tables\Columns\TextColumn::make('match_type')
+                    ->badge()
+                    ->color(fn (string $state): string => match ($state) {
+                        'state' => 'info',
+                        'city'  => 'warning',
+                        default => 'gray',
+                    }),
                 Tables\Columns\TextColumn::make('match_values')
                     ->label('Matches')
                     ->formatStateUsing(fn ($state) => implode(', ', $state ?? [])),
