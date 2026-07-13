@@ -6,6 +6,8 @@ use Illuminate\Database\Eloquent\Model;
 
 class WhatsAppSession extends Model
 {
+    protected $table = 'whatsapp_sessions';
+
     protected $fillable = ['phone', 'state', 'data', 'expires_at'];
 
     protected $casts = [
