@@ -12,7 +12,7 @@
     {{-- Coming Soon Banner --}}
     <div class="bg-amber-50 border-b border-amber-100 py-3 px-4 text-center text-sm text-amber-700">
         🚧 Full blog coming soon — follow us on WhatsApp for weekly recipe tips!
-        <a href="https://wa.me/918667696278?text=Hi%2C+I%27d+like+to+get+recipe+tips+from+Merza!" target="_blank" class="underline font-semibold ml-1">Join now →</a>
+        <a href="https://wa.me/919360064278?text=Hi%2C+I%27d+like+to+get+recipe+tips+from+Merza!" target="_blank" class="underline font-semibold ml-1">Join now →</a>
     </div>
 
     {{-- Recipe Cards --}}

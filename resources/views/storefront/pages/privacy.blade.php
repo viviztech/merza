@@ -16,7 +16,7 @@
             @foreach([
                 [
                     'title' => '1. Who We Are',
-                    'content' => 'Merza Bodi ("Merza", "we", "us", "our") is an Indian tropical fruit retailer operating at merzabodi.com. Our business address is No.9, Jeeva Nagar North Street, Bodinayakanur, Theni - 625513, Tamil Nadu, India. For any privacy-related enquiries, contact us at <a href="mailto:merzabodinayakanur@gmail.com" class="text-amber-700 underline">merzabodinayakanur@gmail.com</a> or via WhatsApp at +91 86676 96278.',
+                    'content' => 'Merza Bodi ("Merza", "we", "us", "our") is an Indian tropical fruit retailer operating at merzabodi.com. Our business address is No.9, Jeeva Nagar North Street, Bodinayakanur, Theni - 625513, Tamil Nadu, India. For any privacy-related enquiries, contact us at <a href="mailto:merzabodinayakanur@gmail.com" class="text-amber-700 underline">merzabodinayakanur@gmail.com</a> or via WhatsApp at +91 93600 64278.',
                 ],
                 [
                     'title' => '2. Personal Data We Collect',
@@ -66,7 +66,7 @@
                         <li>Request erasure of your data (subject to legal retention requirements)</li>
                         <li>Nominate a person to act on your behalf</li>
                     </ul>
-                    <p class="mt-2">To exercise any of these rights, contact us at <a href="mailto:merzabodinayakanur@gmail.com" class="text-amber-700 underline">merzabodinayakanur@gmail.com</a> or WhatsApp +91 86676 96278. We will respond within 14 business days.</p>',
+                    <p class="mt-2">To exercise any of these rights, contact us at <a href="mailto:merzabodinayakanur@gmail.com" class="text-amber-700 underline">merzabodinayakanur@gmail.com</a> or WhatsApp +91 93600 64278. We will respond within 14 business days.</p>',
                 ],
                 [
                     'title' => '7. Cookies',
@@ -89,7 +89,7 @@
                     'content' => 'For any questions about this Privacy Policy or how we handle your data:
                     <div class="mt-2 space-y-1 text-stone-600">
                         <p>📧 <a href="mailto:merzabodinayakanur@gmail.com" class="text-amber-700 underline">merzabodinayakanur@gmail.com</a></p>
-                        <p>📞 +91 86676 96278</p>
+                        <p>📞 +91 93600 64278</p>
                         <p>📍 No.9, Jeeva Nagar North Street, Bodinayakanur, Theni - 625513, Tamil Nadu, India</p>
                     </div>',
                 ],

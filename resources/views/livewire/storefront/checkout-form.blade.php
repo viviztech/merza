@@ -33,7 +33,7 @@
                    class="inline-flex items-center justify-center gap-2 bg-gradient-to-r from-amber-500 to-orange-500 text-white font-extrabold px-8 py-4 rounded-2xl hover:from-amber-400 hover:to-orange-400 transition-all shadow-lg">
                     Back to Home
                 </a>
-                <a href="https://wa.me/918667696278?text=Hi%2C+my+order+number+is+{{ $orderNumber }}.+Can+you+confirm+delivery+details?"
+                <a href="https://wa.me/919360064278?text=Hi%2C+my+order+number+is+{{ $orderNumber }}.+Can+you+confirm+delivery+details?"
                    target="_blank"
                    class="inline-flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold px-8 py-4 rounded-2xl transition-all shadow-lg">
                     <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
@@ -111,7 +111,7 @@
 
                             <div>
                                 <label class="block text-xs font-extrabold text-stone-600 mb-1.5 uppercase tracking-wide">Phone Number *</label>
-                                <input wire:model="customer_phone" type="tel" placeholder="86676 96278"
+                                <input wire:model="customer_phone" type="tel" placeholder="93600 64278"
                                        class="w-full border-2 {{ $errors->has('customer_phone') ? 'border-red-300 bg-red-50' : 'border-stone-200 focus:border-amber-400' }} rounded-xl px-4 py-3 text-sm focus:outline-none transition-colors bg-white placeholder-stone-300">
                                 @error('customer_phone') <p class="text-red-500 text-xs mt-1 font-medium">{{ $message }}</p> @enderror
                             </div>

@@ -138,7 +138,7 @@
 
   {{-- Footer --}}
   <div class="footer">
-    Merza Bodi &bull; +91 86676 96278 &bull; merzabodinayakanur@gmail.com &bull; merzabodi.com
+    Merza Bodi &bull; +91 93600 64278 &bull; merzabodinayakanur@gmail.com &bull; merzabodi.com
   </div>
 
 </div>

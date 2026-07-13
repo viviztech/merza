@@ -200,7 +200,7 @@
           <strong>Merza Bodi</strong><br>
           HP Petrol Bunk, Pankajam School Opp., Thevaram Road<br>
           Bodinayakanur &ndash; 625513, Tamil Nadu, India<br>
-          Phone: +91 86676 96278 &bull; merzabodinayakanur@gmail.com
+          Phone: +91 93600 64278 &bull; merzabodinayakanur@gmail.com
         </td>
         <td>
           <div class="footer-thank">Thank you for your order!</div>

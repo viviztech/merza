@@ -157,7 +157,7 @@
                     </span>
                 </button>
 
-                <a href="https://wa.me/918667696278?text=Hi%2C+I+want+to+order+{{ urlencode($product->name . ($selectedVariant ? ' - ' . $selectedVariant->name : '')) }}"
+                <a href="https://wa.me/919360064278?text=Hi%2C+I+want+to+order+{{ urlencode($product->name . ($selectedVariant ? ' - ' . $selectedVariant->name : '')) }}"
                    target="_blank"
                    class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold py-4 px-6 rounded-2xl flex items-center justify-center gap-2 transition-all text-base shadow-sm hover:shadow-md">
                     <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
@@ -213,7 +213,7 @@
                 <span wire:loading.remove wire:target="addToCart">🛒 Add to Cart</span>
                 <span wire:loading wire:target="addToCart">Adding…</span>
             </button>
-            <a href="https://wa.me/918667696278?text=Hi%2C+I+want+to+order+{{ urlencode($product->name) }}"
+            <a href="https://wa.me/919360064278?text=Hi%2C+I+want+to+order+{{ urlencode($product->name) }}"
                target="_blank"
                class="px-4 py-3 rounded-xl bg-emerald-600 text-white font-bold text-sm flex items-center justify-center">
                 <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">

@@ -154,7 +154,7 @@
 
   {{-- Footer --}}
   <div class="footer">
-    Merza Bodi &bull; HP Petrol Bunk, Pankajam School Opp., Thevaram Road, Bodinayakanur &ndash; 625513 &bull; +91 86676 96278 &bull; merzabodi.com
+    Merza Bodi &bull; HP Petrol Bunk, Pankajam School Opp., Thevaram Road, Bodinayakanur &ndash; 625513 &bull; +91 93600 64278 &bull; merzabodi.com
   </div>
 
 </div>

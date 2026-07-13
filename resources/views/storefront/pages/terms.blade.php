@@ -16,7 +16,7 @@
             @foreach([
                 [
                     'title' => '1. About Merza',
-                    'content' => 'Merza Bodi ("Merza", "we", "us", "our") is an Indian tropical fruit retailer operating at merzabodi.com. Our registered business address is No.9, Jeeva Nagar North Street, Bodinayakanur, Theni - 625513, Tamil Nadu, India. Contact us at <a href="mailto:merzabodinayakanur@gmail.com" class="text-amber-700 underline">merzabodinayakanur@gmail.com</a> or WhatsApp +91 86676 96278.',
+                    'content' => 'Merza Bodi ("Merza", "we", "us", "our") is an Indian tropical fruit retailer operating at merzabodi.com. Our registered business address is No.9, Jeeva Nagar North Street, Bodinayakanur, Theni - 625513, Tamil Nadu, India. Contact us at <a href="mailto:merzabodinayakanur@gmail.com" class="text-amber-700 underline">merzabodinayakanur@gmail.com</a> or WhatsApp +91 93600 64278.',
                 ],
                 [
                     'title' => '2. Products & Orders',
@@ -85,7 +85,7 @@
                     'content' => 'For any questions about these Terms &amp; Conditions:
                     <div class="mt-2 space-y-1 text-stone-600">
                         <p>📧 <a href="mailto:merzabodinayakanur@gmail.com" class="text-amber-700 underline">merzabodinayakanur@gmail.com</a></p>
-                        <p>📞 +91 86676 96278</p>
+                        <p>📞 +91 93600 64278</p>
                         <p>📍 No.9, Jeeva Nagar North Street, Bodinayakanur, Theni - 625513, Tamil Nadu, India</p>
                     </div>',
                 ],

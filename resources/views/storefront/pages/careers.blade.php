@@ -76,7 +76,7 @@
                                     <span class="text-xs text-emerald-700 font-semibold bg-emerald-50 px-2 py-0.5 rounded-full">{{ $role['type'] }}</span>
                                 </div>
                             </div>
-                            <a href="https://wa.me/918667696278?text=Hi%2C+I%27d+like+to+apply+for+the+{{ urlencode($role['title']) }}+position+at+Merza."
+                            <a href="https://wa.me/919360064278?text=Hi%2C+I%27d+like+to+apply+for+the+{{ urlencode($role['title']) }}+position+at+Merza."
                                target="_blank"
                                class="flex-shrink-0 bg-green-500 hover:bg-green-400 text-white font-bold px-4 py-2 rounded-xl text-xs transition-all">
                                 Apply
@@ -94,7 +94,7 @@
 
             <div class="text-center mt-8 p-6 bg-white rounded-2xl border border-amber-100">
                 <p class="text-stone-600 text-sm mb-3">Don't see a role that fits? We're always open to talented people.</p>
-                <a href="https://wa.me/918667696278?text=Hi%2C+I%27d+like+to+introduce+myself+and+explore+opportunities+at+Merza."
+                <a href="https://wa.me/919360064278?text=Hi%2C+I%27d+like+to+introduce+myself+and+explore+opportunities+at+Merza."
                    target="_blank"
                    class="inline-flex items-center gap-2 text-sm font-semibold text-emerald-700 hover:text-emerald-800">
                     Send us your introduction →
