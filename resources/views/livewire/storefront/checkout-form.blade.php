@@ -91,151 +91,9 @@
 
             <div class="grid lg:grid-cols-3 gap-6">
 
-                {{-- ── Form ── --}}
-                <form wire:submit="placeOrder" class="lg:col-span-2 space-y-4">
-
-                    {{-- Delivery info --}}
-                    <div class="bg-white rounded-3xl border border-amber-100 shadow-sm overflow-hidden">
-                        <div class="bg-gradient-to-r from-amber-50 to-orange-50 border-b border-amber-100 px-5 py-4 flex items-center gap-2">
-                            <span class="w-6 h-6 rounded-lg bg-amber-500 text-white flex items-center justify-center text-xs font-bold">1</span>
-                            <h2 class="font-extrabold text-stone-800">Your Details</h2>
-                        </div>
-                        <div class="p-5 grid sm:grid-cols-2 gap-4">
-
-                            <div>
-                                <label class="block text-xs font-extrabold text-stone-600 mb-1.5 uppercase tracking-wide">Full Name *</label>
-                                <input wire:model="customer_name" type="text" placeholder="Ahmad bin Ali"
-                                       class="w-full border-2 {{ $errors->has('customer_name') ? 'border-red-300 bg-red-50' : 'border-stone-200 focus:border-amber-400' }} rounded-xl px-4 py-3 text-sm focus:outline-none transition-colors bg-white placeholder-stone-300">
-                                @error('customer_name') <p class="text-red-500 text-xs mt-1 font-medium">{{ $message }}</p> @enderror
-                            </div>
-
-                            <div>
-                                <label class="block text-xs font-extrabold text-stone-600 mb-1.5 uppercase tracking-wide">Phone Number *</label>
-                                <input wire:model="customer_phone" type="tel" placeholder="93600 64278"
-                                       class="w-full border-2 {{ $errors->has('customer_phone') ? 'border-red-300 bg-red-50' : 'border-stone-200 focus:border-amber-400' }} rounded-xl px-4 py-3 text-sm focus:outline-none transition-colors bg-white placeholder-stone-300">
-                                @error('customer_phone') <p class="text-red-500 text-xs mt-1 font-medium">{{ $message }}</p> @enderror
-                            </div>
-
-                            <div class="sm:col-span-2">
-                                <label class="block text-xs font-extrabold text-stone-600 mb-1.5 uppercase tracking-wide">Email <span class="font-normal text-stone-400 normal-case">(optional)</span></label>
-                                <input wire:model="customer_email" type="email" placeholder="email@example.com"
-                                       class="w-full border-2 border-stone-200 focus:border-amber-400 rounded-xl px-4 py-3 text-sm focus:outline-none transition-colors bg-white placeholder-stone-300">
-                            </div>
-                        </div>
-                    </div>
-
-                    {{-- Address --}}
-                    <div class="bg-white rounded-3xl border border-amber-100 shadow-sm overflow-hidden">
-                        <div class="bg-gradient-to-r from-amber-50 to-orange-50 border-b border-amber-100 px-5 py-4 flex items-center gap-2">
-                            <span class="w-6 h-6 rounded-lg bg-amber-500 text-white flex items-center justify-center text-xs font-bold">2</span>
-                            <h2 class="font-extrabold text-stone-800">Delivery Address</h2>
-                        </div>
-                        <div class="p-5 grid sm:grid-cols-2 gap-4">
-
-                            <div class="sm:col-span-2">
-                                <label class="block text-xs font-extrabold text-stone-600 mb-1.5 uppercase tracking-wide">Street Address *</label>
-                                <textarea wire:model="delivery_address" rows="2" placeholder="No. 12, Jalan Makmur, Taman Bahagia…"
-                                          class="w-full border-2 {{ $errors->has('delivery_address') ? 'border-red-300 bg-red-50' : 'border-stone-200 focus:border-amber-400' }} rounded-xl px-4 py-3 text-sm focus:outline-none transition-colors bg-white placeholder-stone-300 resize-none"></textarea>
-                                @error('delivery_address') <p class="text-red-500 text-xs mt-1 font-medium">{{ $message }}</p> @enderror
-                            </div>
-
-                            <div>
-                                <label class="block text-xs font-extrabold text-stone-600 mb-1.5 uppercase tracking-wide">City *</label>
-                                <input wire:model="city" type="text" placeholder="Bodinayakanur"
-                                       class="w-full border-2 {{ $errors->has('city') ? 'border-red-300 bg-red-50' : 'border-stone-200 focus:border-amber-400' }} rounded-xl px-4 py-3 text-sm focus:outline-none transition-colors bg-white placeholder-stone-300">
-                                @error('city') <p class="text-red-500 text-xs mt-1 font-medium">{{ $message }}</p> @enderror
-                            </div>
-
-                            <div>
-                                <label class="block text-xs font-extrabold text-stone-600 mb-1.5 uppercase tracking-wide">Postcode *</label>
-                                <input wire:model="postcode" type="text" placeholder="50000"
-                                       class="w-full border-2 {{ $errors->has('postcode') ? 'border-red-300 bg-red-50' : 'border-stone-200 focus:border-amber-400' }} rounded-xl px-4 py-3 text-sm focus:outline-none transition-colors bg-white placeholder-stone-300">
-                                @error('postcode') <p class="text-red-500 text-xs mt-1 font-medium">{{ $message }}</p> @enderror
-                            </div>
-
-                            <div class="sm:col-span-2">
-                                <label class="block text-xs font-extrabold text-stone-600 mb-1.5 uppercase tracking-wide">State *</label>
-                                <select wire:model="state"
-                                        class="w-full border-2 {{ $errors->has('state') ? 'border-red-300 bg-red-50' : 'border-stone-200 focus:border-amber-400' }} rounded-xl px-4 py-3 text-sm focus:outline-none transition-colors bg-white text-stone-700">
-                                    <option value="">Select your state…</option>
-                                    @foreach($states as $s)
-                                        <option value="{{ $s }}">{{ $s }}</option>
-                                    @endforeach
-                                </select>
-                                @error('state') <p class="text-red-500 text-xs mt-1 font-medium">{{ $message }}</p> @enderror
-                            </div>
-                        </div>
-                    </div>
-
-                    {{-- Payment method --}}
-                    <div class="bg-white rounded-3xl border border-amber-100 shadow-sm overflow-hidden">
-                        <div class="bg-gradient-to-r from-amber-50 to-orange-50 border-b border-amber-100 px-5 py-4 flex items-center gap-2">
-                            <span class="w-6 h-6 rounded-lg bg-amber-500 text-white flex items-center justify-center text-xs font-bold">3</span>
-                            <h2 class="font-extrabold text-stone-800">Payment Method</h2>
-                        </div>
-                        <div class="p-5 space-y-3">
-                            @foreach([
-                                ['cod',           '💵', 'Cash on Delivery',  'Pay when your fruits arrive at your door'],
-                                ['bank_transfer',  '🏦', 'Bank Transfer',     "We'll send you account details via WhatsApp"],
-                                ['whatsapp',       '💬', 'WhatsApp Order',    'Finalise your order and pay directly on WhatsApp'],
-                            ] as [$val, $icon, $label, $desc])
-                                <label class="flex items-center gap-4 p-4 rounded-2xl border-2 cursor-pointer transition-all
-                                              {{ $payment_method === $val
-                                                 ? 'border-amber-400 bg-gradient-to-r from-amber-50 to-orange-50 shadow-sm'
-                                                 : 'border-stone-100 hover:border-amber-200 hover:bg-amber-50/50' }}">
-                                    <input wire:model="payment_method" type="radio" value="{{ $val }}" class="sr-only">
-                                    <span class="text-2xl flex-shrink-0">{{ $icon }}</span>
-                                    <div class="flex-1">
-                                        <p class="font-extrabold text-sm text-stone-800">{{ $label }}</p>
-                                        <p class="text-xs text-stone-400 mt-0.5">{{ $desc }}</p>
-                                    </div>
-                                    <div class="w-5 h-5 rounded-full border-2 flex-shrink-0 flex items-center justify-center transition-all
-                                                {{ $payment_method === $val ? 'border-amber-500 bg-amber-500' : 'border-stone-300' }}">
-                                        @if($payment_method === $val)
-                                            <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/>
-                                            </svg>
-                                        @endif
-                                    </div>
-                                </label>
-                            @endforeach
-                        </div>
-                    </div>
-
-                    {{-- Notes --}}
-                    <div class="bg-white rounded-3xl border border-amber-100 shadow-sm p-5">
-                        <label class="block text-xs font-extrabold text-stone-600 mb-2 uppercase tracking-wide">
-                            Special Instructions <span class="font-normal text-stone-400 normal-case">(optional)</span>
-                        </label>
-                        <textarea wire:model="notes" rows="2"
-                                  placeholder="Any special requests, delivery time preference, or notes for us…"
-                                  class="w-full border-2 border-stone-200 focus:border-amber-400 rounded-xl px-4 py-3 text-sm focus:outline-none transition-colors bg-white placeholder-stone-300 resize-none"></textarea>
-                    </div>
-
-                    {{-- Submit --}}
-                    <button type="submit"
-                            wire:loading.attr="disabled"
-                            class="w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 disabled:opacity-60 text-white font-extrabold py-5 rounded-2xl transition-all text-base shadow-xl shadow-amber-200/60 hover:shadow-2xl hover:-translate-y-0.5">
-                        <span wire:loading.remove wire:target="placeOrder" class="flex items-center justify-center gap-2">
-                            🛒 Place My Order
-                        </span>
-                        <span wire:loading wire:target="placeOrder" class="flex items-center justify-center gap-2">
-                            <svg class="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
-                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
-                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
-                            </svg>
-                            Placing your order…
-                        </span>
-                    </button>
-
-                    <p class="text-center text-xs text-stone-400">
-                        🔒 Secure checkout · By ordering you agree to our <a href="#" class="underline">terms</a>
-                    </p>
-                </form>
-
-                {{-- ── Order summary sidebar ── --}}
-                <div class="space-y-4">
-                    <div class="bg-white rounded-3xl border border-amber-100 shadow-sm overflow-hidden sticky top-24">
+                {{-- ── Order summary sidebar (first on mobile, right col on desktop via explicit grid placement) ── --}}
+                <div class="lg:col-start-3 lg:row-start-1">
+                    <div class="bg-white rounded-3xl border border-amber-100 shadow-sm overflow-hidden lg:sticky lg:top-24">
 
                         <div class="bg-gradient-to-r from-amber-50 to-orange-50 border-b border-amber-100 px-5 py-4">
                             <h2 class="font-extrabold text-stone-800">Your Order</h2>
@@ -279,7 +137,7 @@
                                                 <span>included</span>
                                             </div>
                                         @endif
-                                        <div class="flex justify-between font-semibold text-stone-600 border-t border-amber-100 pt-1">
+                                        <div class="flex flex-wrap justify-between gap-y-0.5 font-semibold text-stone-600 border-t border-amber-100 pt-1">
                                             <span>Courier ({{ number_format($breakdown['chargeable_weight'], 2) }} kg × ₹{{ number_format($breakdown['rate_per_kg'], 0) }})</span>
                                             <span>₹{{ number_format($breakdown['shipping_cost'], 2) }}</span>
                                         </div>
@@ -315,6 +173,149 @@
                         </div>
                     </div>
                 </div>
+
+                {{-- ── Form ── --}}
+                <form wire:submit="placeOrder" class="lg:col-start-1 lg:col-span-2 lg:row-start-1 space-y-4">
+
+                    {{-- Delivery info --}}
+                    <div class="bg-white rounded-3xl border border-amber-100 shadow-sm overflow-hidden">
+                        <div class="bg-gradient-to-r from-amber-50 to-orange-50 border-b border-amber-100 px-5 py-4 flex items-center gap-2">
+                            <span class="w-6 h-6 rounded-lg bg-amber-500 text-white flex items-center justify-center text-xs font-bold">1</span>
+                            <h2 class="font-extrabold text-stone-800">Your Details</h2>
+                        </div>
+                        <div class="p-5 grid sm:grid-cols-2 gap-4">
+
+                            <div>
+                                <label class="block text-xs font-extrabold text-stone-600 mb-1.5 uppercase tracking-wide">Full Name *</label>
+                                <input wire:model="customer_name" type="text" placeholder="Ahmad bin Ali"
+                                       class="w-full border-2 {{ $errors->has('customer_name') ? 'border-red-300 bg-red-50' : 'border-stone-200 focus:border-amber-400' }} rounded-xl px-4 py-3 text-base focus:outline-none transition-colors bg-white placeholder-stone-300">
+                                @error('customer_name') <p class="text-red-500 text-xs mt-1 font-medium">{{ $message }}</p> @enderror
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-extrabold text-stone-600 mb-1.5 uppercase tracking-wide">Phone Number *</label>
+                                <input wire:model="customer_phone" type="tel" placeholder="93600 64278"
+                                       class="w-full border-2 {{ $errors->has('customer_phone') ? 'border-red-300 bg-red-50' : 'border-stone-200 focus:border-amber-400' }} rounded-xl px-4 py-3 text-base focus:outline-none transition-colors bg-white placeholder-stone-300">
+                                @error('customer_phone') <p class="text-red-500 text-xs mt-1 font-medium">{{ $message }}</p> @enderror
+                            </div>
+
+                            <div class="sm:col-span-2">
+                                <label class="block text-xs font-extrabold text-stone-600 mb-1.5 uppercase tracking-wide">Email <span class="font-normal text-stone-400 normal-case">(optional)</span></label>
+                                <input wire:model="customer_email" type="email" placeholder="email@example.com"
+                                       class="w-full border-2 border-stone-200 focus:border-amber-400 rounded-xl px-4 py-3 text-base focus:outline-none transition-colors bg-white placeholder-stone-300">
+                            </div>
+                        </div>
+                    </div>
+
+                    {{-- Address --}}
+                    <div class="bg-white rounded-3xl border border-amber-100 shadow-sm overflow-hidden">
+                        <div class="bg-gradient-to-r from-amber-50 to-orange-50 border-b border-amber-100 px-5 py-4 flex items-center gap-2">
+                            <span class="w-6 h-6 rounded-lg bg-amber-500 text-white flex items-center justify-center text-xs font-bold">2</span>
+                            <h2 class="font-extrabold text-stone-800">Delivery Address</h2>
+                        </div>
+                        <div class="p-5 grid sm:grid-cols-2 gap-4">
+
+                            <div class="sm:col-span-2">
+                                <label class="block text-xs font-extrabold text-stone-600 mb-1.5 uppercase tracking-wide">Street Address *</label>
+                                <textarea wire:model="delivery_address" rows="2" placeholder="No. 12, Jalan Makmur, Taman Bahagia…"
+                                          class="w-full border-2 {{ $errors->has('delivery_address') ? 'border-red-300 bg-red-50' : 'border-stone-200 focus:border-amber-400' }} rounded-xl px-4 py-3 text-base focus:outline-none transition-colors bg-white placeholder-stone-300 resize-none"></textarea>
+                                @error('delivery_address') <p class="text-red-500 text-xs mt-1 font-medium">{{ $message }}</p> @enderror
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-extrabold text-stone-600 mb-1.5 uppercase tracking-wide">City *</label>
+                                <input wire:model="city" type="text" placeholder="Bodinayakanur"
+                                       class="w-full border-2 {{ $errors->has('city') ? 'border-red-300 bg-red-50' : 'border-stone-200 focus:border-amber-400' }} rounded-xl px-4 py-3 text-base focus:outline-none transition-colors bg-white placeholder-stone-300">
+                                @error('city') <p class="text-red-500 text-xs mt-1 font-medium">{{ $message }}</p> @enderror
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-extrabold text-stone-600 mb-1.5 uppercase tracking-wide">Postcode *</label>
+                                <input wire:model="postcode" type="text" placeholder="50000"
+                                       class="w-full border-2 {{ $errors->has('postcode') ? 'border-red-300 bg-red-50' : 'border-stone-200 focus:border-amber-400' }} rounded-xl px-4 py-3 text-base focus:outline-none transition-colors bg-white placeholder-stone-300">
+                                @error('postcode') <p class="text-red-500 text-xs mt-1 font-medium">{{ $message }}</p> @enderror
+                            </div>
+
+                            <div class="sm:col-span-2">
+                                <label class="block text-xs font-extrabold text-stone-600 mb-1.5 uppercase tracking-wide">State *</label>
+                                <select wire:model="state"
+                                        class="w-full border-2 {{ $errors->has('state') ? 'border-red-300 bg-red-50' : 'border-stone-200 focus:border-amber-400' }} rounded-xl px-4 py-3 text-base focus:outline-none transition-colors bg-white text-stone-700">
+                                    <option value="">Select your state…</option>
+                                    @foreach($states as $s)
+                                        <option value="{{ $s }}">{{ $s }}</option>
+                                    @endforeach
+                                </select>
+                                @error('state') <p class="text-red-500 text-xs mt-1 font-medium">{{ $message }}</p> @enderror
+                            </div>
+                        </div>
+                    </div>
+
+                    {{-- Payment method --}}
+                    <div class="bg-white rounded-3xl border border-amber-100 shadow-sm overflow-hidden">
+                        <div class="bg-gradient-to-r from-amber-50 to-orange-50 border-b border-amber-100 px-5 py-4 flex items-center gap-2">
+                            <span class="w-6 h-6 rounded-lg bg-amber-500 text-white flex items-center justify-center text-xs font-bold">3</span>
+                            <h2 class="font-extrabold text-stone-800">Payment Method</h2>
+                        </div>
+                        <div class="p-5 space-y-3">
+                            @foreach([
+                                ['cod',           '💵', 'Cash on Delivery',  'Pay when your fruits arrive at your door'],
+                                ['bank_transfer',  '🏦', 'Bank Transfer',     "We'll send you account details via WhatsApp"],
+                                ['whatsapp',       '💬', 'WhatsApp Order',    'Finalise your order and pay directly on WhatsApp'],
+                            ] as [$val, $icon, $label, $desc])
+                                <label class="flex items-center gap-4 p-4 rounded-2xl border-2 cursor-pointer transition-all
+                                              {{ $payment_method === $val
+                                                 ? 'border-amber-400 bg-gradient-to-r from-amber-50 to-orange-50 shadow-sm'
+                                                 : 'border-stone-100 hover:border-amber-200 hover:bg-amber-50/50' }}">
+                                    <input wire:model="payment_method" type="radio" value="{{ $val }}" class="sr-only">
+                                    <span class="text-2xl flex-shrink-0">{{ $icon }}</span>
+                                    <div class="flex-1 min-w-0">
+                                        <p class="font-extrabold text-sm text-stone-800">{{ $label }}</p>
+                                        <p class="text-xs text-stone-400 mt-0.5">{{ $desc }}</p>
+                                    </div>
+                                    <div class="w-5 h-5 rounded-full border-2 flex-shrink-0 flex items-center justify-center transition-all
+                                                {{ $payment_method === $val ? 'border-amber-500 bg-amber-500' : 'border-stone-300' }}">
+                                        @if($payment_method === $val)
+                                            <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/>
+                                            </svg>
+                                        @endif
+                                    </div>
+                                </label>
+                            @endforeach
+                        </div>
+                    </div>
+
+                    {{-- Notes --}}
+                    <div class="bg-white rounded-3xl border border-amber-100 shadow-sm p-5">
+                        <label class="block text-xs font-extrabold text-stone-600 mb-2 uppercase tracking-wide">
+                            Special Instructions <span class="font-normal text-stone-400 normal-case">(optional)</span>
+                        </label>
+                        <textarea wire:model="notes" rows="2"
+                                  placeholder="Any special requests, delivery time preference, or notes for us…"
+                                  class="w-full border-2 border-stone-200 focus:border-amber-400 rounded-xl px-4 py-3 text-base focus:outline-none transition-colors bg-white placeholder-stone-300 resize-none"></textarea>
+                    </div>
+
+                    {{-- Submit --}}
+                    <button type="submit"
+                            wire:loading.attr="disabled"
+                            class="w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 disabled:opacity-60 text-white font-extrabold py-5 rounded-2xl transition-all text-base shadow-xl shadow-amber-200/60 hover:shadow-2xl hover:-translate-y-0.5">
+                        <span wire:loading.remove wire:target="placeOrder" class="flex items-center justify-center gap-2">
+                            🛒 Place My Order
+                        </span>
+                        <span wire:loading wire:target="placeOrder" class="flex items-center justify-center gap-2">
+                            <svg class="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                            </svg>
+                            Placing your order…
+                        </span>
+                    </button>
+
+                    <p class="text-center text-xs text-stone-400">
+                        🔒 Secure checkout · By ordering you agree to our <a href="#" class="underline">terms</a>
+                    </p>
+                </form>
+
             </div>
         @endif
     @endif
