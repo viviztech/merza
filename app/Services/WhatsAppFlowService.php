@@ -102,7 +102,7 @@ class WhatsAppFlowService
                 'buttons' => [
                     ['type' => 'reply', 'reply' => ['id' => 'order_fruits', 'title' => '🛒 Order Fruits']],
                     ['type' => 'reply', 'reply' => ['id' => 'my_orders',    'title' => '📦 My Orders']],
-                    ['type' => 'reply', 'reply' => ['id' => 'talk_to_us',   'title' => '💬 Talk to Us']],
+                    ['type' => 'reply', 'reply' => ['id' => 'talk_to_us',   'title' => '💬 Merza Team']],
                 ],
             ],
         ], $contact);
@@ -303,7 +303,7 @@ class WhatsAppFlowService
             'action' => [
                 'buttons' => [
                     ['type' => 'reply', 'reply' => ['id' => 'order_fruits', 'title' => '🛒 Order More']],
-                    ['type' => 'reply', 'reply' => ['id' => 'talk_to_us',   'title' => '💬 Need Help?']],
+                    ['type' => 'reply', 'reply' => ['id' => 'talk_to_us',   'title' => '💬 Merza Team']],
                     ['type' => 'reply', 'reply' => ['id' => 'back_menu',    'title' => '🏠 Main Menu']],
                 ],
             ],
