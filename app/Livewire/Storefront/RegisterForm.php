@@ -65,17 +65,21 @@ class RegisterForm extends Component
         Cache::put("wa_otp_{$phone}", $code, now()->addMinutes(10));
         Cache::put($sendCountKey, $sendCount + 1, now()->addMinutes(30));
 
-        // Send via WhatsApp
-        $settings  = BotSetting::current();
-        $waService = new WhatsAppService($settings);
+        // Send via WhatsApp using an approved Authentication template.
+        // The template name is set in WHATSAPP_OTP_TEMPLATE_NAME (env var).
+        // See docs: create an "Authentication" category template in Meta Business Manager
+        // with body "{{1}} is your Merza verification code. Valid for 10 minutes."
+        $settings     = BotSetting::current();
+        $waService    = new WhatsAppService($settings);
+        $templateName = config('services.whatsapp.otp_template', env('WHATSAPP_OTP_TEMPLATE_NAME', 'merza_otp'));
 
-        $sent = $waService->sendTextMessage(
-            $phone,
-            "Your *Merza* verification code:\n\n*{$code}*\n\nThis code is valid for 10 minutes. Never share it with anyone.\n\n— Merza 🥭"
-        );
+        $sent = $waService->sendTemplateMessage($phone, $templateName, [$code]);
 
         if (! $sent) {
-            Log::error('RegisterForm: WhatsApp OTP send failed', ['phone' => $phone]);
+            Log::error('RegisterForm: WhatsApp OTP template send failed', [
+                'phone'    => $phone,
+                'template' => $templateName,
+            ]);
             $this->addError('phone', 'Could not send WhatsApp OTP. Please check the number and try again.');
             return;
         }

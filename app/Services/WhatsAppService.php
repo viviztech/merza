@@ -53,6 +53,67 @@ class WhatsAppService
     /**
      * Send an interactive message (button or list) via WhatsApp Cloud API.
      */
+    /**
+     * Send a WhatsApp Authentication template message (required for OTP to new users).
+     * Template must be pre-approved in Meta Business Manager → WhatsApp → Message Templates.
+     *
+     * @param string $templateName  The approved template name (e.g. "merza_otp")
+     * @param string $languageCode  Template language (e.g. "en", "ta")
+     * @param array  $bodyParams    Text parameters for {{1}}, {{2}}, … body placeholders
+     */
+    public function sendTemplateMessage(
+        string $toPhone,
+        string $templateName,
+        array  $bodyParams    = [],
+        string $languageCode  = 'en',
+    ): ?string {
+        $phoneNumberId = $this->settings->whatsapp_phone_number_id;
+        $token         = $this->settings->whatsapp_access_token;
+
+        if (empty($phoneNumberId) || empty($token)) {
+            Log::warning('WhatsAppService: Missing phone_number_id or access_token');
+            return null;
+        }
+
+        $to = preg_replace('/[^0-9]/', '', $toPhone);
+
+        $components = [];
+        if (! empty($bodyParams)) {
+            $components[] = [
+                'type'       => 'body',
+                'parameters' => array_map(
+                    fn ($v) => ['type' => 'text', 'text' => (string) $v],
+                    $bodyParams
+                ),
+            ];
+        }
+
+        $response = Http::timeout(15)
+            ->withToken($token)
+            ->post(self::GRAPH_URL . "/{$phoneNumberId}/messages", [
+                'messaging_product' => 'whatsapp',
+                'to'                => $to,
+                'type'              => 'template',
+                'template'          => [
+                    'name'       => $templateName,
+                    'language'   => ['code' => $languageCode],
+                    'components' => $components,
+                ],
+            ]);
+
+        if ($response->failed()) {
+            Log::error('WhatsAppService: Template send failed', [
+                'to'       => $to,
+                'template' => $templateName,
+                'status'   => $response->status(),
+                'body'     => $response->body(),
+            ]);
+            return null;
+        }
+
+        return $response->json('messages.0.id');
+    }
+
     public function sendInteractiveMessage(string $toPhone, array $interactive): ?string
     {
         $phoneNumberId = $this->settings->whatsapp_phone_number_id;
