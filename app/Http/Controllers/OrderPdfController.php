@@ -10,7 +10,7 @@ class OrderPdfController extends Controller
 {
     public function invoice(Order $order): Response
     {
-        abort_if(! auth()->user()?->hasAnyRole(['admin', 'staff']), 403);
+        abort_if(! auth()->user()?->hasAnyRole(['Admin', 'Sales', 'Operations', 'Delivery']), 403);
 
         $order->load('items');
 
@@ -22,7 +22,7 @@ class OrderPdfController extends Controller
 
     public function deliverySlip(Order $order): Response
     {
-        abort_if(! auth()->user()?->hasAnyRole(['admin', 'staff']), 403);
+        abort_if(! auth()->user()?->hasAnyRole(['Admin', 'Sales', 'Operations', 'Delivery']), 403);
 
         $order->load('items');
 
@@ -34,7 +34,7 @@ class OrderPdfController extends Controller
 
     public function dailyReport(): Response
     {
-        abort_if(! auth()->user()?->hasAnyRole(['admin', 'staff']), 403);
+        abort_if(! auth()->user()?->hasAnyRole(['Admin', 'Sales', 'Operations', 'Delivery']), 403);
 
         $date   = request('date', today()->toDateString());
         $orders = Order::with('items')
