@@ -12,6 +12,7 @@ use App\Services\GroqService;
 use Filament\Actions;
 use Filament\Actions\Action;
 use Filament\Forms;
+use Filament\Infolists\Components\ImageEntry;
 use Filament\Infolists\Components\RepeatableEntry;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Notifications\Notification;
@@ -60,7 +61,7 @@ class OrderResource extends Resource
                     ->options([
                         'cod'           => 'Cash on Delivery',
                         'bank_transfer' => 'Bank Transfer',
-                        'whatsapp'      => 'WhatsApp Payment',
+                        'whatsapp'      => 'UPI Payment',
                     ])
                     ->required(),
 
@@ -141,7 +142,7 @@ class OrderResource extends Resource
                     ->formatStateUsing(fn ($state) => match ($state) {
                         'cod'           => 'Cash on Delivery',
                         'bank_transfer' => 'Bank Transfer',
-                        'whatsapp'      => 'WhatsApp Payment',
+                        'whatsapp'      => 'UPI Payment',
                         default         => $state,
                     }),
                 TextEntry::make('payment_status')
@@ -156,6 +157,12 @@ class OrderResource extends Resource
                     ->label('Payment Reference / UTR')
                     ->placeholder('—'),
                 TextEntry::make('created_at')->dateTime('d M Y, h:i A')->label('Ordered At'),
+
+                ImageEntry::make('payment_screenshot_url')
+                    ->label('Payment Screenshot')
+                    ->visible(fn (Order $r) => ! empty($r->payment_screenshot_path))
+                    ->height(300)
+                    ->columnSpanFull(),
             ])->columns(3),
 
             SchemaSection::make('Customer Information')->schema([
@@ -250,7 +257,7 @@ class OrderResource extends Resource
                     ->formatStateUsing(fn ($state) => match ($state) {
                         'cod'           => 'COD',
                         'bank_transfer' => 'Bank Transfer',
-                        'whatsapp'      => 'WhatsApp',
+                        'whatsapp'      => 'UPI',
                         default         => $state,
                     })
                     ->toggleable(),
@@ -295,7 +302,7 @@ class OrderResource extends Resource
                     ->options([
                         'cod'           => 'Cash on Delivery',
                         'bank_transfer' => 'Bank Transfer',
-                        'whatsapp'      => 'WhatsApp Payment',
+                        'whatsapp'      => 'UPI Payment',
                     ]),
                 Tables\Filters\Filter::make('today')
                     ->label('Today\'s Orders')

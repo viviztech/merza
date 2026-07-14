@@ -20,6 +20,12 @@ return new class extends Migration
 
     public function up(): void
     {
+        // SQLite (used by the test suite) doesn't enforce this enum as a rigid
+        // CHECK constraint the same way — nothing to migrate there.
+        if (DB::getDriverName() === 'sqlite') {
+            return;
+        }
+
         if (DB::getDriverName() === 'mysql') {
             DB::statement(
                 "ALTER TABLE bot_activity_logs MODIFY event_type ENUM('"
@@ -37,6 +43,10 @@ return new class extends Migration
 
     public function down(): void
     {
+        if (DB::getDriverName() === 'sqlite') {
+            return;
+        }
+
         if (DB::getDriverName() === 'mysql') {
             DB::statement(
                 "ALTER TABLE bot_activity_logs MODIFY event_type ENUM('"

@@ -2,18 +2,23 @@
 
 namespace App\Livewire\Storefront;
 
+use App\Models\BotSetting;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Services\CartService;
 use App\Services\DeliveryCalculatorService;
+use App\Services\UpiQrService;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Component;
+use Livewire\WithFileUploads;
 
 #[Layout('components.layouts.storefront')]
 #[Title('Checkout — Merza')]
 class CheckoutForm extends Component
 {
+    use WithFileUploads;
+
     public string $customer_name    = '';
     public string $customer_phone   = '';
     public string $customer_email   = '';
@@ -21,7 +26,8 @@ class CheckoutForm extends Component
     public string $city             = '';
     public string $postcode         = '';
     public string $state            = '';
-    public string $payment_method   = 'cod';
+    public string $transaction_id   = '';
+    public $paymentScreenshot       = null;
     public string $notes            = '';
 
     public bool   $orderPlaced  = false;
@@ -30,15 +36,16 @@ class CheckoutForm extends Component
     protected function rules(): array
     {
         return [
-            'customer_name'    => 'required|string|max:120',
-            'customer_phone'   => 'required|string|max:20',
-            'customer_email'   => 'nullable|email|max:150',
-            'delivery_address' => 'required|string|max:500',
-            'city'             => 'required|string|max:80',
-            'postcode'         => 'required|string|max:10',
-            'state'            => 'required|string|max:80',
-            'payment_method'   => 'required|in:cod,bank_transfer,whatsapp',
-            'notes'            => 'nullable|string|max:500',
+            'customer_name'      => 'required|string|max:120',
+            'customer_phone'     => 'required|string|max:20',
+            'customer_email'     => 'nullable|email|max:150',
+            'delivery_address'   => 'required|string|max:500',
+            'city'               => 'required|string|max:80',
+            'postcode'           => 'required|string|max:10',
+            'state'              => 'required|string|max:80',
+            'transaction_id'     => 'nullable|string|max:100',
+            'paymentScreenshot'  => 'nullable|image|max:5120',
+            'notes'              => 'nullable|string|max:500',
         ];
     }
 
@@ -62,6 +69,11 @@ class CheckoutForm extends Component
     {
         $this->validate();
 
+        if (empty(trim($this->transaction_id)) && ! $this->paymentScreenshot) {
+            $this->addError('payment_proof', 'Please enter your UPI transaction ID or upload a payment screenshot.');
+            return;
+        }
+
         $cart = app(CartService::class);
 
         if ($cart->count() === 0) {
@@ -74,21 +86,27 @@ class CheckoutForm extends Component
         $deliveryFee = $breakdown ? $breakdown['total_fee'] : 0;
         $total       = $subtotal + $deliveryFee;
 
+        $screenshotPath = $this->paymentScreenshot
+            ? $this->paymentScreenshot->store('payment-screenshots', config('media-library.disk_name', 'r2'))
+            : null;
+
         $order = Order::create([
-            'channel'          => 'website',
-            'user_id'          => auth()->id(),
-            'customer_name'    => $this->customer_name,
-            'customer_phone'   => $this->customer_phone,
-            'customer_email'   => $this->customer_email ?: null,
-            'delivery_address' => $this->delivery_address,
-            'city'             => $this->city,
-            'postcode'         => $this->postcode,
-            'state'            => $this->state,
-            'subtotal'         => $subtotal,
-            'delivery_fee'     => $deliveryFee,
-            'total'            => $total,
-            'payment_method'   => $this->payment_method,
-            'notes'            => $this->notes ?: null,
+            'channel'                  => 'website',
+            'user_id'                  => auth()->id(),
+            'customer_name'            => $this->customer_name,
+            'customer_phone'           => $this->customer_phone,
+            'customer_email'           => $this->customer_email ?: null,
+            'delivery_address'         => $this->delivery_address,
+            'city'                     => $this->city,
+            'postcode'                 => $this->postcode,
+            'state'                    => $this->state,
+            'subtotal'                 => $subtotal,
+            'delivery_fee'             => $deliveryFee,
+            'total'                    => $total,
+            'payment_method'           => 'whatsapp',
+            'payment_reference'        => $this->transaction_id ?: null,
+            'payment_screenshot_path'  => $screenshotPath,
+            'notes'                    => $this->notes ?: null,
         ]);
 
         foreach ($cart->items() as $item) {
@@ -121,6 +139,17 @@ class CheckoutForm extends Component
         $deliveryFee = $breakdown ? $breakdown['total_fee'] : null;
         $total       = $subtotal + ($deliveryFee ?? 0);
 
+        $settings   = BotSetting::current();
+        $upiId      = $settings->upi_id;
+        $upiPayee   = $settings->upi_payee_name ?: 'Merza';
+        $qrDataUri  = null;
+
+        if (! empty($upiId) && $total > 0) {
+            $qrService = new UpiQrService();
+            $uri       = $qrService->buildUpiUri($upiId, $upiPayee, $total, 'Merza Order');
+            $qrDataUri = 'data:image/png;base64,' . base64_encode($qrService->generatePng($uri));
+        }
+
         $states = [
             'Andhra Pradesh', 'Arunachal Pradesh', 'Assam', 'Bihar',
             'Chhattisgarh', 'Goa', 'Gujarat', 'Haryana', 'Himachal Pradesh',
@@ -133,6 +162,6 @@ class CheckoutForm extends Component
         ];
 
         return view('livewire.storefront.checkout-form',
-            compact('items', 'subtotal', 'weightKg', 'breakdown', 'deliveryFee', 'total', 'states'));
+            compact('items', 'subtotal', 'weightKg', 'breakdown', 'deliveryFee', 'total', 'states', 'upiId', 'upiPayee', 'qrDataUri'));
     }
 }

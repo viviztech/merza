@@ -59,7 +59,7 @@ class CreateOrder extends CreateRecord
                     ->options([
                         'cod'           => 'Cash on Delivery',
                         'bank_transfer' => 'Bank Transfer',
-                        'whatsapp'      => 'WhatsApp Payment',
+                        'whatsapp'      => 'UPI Payment',
                     ])
                     ->default('cod')
                     ->required(),

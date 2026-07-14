@@ -13,7 +13,7 @@ class Order extends Model
         'customer_name', 'customer_phone', 'customer_email',
         'delivery_address', 'city', 'postcode', 'state',
         'subtotal', 'delivery_fee', 'total',
-        'status', 'payment_method', 'payment_status', 'payment_reference',
+        'status', 'payment_method', 'payment_status', 'payment_reference', 'payment_screenshot_path',
         'notes', 'admin_notes', 'tracking_number',
         'confirmed_at', 'dispatched_at', 'delivered_at',
     ];
@@ -72,5 +72,15 @@ class Order extends Model
             'manual'   => 'info',
             default    => 'gray',
         };
+    }
+
+    public function getPaymentScreenshotUrlAttribute(): ?string
+    {
+        if (empty($this->payment_screenshot_path)) {
+            return null;
+        }
+
+        return \Illuminate\Support\Facades\Storage::disk(config('media-library.disk_name', 'r2'))
+            ->url($this->payment_screenshot_path);
     }
 }
