@@ -45,7 +45,6 @@ Route::get('/terms',     [PagesController::class, 'terms'])     ->name('terms');
 Route::get('/login',    [AuthController::class, 'showLogin'])    ->name('login');
 Route::post('/login',   [AuthController::class, 'login'])        ->middleware('guest');
 Route::get('/register', [AuthController::class, 'showRegister'])->name('customer.register')->middleware('guest');
-Route::post('/register',[AuthController::class, 'register'])    ->middleware('guest');
 Route::post('/logout',  [AuthController::class, 'logout'])      ->name('customer.logout')->middleware('auth');
 
 /*

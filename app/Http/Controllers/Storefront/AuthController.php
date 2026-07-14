@@ -3,11 +3,8 @@
 namespace App\Http\Controllers\Storefront;
 
 use App\Http\Controllers\Controller;
-use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Validation\Rules\Password;
 
 class AuthController extends Controller
 {
@@ -46,28 +43,6 @@ class AuthController extends Controller
             return redirect()->route('account.dashboard');
         }
         return view('storefront.auth.register');
-    }
-
-    public function register(Request $request)
-    {
-        $data = $request->validate([
-            'name'     => ['required', 'string', 'max:255'],
-            'phone'    => ['nullable', 'string', 'max:20'],
-            'email'    => ['required', 'email', 'unique:users,email'],
-            'password' => ['required', 'confirmed', Password::min(8)],
-        ]);
-
-        $user = User::create([
-            'name'     => $data['name'],
-            'email'    => $data['email'],
-            'phone'    => $data['phone'] ?? null,
-            'password' => Hash::make($data['password']),
-        ]);
-
-        Auth::login($user);
-        $request->session()->regenerate();
-
-        return redirect()->route('account.dashboard');
     }
 
     public function logout(Request $request)
