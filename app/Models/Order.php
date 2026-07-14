@@ -9,11 +9,11 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class Order extends Model
 {
     protected $fillable = [
-        'order_number', 'user_id', 'contact_id',
+        'order_number', 'channel', 'user_id', 'contact_id',
         'customer_name', 'customer_phone', 'customer_email',
         'delivery_address', 'city', 'postcode', 'state',
         'subtotal', 'delivery_fee', 'total',
-        'status', 'payment_method', 'payment_status',
+        'status', 'payment_method', 'payment_status', 'payment_reference',
         'notes', 'admin_notes', 'tracking_number',
         'confirmed_at', 'dispatched_at', 'delivered_at',
     ];
@@ -61,6 +61,16 @@ class Order extends Model
             'delivered'  => 'success',
             'cancelled'  => 'danger',
             default      => 'gray',
+        };
+    }
+
+    public function getChannelBadgeColorAttribute(): string
+    {
+        return match ($this->channel) {
+            'website'  => 'gray',
+            'whatsapp' => 'success',
+            'manual'   => 'info',
+            default    => 'gray',
         };
     }
 }

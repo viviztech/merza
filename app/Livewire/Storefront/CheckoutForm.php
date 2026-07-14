@@ -75,6 +75,7 @@ class CheckoutForm extends Component
         $total       = $subtotal + $deliveryFee;
 
         $order = Order::create([
+            'channel'          => 'website',
             'user_id'          => auth()->id(),
             'customer_name'    => $this->customer_name,
             'customer_phone'   => $this->customer_phone,

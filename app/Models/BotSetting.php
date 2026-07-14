@@ -15,15 +15,17 @@ class BotSetting extends Model
         'follow_up_prompt_template', 'wa_reply_prompt_template',
         'bot_enabled', 'auto_create_contact', 'auto_create_lead',
         'wa_bot_enabled', 'wa_auto_send', 'voice_bot_enabled',
+        'wa_commerce_enabled', 'upi_id', 'upi_payee_name',
     ];
 
     protected $casts = [
-        'bot_enabled'         => 'boolean',
-        'auto_create_contact' => 'boolean',
-        'auto_create_lead'    => 'boolean',
-        'wa_bot_enabled'      => 'boolean',
-        'wa_auto_send'        => 'boolean',
-        'voice_bot_enabled'   => 'boolean',
+        'bot_enabled'          => 'boolean',
+        'auto_create_contact'  => 'boolean',
+        'auto_create_lead'     => 'boolean',
+        'wa_bot_enabled'       => 'boolean',
+        'wa_auto_send'         => 'boolean',
+        'voice_bot_enabled'    => 'boolean',
+        'wa_commerce_enabled'  => 'boolean',
     ];
 
     public static function current(): self

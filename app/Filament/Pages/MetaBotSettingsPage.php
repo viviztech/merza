@@ -172,6 +172,25 @@ class MetaBotSettingsPage extends Page
                             ->helperText('Permanent System User token or temporary test token.'),
                     ])->columns(2),
 
+                SchemaSection::make('WhatsApp Ordering & Payment (UPI)')
+                    ->description('Turns on the full tap-to-order flow (cart → address → payment → confirmation) inside WhatsApp. While off, "Order Now" taps fall back to the old free-text + AI handoff.')
+                    ->schema([
+                        Forms\Components\Toggle::make('wa_commerce_enabled')
+                            ->label('Enable WhatsApp Ordering')
+                            ->helperText('Lets customers build a cart and complete an order directly in WhatsApp.')
+                            ->onColor('success')
+                            ->columnSpanFull(),
+
+                        Forms\Components\TextInput::make('upi_id')
+                            ->label('UPI ID')
+                            ->placeholder('merza@upi')
+                            ->helperText('Shown as a QR code + text for WhatsApp UPI payments. Leave blank to offer Cash on Delivery only.'),
+
+                        Forms\Components\TextInput::make('upi_payee_name')
+                            ->label('UPI Payee Name')
+                            ->placeholder('Merza Bodi'),
+                    ])->columns(2),
+
                 SchemaSection::make('Lead Follow-up Prompt')
                     ->description('Claude AI prompt for Meta Lead Ad follow-ups. Placeholders: {{customer_name}}, {{city}}, {{product_interest}}')
                     ->schema([

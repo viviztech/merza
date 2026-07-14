@@ -36,6 +36,15 @@ class OrderResource extends Resource
                 Forms\Components\TextInput::make('order_number')
                     ->disabled()->dehydrated(false),
 
+                Forms\Components\TextInput::make('channel')
+                    ->formatStateUsing(fn ($state) => match ($state) {
+                        'website'  => 'Website',
+                        'whatsapp' => 'WhatsApp',
+                        'manual'   => 'Manual',
+                        default    => $state,
+                    })
+                    ->disabled()->dehydrated(false),
+
                 Forms\Components\Select::make('status')
                     ->options([
                         'pending'    => 'Pending',
@@ -62,6 +71,11 @@ class OrderResource extends Resource
                         'refunded' => 'Refunded',
                     ])
                     ->required(),
+
+                Forms\Components\TextInput::make('payment_reference')
+                    ->label('Payment Reference / UTR')
+                    ->placeholder('Customer-reported UPI transaction ref')
+                    ->nullable(),
             ])->columns(2),
 
             SchemaSection::make('Customer Information')->schema([
@@ -98,6 +112,20 @@ class OrderResource extends Resource
         return $schema->components([
             SchemaSection::make('Order Summary')->schema([
                 TextEntry::make('order_number')->badge()->color('primary'),
+                TextEntry::make('channel')
+                    ->badge()
+                    ->color(fn ($state) => match ($state) {
+                        'website'  => 'gray',
+                        'whatsapp' => 'success',
+                        'manual'   => 'info',
+                        default    => 'gray',
+                    })
+                    ->formatStateUsing(fn ($state) => match ($state) {
+                        'website'  => 'Website',
+                        'whatsapp' => 'WhatsApp',
+                        'manual'   => 'Manual',
+                        default    => $state,
+                    }),
                 TextEntry::make('status')
                     ->badge()
                     ->color(fn ($state) => match ($state) {
@@ -124,6 +152,9 @@ class OrderResource extends Resource
                         'refunded' => 'danger',
                         default    => 'gray',
                     }),
+                TextEntry::make('payment_reference')
+                    ->label('Payment Reference / UTR')
+                    ->placeholder('—'),
                 TextEntry::make('created_at')->dateTime('d M Y, h:i A')->label('Ordered At'),
             ])->columns(3),
 
@@ -175,6 +206,21 @@ class OrderResource extends Resource
                     ->searchable()->sortable()
                     ->badge()->color('primary'),
 
+                Tables\Columns\TextColumn::make('channel')
+                    ->badge()
+                    ->color(fn ($state) => match ($state) {
+                        'website'  => 'gray',
+                        'whatsapp' => 'success',
+                        'manual'   => 'info',
+                        default    => 'gray',
+                    })
+                    ->formatStateUsing(fn ($state) => match ($state) {
+                        'website'  => 'Website',
+                        'whatsapp' => 'WhatsApp',
+                        'manual'   => 'Manual',
+                        default    => $state,
+                    }),
+
                 Tables\Columns\TextColumn::make('customer_name')
                     ->searchable()
                     ->description(fn (Order $r) => $r->customer_phone),
@@ -223,6 +269,12 @@ class OrderResource extends Resource
             ])
             ->defaultSort('created_at', 'desc')
             ->filters([
+                Tables\Filters\SelectFilter::make('channel')
+                    ->options([
+                        'website'  => 'Website',
+                        'whatsapp' => 'WhatsApp',
+                        'manual'   => 'Manual',
+                    ]),
                 Tables\Filters\SelectFilter::make('status')
                     ->options([
                         'pending'    => 'Pending',
@@ -428,6 +480,7 @@ Order total: ₹{$r->total}"
     {
         return [
             'index'  => Pages\ListOrders::route('/'),
+            'create' => Pages\CreateOrder::route('/create'),
             'view'   => Pages\ViewOrder::route('/{record}'),
             'edit'   => Pages\EditOrder::route('/{record}/edit'),
         ];

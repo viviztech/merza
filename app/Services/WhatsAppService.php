@@ -51,6 +51,43 @@ class WhatsAppService
     }
 
     /**
+     * Send an image message (e.g. a UPI payment QR code) via WhatsApp Cloud API.
+     * $imageUrl must be a publicly reachable HTTPS URL.
+     */
+    public function sendImageMessage(string $toPhone, string $imageUrl, string $caption = ''): ?string
+    {
+        $phoneNumberId = $this->settings->whatsapp_phone_number_id;
+        $token         = $this->settings->whatsapp_access_token;
+
+        if (empty($phoneNumberId) || empty($token)) {
+            Log::warning('WhatsAppService: Missing phone_number_id or access_token');
+            return null;
+        }
+
+        $to = preg_replace('/[^0-9]/', '', $toPhone);
+
+        $response = Http::timeout(15)
+            ->withToken($token)
+            ->post(self::GRAPH_URL . "/{$phoneNumberId}/messages", [
+                'messaging_product' => 'whatsapp',
+                'to'                => $to,
+                'type'              => 'image',
+                'image'             => ['link' => $imageUrl, 'caption' => $caption],
+            ]);
+
+        if ($response->failed()) {
+            Log::error('WhatsAppService: Image send failed', [
+                'to'     => $to,
+                'status' => $response->status(),
+                'body'   => $response->body(),
+            ]);
+            return null;
+        }
+
+        return $response->json('messages.0.id');
+    }
+
+    /**
      * Send an interactive message (button or list) via WhatsApp Cloud API.
      */
     /**
