@@ -20,6 +20,14 @@ return new class extends Migration
 
     public function up(): void
     {
+        if (DB::getDriverName() === 'mysql') {
+            DB::statement(
+                "ALTER TABLE bot_activity_logs MODIFY event_type ENUM('"
+                . implode("','", self::EVENT_TYPES) . "') NOT NULL"
+            );
+            return;
+        }
+
         DB::statement('ALTER TABLE bot_activity_logs DROP CONSTRAINT bot_activity_logs_event_type_check');
         DB::statement(
             "ALTER TABLE bot_activity_logs ADD CONSTRAINT bot_activity_logs_event_type_check CHECK (event_type IN ('"
@@ -29,6 +37,14 @@ return new class extends Migration
 
     public function down(): void
     {
+        if (DB::getDriverName() === 'mysql') {
+            DB::statement(
+                "ALTER TABLE bot_activity_logs MODIFY event_type ENUM('"
+                . implode("','", self::OLD_EVENT_TYPES) . "') NOT NULL"
+            );
+            return;
+        }
+
         DB::statement('ALTER TABLE bot_activity_logs DROP CONSTRAINT bot_activity_logs_event_type_check');
         DB::statement(
             "ALTER TABLE bot_activity_logs ADD CONSTRAINT bot_activity_logs_event_type_check CHECK (event_type IN ('"
