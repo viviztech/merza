@@ -24,7 +24,14 @@
 
   /* Address section */
   .section-label { font-size: 9px; font-weight: 700; text-transform: uppercase; color: #888; letter-spacing: 1px; margin-bottom: 5px; }
-  .deliver-box { border: 2px solid #1a1a1a; border-radius: 6px; padding: 12px 14px; margin-bottom: 14px; }
+  .addr-table { width: 100%; border-collapse: collapse; margin-bottom: 14px; }
+  .addr-col { width: 50%; vertical-align: top; }
+  .addr-col.from { padding-right: 10px; }
+  .addr-col.to { padding-left: 10px; }
+  .from-box { border: 1px solid #ddd; border-radius: 6px; padding: 12px 14px; background: #fafafa; }
+  .from-name { font-size: 13px; font-weight: 700; color: #1a1a1a; margin-bottom: 4px; }
+  .from-address { font-size: 10px; color: #555; line-height: 1.6; }
+  .deliver-box { border: 2px solid #1a1a1a; border-radius: 6px; padding: 12px 14px; }
   .customer-name { font-size: 16px; font-weight: 700; color: #1a1a1a; margin-bottom: 4px; }
   .customer-phone { font-size: 13px; color: #1B6B2F; font-weight: 600; margin-bottom: 6px; }
   .customer-address { font-size: 11px; color: #333; line-height: 1.6; }
@@ -78,18 +85,36 @@
     <div class="order-date">{{ $order->created_at->format('d M Y, h:i A') }}</div>
   </div>
 
-  {{-- Deliver To --}}
-  <div class="section-label">Deliver To</div>
-  <div class="deliver-box">
-    <div class="customer-name">{{ $order->customer_name }}</div>
-    @if($order->customer_phone)
-    <div class="customer-phone">{{ $order->customer_phone }}</div>
-    @endif
-    <div class="customer-address">
-      {{ $order->delivery_address }}<br>
-      @if($order->city){{ $order->city }}@endif@if($order->state), {{ $order->state }}@endif@if($order->postcode) &ndash; {{ $order->postcode }}@endif
-    </div>
-  </div>
+  {{-- From / To --}}
+  <table class="addr-table">
+    <tr>
+      <td class="addr-col from">
+        <div class="section-label">From</div>
+        <div class="from-box">
+          <div class="from-name">Merza Bodi</div>
+          <div class="from-address">
+            HP Petrol Bunk, Pankajam School Opp.,<br>
+            Thevaram Road, Bodinayakanur &ndash; 625513<br>
+            Tamil Nadu, India<br>
+            +91 93600 64278
+          </div>
+        </div>
+      </td>
+      <td class="addr-col to">
+        <div class="section-label">To</div>
+        <div class="deliver-box">
+          <div class="customer-name">{{ $order->customer_name }}</div>
+          @if($order->customer_phone)
+          <div class="customer-phone">{{ $order->customer_phone }}</div>
+          @endif
+          <div class="customer-address">
+            {{ $order->delivery_address }}<br>
+            @if($order->city){{ $order->city }}@endif@if($order->state), {{ $order->state }}@endif@if($order->postcode) &ndash; {{ $order->postcode }}@endif
+          </div>
+        </div>
+      </td>
+    </tr>
+  </table>
 
   {{-- Tracking --}}
   @if($order->tracking_number)
