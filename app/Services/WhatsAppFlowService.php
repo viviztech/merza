@@ -30,8 +30,11 @@ class WhatsAppFlowService
 
     // Free-text states handled by the structured checkout flow (not AI)
     private const CHECKOUT_TEXT_STATES = [
-        'checkout_name', 'checkout_address', 'checkout_citystate', 'awaiting_payment_ref',
+        'checkout_details', 'awaiting_payment_ref',
     ];
+
+    private const DETAILS_EXAMPLE = "_Ramesh Patel, 42 Main Street, Bodinayakanur, Tamil Nadu, 625513_";
+    private const DETAILS_PROMPT  = "Great, let's get your order ready! 📝\n\nReply with your *name, address, city, state and PIN code* in one message, like this:\n" . self::DETAILS_EXAMPLE;
 
     public function __construct(
         private readonly WhatsAppService $waService,
@@ -509,7 +512,7 @@ class WhatsAppFlowService
             $subtotal += $lineTotal;
             $text .= "• {$item['product_name']} – {$item['variant_name']} × {$item['qty']} = \u{20B9}" . number_format($lineTotal, 2) . "\n";
         }
-        $text .= "\n*Subtotal: \u{20B9}" . number_format($subtotal, 2) . "*\n_(Delivery fee calculated at checkout)_";
+        $text .= "\n*Subtotal: \u{20B9}" . number_format($subtotal, 2) . "*\n_(Courier charges calculated at checkout)_";
 
         $this->sendInteractive($contact->phone, [
             'type' => 'button',
@@ -541,89 +544,56 @@ class WhatsAppFlowService
             return;
         }
 
-        $this->updateSession($session, 'checkout_name', ['draft' => []]);
+        $this->updateSession($session, 'checkout_details', ['draft' => []]);
 
         $this->waService->sendTextMessage(
             $contact->phone,
-            "Great, let's get your order ready! 📝\n\nWhat's your *full name* for this order?"
+            self::DETAILS_PROMPT
         );
     }
 
     private function handleCheckoutText(Contact $contact, WhatsAppSession $session, string $body): void
     {
         match ($session->state) {
-            'checkout_name'        => $this->captureName($contact, $session, $body),
-            'checkout_address'     => $this->captureAddress($contact, $session, $body),
-            'checkout_citystate'   => $this->captureCityState($contact, $session, $body),
+            'checkout_details'     => $this->captureDeliveryDetails($contact, $session, $body),
             'awaiting_payment_ref' => $this->capturePaymentReference($contact, $session, $body),
             default                => $this->sendWelcome($contact, $session),
         };
     }
 
-    private function captureName(Contact $contact, WhatsAppSession $session, string $body): void
-    {
-        if (mb_strlen($body) < 2) {
-            $this->waService->sendTextMessage($contact->phone, "That doesn't look like a name — please reply with your *full name*.");
-            return;
-        }
-
-        $draft         = $session->data['draft'] ?? [];
-        $draft['name'] = $body;
-
-        $this->updateSession($session, 'checkout_address', ['draft' => $draft]);
-
-        $this->waService->sendTextMessage(
-            $contact->phone,
-            "Thanks, {$body}! 🙏\n\nWhat's your *delivery address* (house/street/area)?"
-        );
-    }
-
-    private function captureAddress(Contact $contact, WhatsAppSession $session, string $body): void
-    {
-        if (mb_strlen($body) < 5) {
-            $this->waService->sendTextMessage($contact->phone, "Please share the full delivery address (house/street/area).");
-            return;
-        }
-
-        $draft            = $session->data['draft'] ?? [];
-        $draft['address'] = $body;
-
-        $this->updateSession($session, 'checkout_citystate', ['draft' => $draft]);
-
-        $this->waService->sendTextMessage(
-            $contact->phone,
-            "Got it. ✅\n\nNow send your *city, state and PIN code* in one line, like this:\n_Bodinayakanur, Tamil Nadu, 625513_"
-        );
-    }
-
-    private function captureCityState(Contact $contact, WhatsAppSession $session, string $body): void
+    private function captureDeliveryDetails(Contact $contact, WhatsAppSession $session, string $body): void
     {
         if (! preg_match('/\b(\d{6})\b/', $body, $pinMatch)) {
-            $this->waService->sendTextMessage(
-                $contact->phone,
-                "I couldn't find a valid 6-digit PIN code. Please resend as:\n_Bodinayakanur, Tamil Nadu, 625513_"
-            );
+            $this->waService->sendTextMessage($contact->phone, "I couldn't find a valid 6-digit PIN code. Please resend as:\n" . self::DETAILS_EXAMPLE);
             return;
         }
 
         $postcode = $pinMatch[1];
         $rest     = trim(str_replace($postcode, '', $body), " ,\t\n\r\0\x0B");
-        $parts    = array_values(array_filter(array_map('trim', explode(',', $rest))));
+        $parts    = array_values(array_filter(array_map('trim', explode(',', $rest)), fn ($p) => $p !== ''));
 
-        if (count($parts) < 2) {
-            $this->waService->sendTextMessage(
-                $contact->phone,
-                "Please include city, state and PIN code, like this:\n_Bodinayakanur, Tamil Nadu, 625513_"
-            );
+        if (count($parts) < 4) {
+            $this->waService->sendTextMessage($contact->phone, "Please include your name, address, city, state and PIN code, like this:\n" . self::DETAILS_EXAMPLE);
             return;
         }
 
-        [$city, $state] = $parts;
+        $name    = array_shift($parts);
+        $state   = array_pop($parts);
+        $city    = array_pop($parts);
+        $address = implode(', ', $parts);
 
-        $draft             = $session->data['draft'] ?? [];
-        $draft['city']     = $city;
-        $draft['state']    = $state;
-        $draft['postcode'] = $postcode;
+        if (mb_strlen($name) < 2 || mb_strlen($address) < 5) {
+            $this->waService->sendTextMessage($contact->phone, "That doesn't quite look right. Please resend as:\n" . self::DETAILS_EXAMPLE);
+            return;
+        }
+
+        $draft = [
+            'name'     => $name,
+            'address'  => $address,
+            'city'     => $city,
+            'state'    => $state,
+            'postcode' => $postcode,
+        ];
 
         $cart     = $session->data['cart'] ?? [];
         $weightKg = array_sum(array_map(fn ($i) => ($i['weight_kg'] ?? 0) * $i['qty'], $cart));
@@ -649,7 +619,7 @@ class WhatsAppFlowService
             $text .= "• {$item['product_name']} – {$item['variant_name']} × {$item['qty']}\n";
         }
         $text .= "\nSubtotal: \u{20B9}" . number_format($subtotal, 2);
-        $text .= "\nDelivery: \u{20B9}" . number_format($delivery, 2);
+        $text .= "\nCourier Charges: \u{20B9}" . number_format($delivery, 2);
         $text .= "\n*Total: \u{20B9}" . number_format($total, 2) . "*";
         $text .= "\n\n📍 {$draft['name']}\n{$draft['address']}\n{$draft['city']}, {$draft['state']} - {$draft['postcode']}";
         $text .= "\n\nHow would you like to pay?";
@@ -720,7 +690,10 @@ class WhatsAppFlowService
 
         $this->waService->sendTextMessage(
             $contact->phone,
-            "🎉 *Order Confirmed!*\n\nOrder number: *{$order->order_number}*\nTotal: \u{20B9}" . number_format($total, 2) . " (Cash on Delivery)\n\nWe'll start preparing your fruits and confirm delivery shortly. Type *menu* anytime.\n\n— Merza Team 🥭"
+            "🎉 *Order Confirmed!*\n\nOrder number: *{$order->order_number}*\n\nSubtotal: \u{20B9}" . number_format($subtotal, 2)
+                . "\nCourier Charges: \u{20B9}" . number_format($delivery, 2)
+                . "\n*Total: \u{20B9}" . number_format($total, 2) . "* (Cash on Delivery)"
+                . "\n\nWe'll start preparing your fruits and confirm delivery shortly. Type *menu* anytime.\n\n— Merza Team 🥭"
         );
     }
 
