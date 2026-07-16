@@ -129,8 +129,7 @@ class WhatsAppFlowService
             $id === 'cart_checkout'         => $this->startCheckout($contact, $session),
             $id === 'cart_add_more'         => $this->sendCategories($contact, $session),
             $id === 'cart_clear'            => $this->clearCart($contact, $session),
-            $id === 'pay_cod'               => $this->completeOrder($contact, $session, 'cod'),
-            $id === 'pay_upi'               => $this->completeOrder($contact, $session, 'whatsapp'),
+            $id === 'pay_upi'               => $this->completeOrder($contact, $session),
             str_starts_with($id, 'cat_')     => $this->sendProducts($contact, $session, substr($id, 4)),
             str_starts_with($id, 'prod_')    => $this->sendProductDetail($contact, $session, (int) substr($id, 5)),
             str_starts_with($id, 'addcart_') => $this->addToCart($contact, $session, substr($id, 8)),
@@ -622,23 +621,18 @@ class WhatsAppFlowService
         $text .= "\nCourier Charges: \u{20B9}" . number_format($delivery, 2);
         $text .= "\n*Total: \u{20B9}" . number_format($total, 2) . "*";
         $text .= "\n\n📍 {$draft['name']}\n{$draft['address']}\n{$draft['city']}, {$draft['state']} - {$draft['postcode']}";
-        $text .= "\n\nHow would you like to pay?";
-
-        $buttons = [
-            ['type' => 'reply', 'reply' => ['id' => 'pay_cod', 'title' => '💵 Cash on Delivery']],
-        ];
-        if (! empty($this->settings->upi_id)) {
-            $buttons[] = ['type' => 'reply', 'reply' => ['id' => 'pay_upi', 'title' => '📱 Pay via UPI']];
-        }
+        $text .= "\n\nTap below to confirm and pay via UPI.";
 
         $this->sendInteractive($contact->phone, [
             'type'   => 'button',
             'body'   => ['text' => $text],
-            'action' => ['buttons' => $buttons],
+            'action' => ['buttons' => [
+                ['type' => 'reply', 'reply' => ['id' => 'pay_upi', 'title' => '📱 Confirm & Pay via UPI']],
+            ]],
         ], $contact);
     }
 
-    private function completeOrder(Contact $contact, WhatsAppSession $session, string $paymentMethod): void
+    private function completeOrder(Contact $contact, WhatsAppSession $session): void
     {
         $cart  = $session->data['cart'] ?? [];
         $draft = $session->data['draft'] ?? [];
@@ -664,7 +658,7 @@ class WhatsAppFlowService
             'subtotal'         => $subtotal,
             'delivery_fee'     => $delivery,
             'total'            => $total,
-            'payment_method'   => $paymentMethod,
+            'payment_method'   => 'whatsapp',
         ]);
 
         foreach ($cart as $item) {
@@ -680,25 +674,22 @@ class WhatsAppFlowService
             ]);
         }
 
-        if ($paymentMethod === 'whatsapp') {
-            $this->sendUpiQr($contact, $session, $order);
-            return;
-        }
-
-        // Cash on Delivery — order is complete
-        $this->updateSession($session, 'menu', ['cart' => [], 'draft' => []]);
-
-        $this->waService->sendTextMessage(
-            $contact->phone,
-            "🎉 *Order Confirmed!*\n\nOrder number: *{$order->order_number}*\n\nSubtotal: \u{20B9}" . number_format($subtotal, 2)
-                . "\nCourier Charges: \u{20B9}" . number_format($delivery, 2)
-                . "\n*Total: \u{20B9}" . number_format($total, 2) . "* (Cash on Delivery)"
-                . "\n\nWe'll start preparing your fruits and confirm delivery shortly. Type *menu* anytime.\n\n— Merza Team 🥭"
-        );
+        $this->sendUpiQr($contact, $session, $order);
     }
 
     private function sendUpiQr(Contact $contact, WhatsAppSession $session, Order $order): void
     {
+        // UPI not configured yet — capture the order, arrange payment manually instead of a broken QR.
+        if (empty($this->settings->upi_id)) {
+            $this->updateSession($session, 'menu', ['cart' => [], 'draft' => []]);
+
+            $this->waService->sendTextMessage(
+                $contact->phone,
+                "✅ *Order Received!*\n\nOrder number: *{$order->order_number}*\nTotal: \u{20B9}" . number_format((float) $order->total, 2) . "\n\nOur team will contact you shortly on WhatsApp to arrange payment. Type *menu* anytime.\n\n— Merza Team 🥭"
+            );
+            return;
+        }
+
         $qrService = new UpiQrService();
         $uri = $qrService->buildUpiUri(
             $this->settings->upi_id,
