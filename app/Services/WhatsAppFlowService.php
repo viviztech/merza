@@ -14,6 +14,10 @@ use App\Models\WhatsAppSession;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 
+// Meta rejects the whole interactive message if any reply-button title exceeds
+// 20 characters (list row titles are more lenient, up to 24) — a rejected send
+// returns null from WhatsAppService and the customer silently gets no reply,
+// so double-check length whenever a button title below is hardcoded or changed.
 class WhatsAppFlowService
 {
     // Keywords that restart the menu flow
@@ -627,7 +631,7 @@ class WhatsAppFlowService
             'type'   => 'button',
             'body'   => ['text' => $text],
             'action' => ['buttons' => [
-                ['type' => 'reply', 'reply' => ['id' => 'pay_upi', 'title' => '📱 Confirm & Pay via UPI']],
+                ['type' => 'reply', 'reply' => ['id' => 'pay_upi', 'title' => '📱 Confirm & Pay']],
             ]],
         ], $contact);
     }
