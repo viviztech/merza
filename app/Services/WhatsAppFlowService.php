@@ -590,19 +590,29 @@ class WhatsAppFlowService
             return;
         }
 
-        $draft = [
-            'name'     => $name,
-            'address'  => $address,
-            'city'     => $city,
-            'state'    => $state,
-            'postcode' => $postcode,
-        ];
-
         $cart     = $session->data['cart'] ?? [];
         $weightKg = array_sum(array_map(fn ($i) => ($i['weight_kg'] ?? 0) * $i['qty'], $cart));
 
-        $breakdown             = (new DeliveryCalculatorService())->calculate($city, $state, $weightKg);
-        $draft['delivery_fee'] = $breakdown['total_fee'] ?? 0;
+        $breakdown = (new DeliveryCalculatorService())->calculate($city, $state, $weightKg);
+
+        // No courier charge could be calculated for this area — do not let the
+        // customer proceed to payment/order confirmation without a real charge.
+        if (! $breakdown) {
+            $this->waService->sendTextMessage(
+                $contact->phone,
+                "😔 Sorry, we don't currently deliver to *{$city}, {$state}*.\n\nPlease double-check the spelling, or message us at +91 93600 64278 and our team will help arrange delivery.\n\nYou can resend your delivery details anytime, or type *menu* to go back."
+            );
+            return;
+        }
+
+        $draft = [
+            'name'         => $name,
+            'address'      => $address,
+            'city'         => $city,
+            'state'        => $state,
+            'postcode'     => $postcode,
+            'delivery_fee' => $breakdown['total_fee'],
+        ];
 
         $this->updateSession($session, 'checkout_confirm', ['draft' => $draft]);
 
@@ -641,13 +651,13 @@ class WhatsAppFlowService
         $cart  = $session->data['cart'] ?? [];
         $draft = $session->data['draft'] ?? [];
 
-        if (empty($cart) || empty($draft['name']) || empty($draft['address'])) {
+        if (empty($cart) || empty($draft['name']) || empty($draft['address']) || ! isset($draft['delivery_fee'])) {
             $this->sendWelcome($contact, $session);
             return;
         }
 
         $subtotal = array_sum(array_map(fn ($i) => $i['price'] * $i['qty'], $cart));
-        $delivery = $draft['delivery_fee'] ?? 0;
+        $delivery = $draft['delivery_fee'];
         $total    = $subtotal + $delivery;
 
         $order = Order::create([

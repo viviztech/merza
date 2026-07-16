@@ -81,9 +81,17 @@ class CheckoutForm extends Component
             return;
         }
 
-        $breakdown   = $this->getDeliveryBreakdown();
+        $breakdown = $this->getDeliveryBreakdown();
+
+        // No courier charge could be calculated for this area — do not let the
+        // customer proceed to payment/order confirmation without a real charge.
+        if (! $breakdown) {
+            $this->addError('city', "Sorry, we don't currently deliver to {$this->city}, {$this->state}. Please double-check the spelling, or contact us on WhatsApp for help arranging delivery.");
+            return;
+        }
+
         $subtotal    = $cart->subtotal();
-        $deliveryFee = $breakdown ? $breakdown['total_fee'] : 0;
+        $deliveryFee = $breakdown['total_fee'];
         $total       = $subtotal + $deliveryFee;
 
         $screenshotPath = $this->paymentScreenshot
