@@ -25,10 +25,10 @@
 
   /* Address section */
   .section-label { font-size: 9px; font-weight: 700; text-transform: uppercase; color: #888; letter-spacing: 1px; margin-bottom: 5px; }
-  .deliver-box { border: 2px solid #1a1a1a; border-radius: 6px; padding: 12px 14px; margin-bottom: 14px; }
-  .customer-name { font-size: 16px; font-weight: 700; color: #1a1a1a; margin-bottom: 4px; }
-  .customer-phone { font-size: 13px; color: #1B6B2F; font-weight: 600; margin-bottom: 6px; }
-  .customer-address { font-size: 11px; color: #333; line-height: 1.6; }
+  .deliver-box { border: 2px solid #1a1a1a; border-radius: 6px; padding: 16px 18px; margin-bottom: 14px; }
+  .customer-name { font-size: 20px; font-weight: 700; color: #1a1a1a; margin-bottom: 6px; }
+  .customer-phone { font-size: 15px; color: #1B6B2F; font-weight: 600; margin-bottom: 8px; }
+  .customer-address { font-size: 16px; color: #333; line-height: 1.7; }
 
   /* Tracking */
   .tracking-box { padding: 8px 12px; background: #fffbeb; border: 1px solid #fde68a; border-radius: 4px; margin-bottom: 14px; font-size: 11px; }
