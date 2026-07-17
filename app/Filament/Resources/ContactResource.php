@@ -205,6 +205,11 @@ class ContactResource extends Resource
                     ->color('success')
                     ->url(fn (Contact $r) => $r->whatsapp_url)
                     ->openUrlInNewTab(),
+                Action::make('createOrder')
+                    ->label('Create Order')
+                    ->icon('heroicon-o-shopping-bag')
+                    ->color('primary')
+                    ->url(fn (Contact $r) => OrderResource::getUrl('create', ['contact_id' => $r->id])),
                 Actions\ViewAction::make(),
                 Actions\EditAction::make(),
             ])

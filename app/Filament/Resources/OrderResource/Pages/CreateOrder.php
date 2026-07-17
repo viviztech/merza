@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\OrderResource\Pages;
 
 use App\Filament\Resources\OrderResource;
+use App\Models\Contact;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\ProductVariant;
@@ -14,6 +15,23 @@ use Illuminate\Database\Eloquent\Model;
 class CreateOrder extends CreateRecord
 {
     protected static string $resource = OrderResource::class;
+
+    public function mount(): void
+    {
+        parent::mount();
+
+        $contact = Contact::find(request()->query('contact_id'));
+
+        if ($contact) {
+            $this->form->fill([
+                'customer_name'  => $contact->name,
+                'customer_phone' => $contact->phone,
+                'customer_email' => $contact->email,
+                'city'           => $contact->city,
+                'state'          => $contact->state,
+            ]);
+        }
+    }
 
     public function form(\Filament\Schemas\Schema $schema): \Filament\Schemas\Schema
     {
@@ -122,6 +140,12 @@ class CreateOrder extends CreateRecord
         $data['channel']  = 'manual';
         $data['subtotal'] = $subtotal;
         $data['total']    = $subtotal + (float) ($data['delivery_fee'] ?? 0);
+
+        $contact = Contact::find(request()->query('contact_id'));
+        if ($contact) {
+            $data['contact_id'] = $contact->id;
+            $contact->update(['is_customer' => true]);
+        }
 
         $order = Order::create($data);
 

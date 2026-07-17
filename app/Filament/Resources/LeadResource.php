@@ -3,6 +3,7 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\LeadResource\Pages;
+use App\Filament\Resources\OrderResource;
 use App\Models\Contact;
 use App\Models\Lead;
 use App\Models\User;
@@ -160,6 +161,12 @@ class LeadResource extends Resource
                     ->color('success')
                     ->url(fn (Lead $r) => $r->contact?->whatsapp_url)
                     ->openUrlInNewTab(),
+                Action::make('createOrder')
+                    ->label('Create Order')
+                    ->icon('heroicon-o-shopping-bag')
+                    ->color('primary')
+                    ->visible(fn (Lead $r) => $r->stage === 'converted' && $r->contact_id)
+                    ->url(fn (Lead $r) => OrderResource::getUrl('create', ['contact_id' => $r->contact_id])),
                 Actions\EditAction::make(),
                 Actions\DeleteAction::make(),
             ])
