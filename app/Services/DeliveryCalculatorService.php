@@ -69,10 +69,12 @@ class DeliveryCalculatorService
             $packingWeight    = 0;
             $packingCharge    = $this->settings->packing_charge;
         } else {
-            // 5 kg and above: customer gets 1 kg free product (handled by business),
-            // packing material adds 1 kg to chargeable weight. No ₹50 packing charge.
-            $packingWeight    = $this->settings->packing_weight_kg; // 1 kg
-            $chargeableWeight = $totalWeightKg + $packingWeight;
+            // 5 kg and above: packing material adds packing_weight_kg to the chargeable
+            // weight, but free_weight_kg offsets it (both default to 1 kg, netting to no
+            // extra charge) — see the formula documented on the Delivery Settings page.
+            // No flat ₹50 packing charge at this tier.
+            $packingWeight    = $this->settings->packing_weight_kg;
+            $chargeableWeight = max(0, $totalWeightKg + $packingWeight - $this->settings->free_weight_kg);
             $packingCharge    = 0;
         }
 
