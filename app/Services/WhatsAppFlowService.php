@@ -132,6 +132,7 @@ class WhatsAppFlowService
             $id === 'cart_checkout'         => $this->startCheckout($contact, $session),
             $id === 'cart_add_more'         => $this->sendCategories($contact, $session),
             $id === 'cart_clear'            => $this->clearCart($contact, $session),
+            $id === 'checkout_continue'     => $this->askCheckoutName($contact, $session),
             $id === 'pay_upi'               => $this->completeOrder($contact, $session),
             $id === 'zone_other'            => $this->promptManualZone($contact, $session),
             str_starts_with($id, 'zone_')     => $this->selectZone($contact, $session, (int) substr($id, 5)),
@@ -664,11 +665,62 @@ class WhatsAppFlowService
             return;
         }
 
-        $this->updateSession($session, 'checkout_name', ['draft' => []]);
+        $this->sendCheckoutPricePreview($contact, $session);
+    }
+
+    private function sendCheckoutPricePreview(Contact $contact, WhatsAppSession $session): void
+    {
+        $zoneInfo = $session->data['zone'] ?? null;
+        $zone     = $zoneInfo ? DeliveryZone::find($zoneInfo['id']) : null;
+
+        if (! $zone) {
+            // Session lost its zone somehow — send them back through zone selection.
+            $this->waService->sendTextMessage($contact->phone, "Sorry, something went wrong with your delivery location. Let's pick it again.");
+            $this->sendZoneSelection($contact, $session);
+            return;
+        }
+
+        $cart     = $session->data['cart'] ?? [];
+        $weightKg = array_sum(array_map(fn ($i) => ($i['weight_kg'] ?? 0) * $i['qty'], $cart));
+
+        $breakdown = (new DeliveryCalculatorService())->calculateForZone($zone, $weightKg);
+
+        $draft = [
+            'delivery_fee' => $breakdown['total_fee'],
+            'zone_name'    => $zone->name,
+        ];
+
+        $this->updateSession($session, 'checkout_price_confirm', ['draft' => $draft]);
+
+        $subtotal = array_sum(array_map(fn ($i) => $i['price'] * $i['qty'], $cart));
+        $delivery = $breakdown['total_fee'];
+        $total    = $subtotal + $delivery;
+
+        $text = "*Order Total* 📋\n\n";
+        foreach ($cart as $item) {
+            $text .= "• {$item['product_name']} – {$item['variant_name']} × {$item['qty']}\n";
+        }
+        $text .= "\nSubtotal: \u{20B9}" . number_format($subtotal, 2);
+        $text .= "\nCourier Charges ({$zone->name}): \u{20B9}" . number_format($delivery, 2);
+        $text .= "\n*Total: \u{20B9}" . number_format($total, 2) . "*";
+        $text .= "\n\nShall we go ahead?";
+
+        $this->sendInteractive($contact->phone, [
+            'type'   => 'button',
+            'body'   => ['text' => $text],
+            'action' => ['buttons' => [
+                ['type' => 'reply', 'reply' => ['id' => 'checkout_continue', 'title' => '✅ Continue']],
+            ]],
+        ], $contact);
+    }
+
+    private function askCheckoutName(Contact $contact, WhatsAppSession $session): void
+    {
+        $this->updateSession($session, 'checkout_name');
 
         $this->waService->sendTextMessage(
             $contact->phone,
-            "Great, let's get your order ready! 📝\n\nWhat's your *name*?"
+            "Great! 📝\n\nWhat's your *name*?"
         );
     }
 
@@ -712,25 +764,8 @@ class WhatsAppFlowService
             return;
         }
 
-        $zoneInfo = $session->data['zone'] ?? null;
-        $zone     = $zoneInfo ? DeliveryZone::find($zoneInfo['id']) : null;
-
-        if (! $zone) {
-            // Session lost its zone somehow — send them back through zone selection.
-            $this->waService->sendTextMessage($contact->phone, "Sorry, something went wrong with your delivery location. Let's pick it again.");
-            $this->sendZoneSelection($contact, $session);
-            return;
-        }
-
-        $cart     = $session->data['cart'] ?? [];
-        $weightKg = array_sum(array_map(fn ($i) => ($i['weight_kg'] ?? 0) * $i['qty'], $cart));
-
-        $breakdown = (new DeliveryCalculatorService())->calculateForZone($zone, $weightKg);
-
-        $draft                 = $session->data['draft'] ?? [];
-        $draft['address']      = $address;
-        $draft['delivery_fee'] = $breakdown['total_fee'];
-        $draft['zone_name']    = $zone->name;
+        $draft            = $session->data['draft'] ?? [];
+        $draft['address'] = $address;
 
         $this->updateSession($session, 'checkout_confirm', ['draft' => $draft]);
 
