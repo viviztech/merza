@@ -59,6 +59,15 @@ class DeliveryCalculatorService
             return null;
         }
 
+        return $this->calculateForZone($zone, $totalWeightKg);
+    }
+
+    /**
+     * Calculate the delivery fee for an already-known zone (e.g. one the customer
+     * explicitly picked) and total order weight in kg.
+     */
+    public function calculateForZone(DeliveryZone $zone, float $totalWeightKg): array
+    {
         $ratePerKg    = $zone->rate_per_kg;
         $threshold    = $this->settings->free_weight_threshold_kg; // 5 kg
         $belowThreshold = $totalWeightKg < $threshold;

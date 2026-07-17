@@ -88,6 +88,43 @@ class WhatsAppService
     }
 
     /**
+     * Send a document message (e.g. a PDF invoice) via WhatsApp Cloud API.
+     * $documentUrl must be a publicly reachable HTTPS URL.
+     */
+    public function sendDocumentMessage(string $toPhone, string $documentUrl, string $filename, string $caption = ''): ?string
+    {
+        $phoneNumberId = $this->settings->whatsapp_phone_number_id;
+        $token         = $this->settings->whatsapp_access_token;
+
+        if (empty($phoneNumberId) || empty($token)) {
+            Log::warning('WhatsAppService: Missing phone_number_id or access_token');
+            return null;
+        }
+
+        $to = preg_replace('/[^0-9]/', '', $toPhone);
+
+        $response = Http::timeout(15)
+            ->withToken($token)
+            ->post(self::GRAPH_URL . "/{$phoneNumberId}/messages", [
+                'messaging_product' => 'whatsapp',
+                'to'                => $to,
+                'type'              => 'document',
+                'document'          => ['link' => $documentUrl, 'filename' => $filename, 'caption' => $caption],
+            ]);
+
+        if ($response->failed()) {
+            Log::error('WhatsAppService: Document send failed', [
+                'to'     => $to,
+                'status' => $response->status(),
+                'body'   => $response->body(),
+            ]);
+            return null;
+        }
+
+        return $response->json('messages.0.id');
+    }
+
+    /**
      * Send an interactive message (button or list) via WhatsApp Cloud API.
      */
     /**

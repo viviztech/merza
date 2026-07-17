@@ -6,11 +6,13 @@ use App\Models\BotSetting;
 use App\Models\Category;
 use App\Models\Contact;
 use App\Models\Conversation;
+use App\Models\DeliveryZone;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Models\WhatsAppSession;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 
@@ -34,11 +36,8 @@ class WhatsAppFlowService
 
     // Free-text states handled by the structured checkout flow (not AI)
     private const CHECKOUT_TEXT_STATES = [
-        'checkout_details', 'awaiting_payment_ref',
+        'zone_manual_entry', 'checkout_name', 'checkout_address', 'awaiting_payment_ref',
     ];
-
-    private const DETAILS_EXAMPLE = "_Ramesh Patel, 42 Main Street, Bodinayakanur, Tamil Nadu, 625513_";
-    private const DETAILS_PROMPT  = "Great, let's get your order ready! 📝\n\nReply with your *name, address, city, state and PIN code* in one message, like this:\n" . self::DETAILS_EXAMPLE;
 
     public function __construct(
         private readonly WhatsAppService $waService,
@@ -124,7 +123,7 @@ class WhatsAppFlowService
     private function handleButton(Contact $contact, WhatsAppSession $session, string $id): void
     {
         match (true) {
-            $id === 'order_fruits'          => $this->sendCategories($contact, $session),
+            $id === 'order_fruits'          => $this->startOrdering($contact, $session),
             $id === 'my_orders'             => $this->sendOrders($contact, $session),
             $id === 'talk_to_us'            => $this->sendTalkToUs($contact, $session),
             $id === 'back_menu'             => $this->sendWelcome($contact, $session),
@@ -134,6 +133,8 @@ class WhatsAppFlowService
             $id === 'cart_add_more'         => $this->sendCategories($contact, $session),
             $id === 'cart_clear'            => $this->clearCart($contact, $session),
             $id === 'pay_upi'               => $this->completeOrder($contact, $session),
+            $id === 'zone_other'            => $this->promptManualZone($contact, $session),
+            str_starts_with($id, 'zone_')     => $this->selectZone($contact, $session, (int) substr($id, 5)),
             str_starts_with($id, 'cat_')     => $this->sendProducts($contact, $session, substr($id, 4)),
             str_starts_with($id, 'prod_')    => $this->sendProductDetail($contact, $session, (int) substr($id, 5)),
             str_starts_with($id, 'addcart_') => $this->addToCart($contact, $session, substr($id, 8)),
@@ -164,6 +165,108 @@ class WhatsAppFlowService
                 ],
             ],
         ], $contact);
+    }
+
+    // ─── Delivery zone (asked first, so courier charges are known up front) ──
+
+    private function startOrdering(Contact $contact, WhatsAppSession $session): void
+    {
+        // Legacy fallback (commerce flow disabled) doesn't need a zone up front —
+        // it collects everything as free text and a human/AI handles pricing.
+        if (! $this->settings->wa_commerce_enabled) {
+            $this->sendCategories($contact, $session);
+            return;
+        }
+
+        // Zone already picked earlier this session — no need to ask again.
+        if (! empty($session->data['zone']) || ! empty($session->data['zone_manual'])) {
+            $this->sendCategories($contact, $session);
+            return;
+        }
+
+        $this->sendZoneSelection($contact, $session);
+    }
+
+    private function sendZoneSelection(Contact $contact, WhatsAppSession $session): void
+    {
+        $this->updateSession($session, 'selecting_zone');
+
+        $zones = DeliveryZone::active()->get();
+
+        $rows = $zones->map(fn (DeliveryZone $z) => [
+            'id'          => "zone_{$z->id}",
+            'title'       => $this->truncate($z->name, 24),
+            'description' => "\u{20B9}{$z->rate_per_kg}/kg courier charge",
+        ])->toArray();
+
+        $rows[] = [
+            'id'          => 'zone_other',
+            'title'       => 'Other Location',
+            'description' => 'Not listed above',
+        ];
+
+        $this->sendInteractive($contact->phone, [
+            'type' => 'list',
+            'body' => ['text' => "🚚 *Where are we delivering?*\n\nSelect your location so we can show accurate courier charges:"],
+            'action' => [
+                'button'   => 'Choose Location',
+                'sections' => [['title' => 'Delivery Zones', 'rows' => $rows]],
+            ],
+        ], $contact);
+    }
+
+    private function selectZone(Contact $contact, WhatsAppSession $session, int $zoneId): void
+    {
+        $zone = DeliveryZone::active()->find($zoneId);
+
+        if (! $zone) {
+            $this->sendZoneSelection($contact, $session);
+            return;
+        }
+
+        $this->updateSession($session, 'categories', [
+            'zone'        => ['id' => $zone->id, 'name' => $zone->name, 'rate_per_kg' => (float) $zone->rate_per_kg],
+            'zone_manual' => null,
+        ]);
+
+        $this->sendCategories($contact, $session);
+    }
+
+    private function promptManualZone(Contact $contact, WhatsAppSession $session): void
+    {
+        $this->updateSession($session, 'zone_manual_entry');
+
+        $this->waService->sendTextMessage(
+            $contact->phone,
+            "No problem! Please reply with your *city and state*, like this:\n_Salem, Tamil Nadu_"
+        );
+    }
+
+    private function captureManualZone(Contact $contact, WhatsAppSession $session, string $body): void
+    {
+        $parts = array_values(array_filter(array_map('trim', explode(',', $body)), fn ($p) => $p !== ''));
+
+        if (count($parts) < 2) {
+            $this->waService->sendTextMessage($contact->phone, "Please include both city and state, like this:\n_Salem, Tamil Nadu_");
+            return;
+        }
+
+        [$city, $state] = [$parts[0], $parts[1]];
+        $zone = (new DeliveryCalculatorService())->findZone($city, $state);
+
+        if (! $zone) {
+            $this->waService->sendTextMessage(
+                $contact->phone,
+                "😔 Sorry, we don't currently deliver to *{$city}, {$state}*.\n\nMessage us at +91 93600 64278 for help, or try a different location.\n\nType *menu* to go back."
+            );
+            return;
+        }
+
+        $this->updateSession($session, 'categories', [
+            'zone' => ['id' => $zone->id, 'name' => $zone->name, 'rate_per_kg' => (float) $zone->rate_per_kg],
+        ]);
+
+        $this->sendCategories($contact, $session);
     }
 
     private function sendCategories(Contact $contact, WhatsAppSession $session): void
@@ -515,7 +618,14 @@ class WhatsAppFlowService
             $subtotal += $lineTotal;
             $text .= "• {$item['product_name']} – {$item['variant_name']} × {$item['qty']} = \u{20B9}" . number_format($lineTotal, 2) . "\n";
         }
-        $text .= "\n*Subtotal: \u{20B9}" . number_format($subtotal, 2) . "*\n_(Courier charges calculated at checkout)_";
+        $text .= "\n*Subtotal: \u{20B9}" . number_format($subtotal, 2) . "*";
+
+        $zone = $session->data['zone'] ?? null;
+        if ($zone) {
+            $text .= "\n_Courier to {$zone['name']}: \u{20B9}{$zone['rate_per_kg']}/kg (added at checkout)_";
+        } else {
+            $text .= "\n_(Courier charges calculated at checkout)_";
+        }
 
         $this->sendInteractive($contact->phone, [
             'type' => 'button',
@@ -547,72 +657,80 @@ class WhatsAppFlowService
             return;
         }
 
-        $this->updateSession($session, 'checkout_details', ['draft' => []]);
+        // Shouldn't normally happen (zone is asked before browsing), but guard
+        // against a stale/older session reaching checkout with no zone at all.
+        if (empty($session->data['zone']) && empty($session->data['zone_manual'])) {
+            $this->sendZoneSelection($contact, $session);
+            return;
+        }
+
+        $this->updateSession($session, 'checkout_name', ['draft' => []]);
 
         $this->waService->sendTextMessage(
             $contact->phone,
-            self::DETAILS_PROMPT
+            "Great, let's get your order ready! 📝\n\nWhat's your *name*?"
         );
     }
 
     private function handleCheckoutText(Contact $contact, WhatsAppSession $session, string $body): void
     {
         match ($session->state) {
-            'checkout_details'     => $this->captureDeliveryDetails($contact, $session, $body),
+            'zone_manual_entry'    => $this->captureManualZone($contact, $session, $body),
+            'checkout_name'        => $this->captureCheckoutName($contact, $session, $body),
+            'checkout_address'     => $this->captureCheckoutAddress($contact, $session, $body),
             'awaiting_payment_ref' => $this->capturePaymentReference($contact, $session, $body),
             default                => $this->sendWelcome($contact, $session),
         };
     }
 
-    private function captureDeliveryDetails(Contact $contact, WhatsAppSession $session, string $body): void
+    private function captureCheckoutName(Contact $contact, WhatsAppSession $session, string $body): void
     {
-        if (! preg_match('/\b(\d{6})\b/', $body, $pinMatch)) {
-            $this->waService->sendTextMessage($contact->phone, "I couldn't find a valid 6-digit PIN code. Please resend as:\n" . self::DETAILS_EXAMPLE);
+        $name = trim($body);
+
+        if ($name === '') {
+            $this->waService->sendTextMessage($contact->phone, "Please reply with your name.");
             return;
         }
 
-        $postcode = $pinMatch[1];
-        $rest     = trim(str_replace($postcode, '', $body), " ,\t\n\r\0\x0B");
-        $parts    = array_values(array_filter(array_map('trim', explode(',', $rest)), fn ($p) => $p !== ''));
+        $draft         = $session->data['draft'] ?? [];
+        $draft['name'] = $name;
 
-        if (count($parts) < 4) {
-            $this->waService->sendTextMessage($contact->phone, "Please include your name, address, city, state and PIN code, like this:\n" . self::DETAILS_EXAMPLE);
+        $this->updateSession($session, 'checkout_address', ['draft' => $draft]);
+
+        $this->waService->sendTextMessage(
+            $contact->phone,
+            "Thanks, {$name}! 🙏\n\nWhat's your *delivery address*? (any format is fine — just make sure it's complete)"
+        );
+    }
+
+    private function captureCheckoutAddress(Contact $contact, WhatsAppSession $session, string $body): void
+    {
+        $address = trim($body);
+
+        if ($address === '') {
+            $this->waService->sendTextMessage($contact->phone, "Please reply with your delivery address.");
             return;
         }
 
-        $name    = array_shift($parts);
-        $state   = array_pop($parts);
-        $city    = array_pop($parts);
-        $address = implode(', ', $parts);
+        $zoneInfo = $session->data['zone'] ?? null;
+        $zone     = $zoneInfo ? DeliveryZone::find($zoneInfo['id']) : null;
 
-        if (mb_strlen($name) < 2 || mb_strlen($address) < 5) {
-            $this->waService->sendTextMessage($contact->phone, "That doesn't quite look right. Please resend as:\n" . self::DETAILS_EXAMPLE);
+        if (! $zone) {
+            // Session lost its zone somehow — send them back through zone selection.
+            $this->waService->sendTextMessage($contact->phone, "Sorry, something went wrong with your delivery location. Let's pick it again.");
+            $this->sendZoneSelection($contact, $session);
             return;
         }
 
         $cart     = $session->data['cart'] ?? [];
         $weightKg = array_sum(array_map(fn ($i) => ($i['weight_kg'] ?? 0) * $i['qty'], $cart));
 
-        $breakdown = (new DeliveryCalculatorService())->calculate($city, $state, $weightKg);
+        $breakdown = (new DeliveryCalculatorService())->calculateForZone($zone, $weightKg);
 
-        // No courier charge could be calculated for this area — do not let the
-        // customer proceed to payment/order confirmation without a real charge.
-        if (! $breakdown) {
-            $this->waService->sendTextMessage(
-                $contact->phone,
-                "😔 Sorry, we don't currently deliver to *{$city}, {$state}*.\n\nPlease double-check the spelling, or message us at +91 93600 64278 and our team will help arrange delivery.\n\nYou can resend your delivery details anytime, or type *menu* to go back."
-            );
-            return;
-        }
-
-        $draft = [
-            'name'         => $name,
-            'address'      => $address,
-            'city'         => $city,
-            'state'        => $state,
-            'postcode'     => $postcode,
-            'delivery_fee' => $breakdown['total_fee'],
-        ];
+        $draft                 = $session->data['draft'] ?? [];
+        $draft['address']      = $address;
+        $draft['delivery_fee'] = $breakdown['total_fee'];
+        $draft['zone_name']    = $zone->name;
 
         $this->updateSession($session, 'checkout_confirm', ['draft' => $draft]);
 
@@ -632,9 +750,9 @@ class WhatsAppFlowService
             $text .= "• {$item['product_name']} – {$item['variant_name']} × {$item['qty']}\n";
         }
         $text .= "\nSubtotal: \u{20B9}" . number_format($subtotal, 2);
-        $text .= "\nCourier Charges: \u{20B9}" . number_format($delivery, 2);
+        $text .= "\nCourier Charges ({$draft['zone_name']}): \u{20B9}" . number_format($delivery, 2);
         $text .= "\n*Total: \u{20B9}" . number_format($total, 2) . "*";
-        $text .= "\n\n📍 {$draft['name']}\n{$draft['address']}\n{$draft['city']}, {$draft['state']} - {$draft['postcode']}";
+        $text .= "\n\n📍 {$draft['name']}\n{$draft['address']}";
         $text .= "\n\nTap below to confirm and pay via UPI.";
 
         $this->sendInteractive($contact->phone, [
@@ -666,9 +784,7 @@ class WhatsAppFlowService
             'customer_name'    => $draft['name'],
             'customer_phone'   => $contact->phone,
             'delivery_address' => $draft['address'],
-            'city'             => $draft['city'] ?? null,
-            'postcode'         => $draft['postcode'] ?? null,
-            'state'            => $draft['state'] ?? null,
+            'state'            => $draft['zone_name'] ?? null,
             'subtotal'         => $subtotal,
             'delivery_fee'     => $delivery,
             'total'            => $total,
@@ -688,7 +804,40 @@ class WhatsAppFlowService
             ]);
         }
 
+        $this->sendInvoicePdf($contact, $order);
         $this->sendUpiQr($contact, $session, $order);
+    }
+
+    private function sendInvoicePdf(Contact $contact, Order $order): void
+    {
+        // Columns like status/payment_status are set by the DB's own default
+        // clause, not by the create() call, so the in-memory model won't have
+        // them until it's reloaded.
+        $order->refresh()->loadMissing('items');
+
+        $pdf = Pdf::loadView('pdf.invoice', ['order' => $order])->setPaper('a4', 'portrait');
+
+        $path = "whatsapp-invoices/{$order->order_number}.pdf";
+        $disk = Storage::disk(config('media-library.disk_name', 'r2'));
+        $disk->put($path, $pdf->output());
+        $documentUrl = $disk->url($path);
+
+        $caption = "🧾 Here's your invoice for order *{$order->order_number}*. Thank you for shopping with Merza! 🥭";
+
+        $waId = $this->waService->sendDocumentMessage($contact->phone, $documentUrl, "Invoice-{$order->order_number}.pdf", $caption);
+
+        if ($waId) {
+            Conversation::create([
+                'contact_id'    => $contact->id,
+                'channel'       => 'whatsapp',
+                'direction'     => 'outbound',
+                'message'       => "[Invoice PDF sent] {$caption}",
+                'wa_message_id' => $waId,
+                'is_bot'        => true,
+                'sent_at'       => now(),
+                'status'        => 'sent',
+            ]);
+        }
     }
 
     private function sendUpiQr(Contact $contact, WhatsAppSession $session, Order $order): void

@@ -109,7 +109,7 @@
           @endif
           <div class="customer-address">
             {{ $order->delivery_address }}<br>
-            @if($order->city){{ $order->city }}@endif@if($order->state), {{ $order->state }}@endif@if($order->postcode) &ndash; {{ $order->postcode }}@endif
+            {{ collect([$order->city, $order->state])->filter()->implode(', ') }}@if($order->postcode) &ndash; {{ $order->postcode }}@endif
           </div>
         </div>
       </td>

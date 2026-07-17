@@ -110,7 +110,7 @@
           @if($order->customer_phone) {{ $order->customer_phone }}<br>@endif
           @if($order->customer_email) {{ $order->customer_email }}<br>@endif
           {{ $order->delivery_address }}<br>
-          @if($order->city){{ $order->city }}@endif@if($order->state), {{ $order->state }}@endif@if($order->postcode) &ndash; {{ $order->postcode }}@endif
+          {{ collect([$order->city, $order->state])->filter()->implode(', ') }}@if($order->postcode) &ndash; {{ $order->postcode }}@endif
         </div>
       </td>
       <td class="info-box-right">
@@ -180,7 +180,7 @@
 
   {{-- Payment --}}
   <div class="payment-section">
-    <div class="payment-row">Payment Method: <span>{{ match($order->payment_method) { 'cod' => 'Cash on Delivery', 'bank_transfer' => 'Bank Transfer', 'whatsapp' => 'WhatsApp Payment', default => $order->payment_method } }}</span></div>
+    <div class="payment-row">Payment Method: <span>{{ match($order->payment_method) { 'cod' => 'Cash on Delivery', 'bank_transfer' => 'Bank Transfer', 'whatsapp' => 'UPI Payment', default => $order->payment_method } }}</span></div>
     <div class="payment-row">Payment Status: <span>{{ ucfirst($order->payment_status) }}</span></div>
   </div>
 
