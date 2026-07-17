@@ -72,6 +72,7 @@ Route::middleware('auth')->prefix('admin/orders')->name('admin.orders.')->group(
     Route::get('/{order}/delivery-slip', [OrderPdfController::class, 'deliverySlip']) ->name('delivery-slip');
 });
 Route::middleware('auth')->get('/admin/orders/daily-report', [OrderPdfController::class, 'dailyReport'])->name('admin.orders.daily-report');
+Route::middleware('auth')->get('/admin/orders/delivery-challans/confirmed', [OrderPdfController::class, 'confirmedDeliveryChallans'])->name('admin.orders.delivery-challans.confirmed');
 
 /*
 |--------------------------------------------------------------------------

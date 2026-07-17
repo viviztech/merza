@@ -33,6 +33,18 @@ class ListOrders extends ListRecords
                 ->action(function (array $data) {
                     $this->redirect(route('admin.orders.daily-report', ['date' => $data['date']]));
                 }),
+
+            Action::make('confirmedChallans')
+                ->label('Download Confirmed Challans')
+                ->icon('heroicon-o-document-arrow-down')
+                ->color('gray')
+                ->requiresConfirmation()
+                ->modalHeading('Download Confirmed Delivery Challans')
+                ->modalDescription(fn () => 'This will combine the delivery challans of all ' . Order::where('status', 'confirmed')->count() . ' confirmed order(s) into a single PDF.')
+                ->modalSubmitActionLabel('Download')
+                ->action(function () {
+                    $this->redirect(route('admin.orders.delivery-challans.confirmed'));
+                }),
         ];
     }
 

@@ -30,6 +30,24 @@ class OrderPdfController extends Controller
         return $pdf->download("DeliveryChallan-{$order->order_number}.pdf");
     }
 
+    public function confirmedDeliveryChallans(): Response
+    {
+        abort_if(! auth()->user()?->hasAnyRole(['Admin', 'Sales', 'Operations', 'Delivery']), 403);
+
+        $orders = Order::where('status', 'confirmed')
+            ->orderBy('created_at')
+            ->get();
+
+        if ($orders->isEmpty()) {
+            return response('No confirmed orders to include.', 200);
+        }
+
+        $pdf = Pdf::loadView('pdf.delivery-slip-bulk', compact('orders'))
+            ->setPaper('a5', 'portrait');
+
+        return $pdf->download('DeliveryChallans-Confirmed-' . now()->format('Y-m-d') . '.pdf');
+    }
+
     public function dailyReport(): Response
     {
         abort_if(! auth()->user()?->hasAnyRole(['Admin', 'Sales', 'Operations', 'Delivery']), 403);
