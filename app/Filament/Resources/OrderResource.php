@@ -372,7 +372,7 @@ class OrderResource extends Resource
 
                 Action::make('deliverySlip')
                     ->label('')
-                    ->tooltip('Download Delivery Slip')
+                    ->tooltip('Download Delivery Challan')
                     ->icon('heroicon-o-truck')
                     ->color('gray')
                     ->url(fn (Order $r) => route('admin.orders.delivery-slip', $r))

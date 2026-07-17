@@ -24,12 +24,12 @@ class OrderPdfController extends Controller
     {
         abort_if(! auth()->user()?->hasAnyRole(['Admin', 'Sales', 'Operations', 'Delivery']), 403);
 
-        $order->load('items');
+        $order->load('items.variant');
 
         $pdf = Pdf::loadView('pdf.delivery-slip', compact('order'))
-            ->setPaper('a5', 'portrait');
+            ->setPaper('a4', 'portrait');
 
-        return $pdf->download("DeliverySlip-{$order->order_number}.pdf");
+        return $pdf->download("DeliveryChallan-{$order->order_number}.pdf");
     }
 
     public function dailyReport(): Response
