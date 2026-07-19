@@ -6,7 +6,7 @@ use App\Filament\Resources\ProductResource\Pages;
 use App\Models\BotSetting;
 use App\Models\Category;
 use App\Models\Product;
-use App\Services\GroqService;
+use App\Services\AiProviderService;
 use Filament\Actions;
 use Filament\Actions\Action;
 use Filament\Forms;
@@ -65,12 +65,12 @@ class ProductResource extends Resource
                                         return;
                                     }
                                     $settings = BotSetting::current();
-                                    if (empty($settings->groq_api_key)) {
-                                        Notification::make()->title('Groq API key not configured in Bot Settings')->warning()->send();
+                                    $ai       = new AiProviderService($settings);
+                                    if (! $ai->isConfigured()) {
+                                        Notification::make()->title("{$ai->providerLabel()} API key not configured in Bot Settings")->warning()->send();
                                         return;
                                     }
-                                    $groq   = new GroqService($settings->groq_api_key, $settings->groq_model ?? 'llama-3.1-8b-instant');
-                                    $result = $groq->chat(
+                                    $result = $ai->chat(
                                         'You are a product copywriter for Merza Bodi, a premium tropical fruit brand from Tamil Nadu. Write concise, appealing product descriptions in English. No emojis or hashtags.',
                                         [['role' => 'user', 'content' => "Write a 1-sentence short product description for '{$name}'. Maximum 150 characters. Be specific about the fruit's quality or taste."]],
                                         80
@@ -97,12 +97,12 @@ class ProductResource extends Resource
                                         return;
                                     }
                                     $settings = BotSetting::current();
-                                    if (empty($settings->groq_api_key)) {
-                                        Notification::make()->title('Groq API key not configured in Bot Settings')->warning()->send();
+                                    $ai       = new AiProviderService($settings);
+                                    if (! $ai->isConfigured()) {
+                                        Notification::make()->title("{$ai->providerLabel()} API key not configured in Bot Settings")->warning()->send();
                                         return;
                                     }
-                                    $groq   = new GroqService($settings->groq_api_key, $settings->groq_model ?? 'llama-3.1-8b-instant');
-                                    $result = $groq->chat(
+                                    $result = $ai->chat(
                                         'You are a product copywriter for Merza Bodi, a premium tropical fruit brand from Tamil Nadu. Write engaging, informative product descriptions in English. Format response as clean HTML using only <p> tags (no headings, no divs, no markdown). No emojis.',
                                         [['role' => 'user', 'content' => "Write a 2-3 paragraph product description for '{$name}' (category: {$category}). Cover: what it is and its origin, taste and quality, usage and storage tips. Format as HTML <p> tags only."]],
                                         400
@@ -136,7 +136,15 @@ class ProductResource extends Resource
                                 ->required()
                                 ->numeric()
                                 ->prefix("\u{20B9}")
-                                ->minValue(0),
+                                ->minValue(0)
+                                ->helperText('Set to 0 for a fully free variant.'),
+
+                            Forms\Components\TextInput::make('free_gift_label')
+                                ->label('Free Gift (optional)')
+                                ->placeholder('e.g. Free 1kg Mango')
+                                ->helperText('Leave blank for no free gift on this size.')
+                                ->maxLength(100)
+                                ->columnSpan(2),
 
                             Forms\Components\TextInput::make('weight_value')
                                 ->label('Weight')

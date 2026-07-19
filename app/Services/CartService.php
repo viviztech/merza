@@ -27,15 +27,16 @@ class CartService
                 : (float) $variant->weight_value;
 
             $cart[$variantId] = [
-                'variant_id'     => $variantId,
-                'product_id'     => $variant->product_id,
-                'product_name'   => $variant->product->name,
-                'variant_name'   => $variant->name,
-                'sku'            => $variant->sku,
-                'price'          => (float) $variant->price,
-                'qty'            => $qty,
-                'thumbnail_url'  => $variant->product->thumbnail_url,
-                'weight_kg'      => $weightKg,
+                'variant_id'      => $variantId,
+                'product_id'      => $variant->product_id,
+                'product_name'    => $variant->product->name,
+                'variant_name'    => $variant->name,
+                'free_gift_label' => $variant->free_gift_label,
+                'sku'             => $variant->sku,
+                'price'           => (float) $variant->price,
+                'qty'             => $qty,
+                'thumbnail_url'   => $variant->product->thumbnail_url,
+                'weight_kg'       => $weightKg,
             ];
         }
 

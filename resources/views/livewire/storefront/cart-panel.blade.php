@@ -50,6 +50,9 @@
                             <h4 class="font-extrabold text-sm text-stone-800 truncate">{{ $item->product_name }}</h4>
                             <p class="text-xs text-stone-400 mt-0.5">{{ $item->variant_name }}</p>
                             <p class="text-amber-600 font-extrabold text-sm mt-1">₹{{ number_format($item->price, 2) }} each</p>
+                            @if($item->free_gift_label ?? null)
+                                <p class="text-xs font-bold text-emerald-700 mt-0.5">🎁 {{ $item->free_gift_label }}</p>
+                            @endif
                         </div>
 
                         {{-- Qty stepper --}}

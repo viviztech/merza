@@ -39,11 +39,13 @@
             @endif
 
             {{-- Trust mini-badges --}}
-            <div class="grid grid-cols-3 gap-2">
+            <div class="grid grid-cols-3 sm:grid-cols-5 gap-2">
                 @foreach([
-                    ['🌿', 'Farm Fresh'],
-                    ['📦', 'Careful Packing'],
-                    ['🚚', 'Fast Delivery'],
+                    ['🌿', 'Freshly Sourced'],
+                    ['📦', 'Carefully Packed'],
+                    ['✅', 'Quality Checked'],
+                    ['🔒', 'Secure Payment'],
+                    ['💬', 'Customer Support'],
                 ] as [$icon, $label])
                     <div class="bg-emerald-50 border border-emerald-100 rounded-2xl p-2 text-center">
                         <span class="text-lg">{{ $icon }}</span>
@@ -65,7 +67,7 @@
                 @endif
             </div>
 
-            <h1 class="text-2xl md:text-3xl font-extrabold text-stone-900 leading-tight mb-2">{{ $product->name }}</h1>
+            <h1 class="text-2xl md:text-3xl font-extrabold text-brand-green-dark leading-tight mb-2">{{ $product->name }}</h1>
 
             @if($product->short_description)
                 <p class="text-stone-500 text-sm mb-5 leading-relaxed">{{ $product->short_description }}</p>
@@ -80,6 +82,13 @@
                     </div>
                 @else
                     <span class="text-2xl font-extrabold text-amber-600">Select a size</span>
+                @endif
+
+                @if($selectedVariant?->free_gift_label)
+                    <div class="flex items-center gap-1.5 mt-2">
+                        <span class="text-sm">🎁</span>
+                        <span class="text-sm font-bold text-emerald-700">Free Gift: {{ $selectedVariant->free_gift_label }}</span>
+                    </div>
                 @endif
 
                 {{-- Stock status --}}
@@ -110,10 +119,13 @@
                     <div class="flex flex-wrap gap-2">
                         @foreach($product->activeVariants as $variant)
                             <button wire:click="$set('selectedVariantId', {{ $variant->id }})"
-                                    class="group px-4 py-2.5 rounded-2xl border-2 font-bold transition-all text-sm
+                                    class="group relative px-4 py-2.5 rounded-2xl border-2 font-bold transition-all text-sm
                                            {{ $selectedVariantId == $variant->id
                                               ? 'border-amber-500 bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-md shadow-amber-200'
                                               : 'border-stone-200 text-stone-700 hover:border-amber-300 hover:bg-amber-50' }}">
+                                @if($variant->free_gift_label)
+                                    <span class="absolute -top-2 -right-2 bg-emerald-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full shadow">🎁</span>
+                                @endif
                                 {{ $variant->name }}
                                 <span class="block text-xs font-medium {{ $selectedVariantId == $variant->id ? 'text-amber-100' : 'text-stone-400' }}">
                                     ₹{{ number_format($variant->price, 2) }}
@@ -146,7 +158,7 @@
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"/>
                         </svg>
-                        Add to Cart
+                        Order Now
                     </span>
                     <span wire:loading wire:target="addToCart" class="flex items-center gap-2">
                         <svg class="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
@@ -210,7 +222,7 @@
                     wire:loading.attr="disabled"
                     @if($selectedVariant?->stock_qty <= 0) disabled @endif
                     class="flex-1 bg-gradient-to-r from-amber-500 to-orange-500 text-white font-extrabold py-3 rounded-xl text-sm flex items-center justify-center gap-2 shadow disabled:opacity-50">
-                <span wire:loading.remove wire:target="addToCart">🛒 Add to Cart</span>
+                <span wire:loading.remove wire:target="addToCart">🛒 Order Now</span>
                 <span wire:loading wire:target="addToCart">Adding…</span>
             </button>
             <a href="https://wa.me/919360064278?text=Hi%2C+I+want+to+order+{{ urlencode($product->name) }}"

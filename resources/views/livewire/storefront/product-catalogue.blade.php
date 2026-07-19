@@ -105,24 +105,34 @@
                         <div class="p-3.5 flex-1 flex flex-col">
                             <p class="text-[10px] text-amber-600 font-bold uppercase tracking-wider mb-1">{{ $product->category?->name }}</p>
                             <h3 class="font-extrabold text-sm text-stone-800 leading-tight line-clamp-2 mb-1">{{ $product->name }}</h3>
-                            <p class="text-xs text-stone-400 line-clamp-1 flex-1 mb-2">{{ $product->short_description }}</p>
+                            <p class="text-xs text-stone-400 line-clamp-1 mb-2">{{ $product->short_description }}</p>
 
-                            <div class="flex items-center justify-between mt-auto">
-                                <div>
-                                    <span class="text-amber-600 font-extrabold text-base">
-                                        @if($product->activeVariants->isNotEmpty())
-                                            From ₹{{ number_format($product->activeVariants->min('price'), 2) }}
-                                        @else
-                                            ₹{{ number_format($product->base_price, 2) }}
-                                        @endif
-                                    </span>
-                                    @if($product->active_variants_count > 1)
-                                        <p class="text-[10px] text-stone-400">{{ $product->active_variants_count }} sizes</p>
+                            {{-- Weight & delivery badges --}}
+                            <div class="flex items-center gap-1.5 flex-wrap mb-2">
+                                @if($product->active_variants_count > 1)
+                                    <span class="text-[9px] font-bold text-stone-600 bg-stone-100 px-2 py-0.5 rounded-full">⚖️ {{ $product->active_variants_count }} sizes</span>
+                                @elseif($product->activeVariants->isNotEmpty())
+                                    @php $v = $product->activeVariants->first(); @endphp
+                                    <span class="text-[9px] font-bold text-stone-600 bg-stone-100 px-2 py-0.5 rounded-full">⚖️ {{ rtrim(rtrim(number_format($v->weight_value, 2), '0'), '.') }}{{ $v->weight_unit }}</span>
+                                @endif
+                                <span class="text-[9px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full">⚡ Fast Delivery</span>
+                                @if($product->activeVariants->contains(fn ($v) => filled($v->free_gift_label)))
+                                    <span class="text-[9px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full">🎁 Free Gift</span>
+                                @endif
+                            </div>
+
+                            <div class="flex items-center justify-between mt-auto gap-2">
+                                <span class="text-amber-600 font-extrabold text-base">
+                                    @if($product->activeVariants->isNotEmpty())
+                                        From ₹{{ number_format($product->activeVariants->min('price'), 2) }}
+                                    @else
+                                        ₹{{ number_format($product->base_price, 2) }}
                                     @endif
-                                </div>
-                                <span class="w-8 h-8 rounded-xl bg-amber-500 group-hover:bg-orange-500 flex items-center justify-center text-white shadow transition-colors">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/>
+                                </span>
+                                <span class="flex-shrink-0 inline-flex items-center gap-1 bg-amber-500 group-hover:bg-orange-500 text-white text-xs font-bold px-3 py-2 rounded-xl shadow transition-colors">
+                                    Order Now
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M17 8l4 4m0 0l-4 4m4-4H3"/>
                                     </svg>
                                 </span>
                             </div>

@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class ProductVariant extends Model
 {
     protected $fillable = [
-        'product_id', 'name', 'sku', 'price', 'weight_value', 'weight_unit',
+        'product_id', 'name', 'sku', 'price', 'free_gift_label', 'weight_value', 'weight_unit',
         'stock_qty', 'low_stock_threshold', 'is_active', 'sort_order',
     ];
 
