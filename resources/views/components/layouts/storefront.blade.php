@@ -56,12 +56,12 @@
     @livewireStyles
 </head>
 <style>[x-cloak]{display:none!important}</style>
-<body class="bg-amber-50 font-sans antialiased text-stone-900 pb-20 md:pb-0">
+<body class="bg-white font-sans antialiased text-stone-900 pb-20 md:pb-0">
 
     {{-- Announcement bar --}}
     <div x-data="{ show: !localStorage.getItem('merza_ann_v3') }" x-show="show" x-cloak
          class="relative bg-gradient-to-r from-amber-500 via-orange-500 to-amber-500 text-white text-center text-xs sm:text-sm py-2.5 px-10 font-semibold">
-        🥭 Kasa Lattu Mango Season is Here! &nbsp;·&nbsp; Free delivery on 10kg+ orders &nbsp;·&nbsp;
+        🥭 Kasa Lattu Mango Season is Here! &nbsp;·&nbsp;
         <a href="{{ route('products.index') }}" class="underline font-extrabold hover:text-amber-100 transition-colors">Shop Now →</a>
         <button @click="show=false; localStorage.setItem('merza_ann_v3','1')"
                 class="absolute right-3 top-1/2 -translate-y-1/2 text-white/70 hover:text-white transition-colors p-1">
@@ -94,14 +94,14 @@
                         <a href="{{ $href }}"
                            class="px-3.5 py-2 rounded-lg transition-colors
                                   {{ request()->routeIs($match)
-                                        ? 'text-amber-700 bg-amber-50'
-                                        : 'text-stone-600 hover:text-amber-700 hover:bg-amber-50' }}">
+                                        ? 'text-brand-green-dark bg-amber-50'
+                                        : 'text-stone-600 hover:text-brand-green-dark hover:bg-amber-50' }}">
                             {{ $label }}
                         </a>
                     @endforeach
                     <a href="https://wa.me/919360064278?text=Hi%2C+I+want+to+enquire+about+Merza!"
                        target="_blank"
-                       class="px-3.5 py-2 rounded-lg text-stone-600 hover:text-amber-700 hover:bg-amber-50 transition-colors">
+                       class="px-3.5 py-2 rounded-lg text-stone-600 hover:text-brand-green-dark hover:bg-amber-50 transition-colors">
                         Contact
                     </a>
                 </nav>
@@ -113,7 +113,7 @@
                     <div x-data="{ count: {{ session('cart_count', 0) }} }"
                          x-on:cart-updated.window="count = $event.detail?.count ?? count">
                         <a href="{{ route('cart.index') }}"
-                           class="relative flex items-center gap-1.5 px-3 py-2 rounded-xl border-2 border-amber-200 bg-amber-50 hover:bg-amber-100 hover:border-amber-300 text-amber-700 font-semibold text-sm transition-all">
+                           class="relative flex items-center gap-1.5 px-3 py-2 rounded-xl border-2 border-amber-200 bg-amber-50 hover:bg-amber-100 hover:border-amber-300 text-brand-green-dark font-semibold text-sm transition-all">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"/>
                             </svg>
@@ -140,7 +140,7 @@
                             <button @click="open = !open"
                                     class="flex items-center gap-2 pl-3 pr-2.5 py-2 rounded-xl text-sm font-semibold text-stone-700
                                            border border-stone-200 hover:border-amber-300 hover:bg-amber-50 transition-all">
-                                <span class="w-6 h-6 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center text-xs font-extrabold">
+                                <span class="w-6 h-6 rounded-full bg-amber-100 text-brand-green-dark flex items-center justify-center text-xs font-extrabold">
                                     {{ strtoupper(substr(auth()->user()->name, 0, 1)) }}
                                 </span>
                                 <span class="max-w-[90px] truncate">{{ auth()->user()->name }}</span>
@@ -166,17 +166,17 @@
                                 </div>
 
                                 <a href="{{ route('account.dashboard') }}"
-                                   class="flex items-center gap-2.5 px-4 py-2 text-sm text-stone-700 hover:bg-amber-50 hover:text-amber-700 transition-colors">
+                                   class="flex items-center gap-2.5 px-4 py-2 text-sm text-stone-700 hover:bg-amber-50 hover:text-brand-green-dark transition-colors">
                                     <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
                                     Dashboard
                                 </a>
                                 <a href="{{ route('account.orders') }}"
-                                   class="flex items-center gap-2.5 px-4 py-2 text-sm text-stone-700 hover:bg-amber-50 hover:text-amber-700 transition-colors">
+                                   class="flex items-center gap-2.5 px-4 py-2 text-sm text-stone-700 hover:bg-amber-50 hover:text-brand-green-dark transition-colors">
                                     <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
                                     My Orders
                                 </a>
                                 <a href="{{ route('account.profile') }}"
-                                   class="flex items-center gap-2.5 px-4 py-2 text-sm text-stone-700 hover:bg-amber-50 hover:text-amber-700 transition-colors">
+                                   class="flex items-center gap-2.5 px-4 py-2 text-sm text-stone-700 hover:bg-amber-50 hover:text-brand-green-dark transition-colors">
                                     <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
                                     Profile
                                 </a>
@@ -195,7 +195,7 @@
                         {{-- Guest: Sign In + Register (desktop) --}}
                         <div class="hidden md:flex items-center gap-2">
                             <a href="{{ route('login') }}"
-                               class="text-sm font-semibold text-stone-600 hover:text-amber-700 px-3.5 py-2 rounded-xl hover:bg-amber-50 transition-colors">
+                               class="text-sm font-semibold text-stone-600 hover:text-brand-green-dark px-3.5 py-2 rounded-xl hover:bg-amber-50 transition-colors">
                                 Sign In
                             </a>
                             <a href="{{ route('customer.register') }}"
@@ -207,7 +207,7 @@
 
                     {{-- Hamburger (mobile only) --}}
                     <button @click="mobileOpen = !mobileOpen"
-                            class="md:hidden flex items-center justify-center w-10 h-10 rounded-xl text-stone-600 hover:bg-amber-50 hover:text-amber-700 transition-colors">
+                            class="md:hidden flex items-center justify-center w-10 h-10 rounded-xl text-stone-600 hover:bg-amber-50 hover:text-brand-green-dark transition-colors">
                         <svg x-show="!mobileOpen" class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
                         </svg>
@@ -246,19 +246,19 @@
             <nav class="px-3 py-3 space-y-0.5">
                 <a href="{{ route('home') }}" @click="mobileOpen = false"
                    class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-colors
-                          {{ request()->routeIs('home') ? 'bg-amber-50 text-amber-700' : 'text-stone-700 hover:bg-stone-50' }}">
+                          {{ request()->routeIs('home') ? 'bg-amber-50 text-brand-green-dark' : 'text-stone-700 hover:bg-stone-50' }}">
                     <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
                     Home
                 </a>
                 <a href="{{ route('products.index') }}" @click="mobileOpen = false"
                    class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-colors
-                          {{ request()->routeIs('products.*') ? 'bg-amber-50 text-amber-700' : 'text-stone-700 hover:bg-stone-50' }}">
+                          {{ request()->routeIs('products.*') ? 'bg-amber-50 text-brand-green-dark' : 'text-stone-700 hover:bg-stone-50' }}">
                     <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/></svg>
                     Products
                 </a>
                 <a href="{{ route('about') }}" @click="mobileOpen = false"
                    class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-colors
-                          {{ request()->routeIs('about') ? 'bg-amber-50 text-amber-700' : 'text-stone-700 hover:bg-stone-50' }}">
+                          {{ request()->routeIs('about') ? 'bg-amber-50 text-brand-green-dark' : 'text-stone-700 hover:bg-stone-50' }}">
                     <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                     About
                 </a>
@@ -288,7 +288,7 @@
                     <div class="border-t border-stone-100 my-2"></div>
                     <div class="px-3 pb-2 grid grid-cols-2 gap-2">
                         <a href="{{ route('login') }}" @click="mobileOpen = false"
-                           class="flex items-center justify-center py-2.5 rounded-xl text-sm font-bold text-amber-700 border-2 border-amber-300 hover:bg-amber-50 transition-colors">
+                           class="flex items-center justify-center py-2.5 rounded-xl text-sm font-bold text-brand-green-dark border-2 border-amber-300 hover:bg-amber-50 transition-colors">
                             Sign In
                         </a>
                         <a href="{{ route('customer.register') }}" @click="mobileOpen = false"
@@ -330,19 +330,20 @@
                 <div>
                     <h4 class="font-bold text-sm text-emerald-100 mb-3 uppercase tracking-wider">Our Fruits</h4>
                     <ul class="space-y-2 text-sm">
-                        @foreach([
-                            ['🥭', 'Premium Mangoes'],
-                            ['🍌', 'Banana Red'],
-                            ['🍈', 'Vietnam Gold Jackfruit'],
-                            ['🍋', 'Freeze Dried'],
-                            ['🧃', 'Pulp & Puree'],
-                        ] as [$icon, $name])
+                        @php $footerProducts = \App\Models\Product::where('is_active', true)->orderBy('sort_order')->limit(5)->get(); @endphp
+                        @forelse($footerProducts as $fp)
                             <li>
-                                <a href="{{ route('products.index') }}" class="text-emerald-300 hover:text-amber-400 transition-colors flex items-center gap-2">
-                                    <span>{{ $icon }}</span> {{ $name }}
+                                <a href="{{ route('products.show', $fp->slug) }}" class="text-emerald-300 hover:text-amber-400 transition-colors flex items-center gap-2">
+                                    <span>🥭</span> {{ $fp->name }}
                                 </a>
                             </li>
-                        @endforeach
+                        @empty
+                            <li>
+                                <a href="{{ route('products.index') }}" class="text-emerald-300 hover:text-amber-400 transition-colors flex items-center gap-2">
+                                    <span>🥭</span> Shop All Fruits
+                                </a>
+                            </li>
+                        @endforelse
                     </ul>
                 </div>
 
@@ -398,7 +399,7 @@
             {{-- Home --}}
             <a href="{{ route('home') }}"
                class="flex flex-col items-center justify-center gap-0.5 transition-colors
-                      {{ request()->routeIs('home') ? 'text-amber-600' : 'text-stone-400' }}">
+                      {{ request()->routeIs('home') ? 'text-brand-green-dark' : 'text-stone-400' }}">
                 <svg class="w-5 h-5" fill="{{ request()->routeIs('home') ? 'currentColor' : 'none' }}" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
                 </svg>
@@ -408,7 +409,7 @@
             {{-- Products --}}
             <a href="{{ route('products.index') }}"
                class="flex flex-col items-center justify-center gap-0.5 transition-colors
-                      {{ request()->routeIs('products.*') ? 'text-amber-600' : 'text-stone-400' }}">
+                      {{ request()->routeIs('products.*') ? 'text-brand-green-dark' : 'text-stone-400' }}">
                 <svg class="w-5 h-5" fill="{{ request()->routeIs('products.*') ? 'currentColor' : 'none' }}" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/>
                 </svg>
@@ -428,14 +429,14 @@
                               class="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[9px] font-bold rounded-full w-4 h-4 flex items-center justify-center border border-white">
                         </span>
                     </span>
-                    <span class="text-[10px] font-semibold {{ request()->routeIs('cart.*') ? 'text-amber-600' : 'text-stone-400' }}">Cart</span>
+                    <span class="text-[10px] font-semibold {{ request()->routeIs('cart.*') ? 'text-brand-green-dark' : 'text-stone-400' }}">Cart</span>
                 </a>
             </div>
 
             {{-- Account / Sign In --}}
             @auth
                 <a href="{{ route('account.dashboard') }}"
-                   class="flex flex-col items-center justify-center gap-0.5 transition-colors {{ $isAccount ? 'text-amber-600' : 'text-stone-400' }}">
+                   class="flex flex-col items-center justify-center gap-0.5 transition-colors {{ $isAccount ? 'text-brand-green-dark' : 'text-stone-400' }}">
                     <span class="w-5 h-5 rounded-full {{ $isAccount ? 'bg-amber-500 text-white' : 'bg-stone-200 text-stone-600' }} flex items-center justify-center text-[10px] font-extrabold">
                         {{ strtoupper(substr(auth()->user()->name, 0, 1)) }}
                     </span>

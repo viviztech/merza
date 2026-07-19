@@ -45,6 +45,14 @@ class DeliveryZoneResource extends Resource
                     ->prefix('₹')
                     ->suffix('/ kg'),
 
+                Forms\Components\TextInput::make('eta_days')
+                    ->label('Expected Delivery (days)')
+                    ->numeric()
+                    ->default(2)
+                    ->required()
+                    ->suffix('day(s)')
+                    ->helperText('Shown to customers as "Expected Delivery" after checkout.'),
+
                 Forms\Components\TextInput::make('sort_order')
                     ->numeric()
                     ->default(0),
@@ -74,6 +82,9 @@ class DeliveryZoneResource extends Resource
                 Tables\Columns\TextColumn::make('rate_per_kg')
                     ->label('Rate / kg')
                     ->formatStateUsing(fn ($state) => "\u{20B9}" . number_format((float) $state, 0)),
+                Tables\Columns\TextColumn::make('eta_days')
+                    ->label('ETA')
+                    ->formatStateUsing(fn ($state) => $state . ' day' . ($state > 1 ? 's' : '')),
                 Tables\Columns\IconColumn::make('is_active')->boolean()->label('Active'),
                 Tables\Columns\TextColumn::make('sort_order')->label('Order')->sortable(),
             ])

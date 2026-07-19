@@ -19,19 +19,18 @@
                 </span>
 
                 <h1 class="text-4xl md:text-6xl font-extrabold leading-[1.1] text-white mb-4">
-                    Mukkani Fruits<br>
-                    <span class="text-gradient">Pure. Natural.</span><br>
-                    <span class="text-white">Farm Fresh.</span>
+                    Farm Fresh Fruits.<br>
+                    <span class="text-white">Direct to Your Door.</span>
                 </h1>
 
-                <p class="text-emerald-100 text-base md:text-lg mb-8 max-w-md mx-auto md:mx-0 leading-relaxed">
-                    Imam Pasand Mangoes, Red Bananas & Vietnam Early Gold Jackfruit — grown on our own farm with sustainable methods, free from artificial flavours and colours.
+                <p class="text-emerald-100 text-base md:text-lg mb-8 max-w-md mx-auto md:mx-0 leading-relaxed font-semibold">
+                    Naturally Ripened <span class="text-amber-300 mx-1">|</span> Fresh Quality <span class="text-amber-300 mx-1">|</span> Fast Delivery
                 </p>
 
                 <div class="flex flex-col sm:flex-row gap-3 justify-center md:justify-start">
                     <a href="{{ route('products.index') }}"
                        class="inline-flex items-center justify-center gap-2 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-white font-extrabold px-8 py-4 rounded-2xl transition-all text-base shadow-lg shadow-amber-900/30 hover:shadow-xl hover:-translate-y-0.5">
-                        Shop All Fruits
+                        Order Fresh Fruits
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M17 8l4 4m0 0l-4 4m4-4H3"/>
                         </svg>
@@ -45,7 +44,7 @@
                     </a>
                 </div>
 
-                {{-- Social proof bar --}}
+                {{-- Social proof bar (real numbers only) --}}
                 <div class="mt-8 flex flex-wrap items-center gap-5 justify-center md:justify-start">
                     <div class="flex items-center gap-2">
                         <div class="flex -space-x-2">
@@ -53,13 +52,11 @@
                                 <span class="w-8 h-8 rounded-full bg-amber-200 border-2 border-white flex items-center justify-center text-sm">{{ $face }}</span>
                             @endforeach
                         </div>
-                        <span class="text-xs text-emerald-200">500+ happy customers</span>
+                        <span class="text-xs text-emerald-200">3,500+ happy customers</span>
                     </div>
-                    <div class="flex items-center gap-1">
-                        @for($i = 0; $i < 5; $i++)
-                            <svg class="w-4 h-4 text-amber-400" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
-                        @endfor
-                        <span class="text-xs text-emerald-200 ml-1">4.9/5 rating</span>
+                    <div class="flex items-center gap-2">
+                        <span class="text-lg">🚚</span>
+                        <span class="text-xs text-emerald-200">2,000+ orders delivered</span>
                     </div>
                 </div>
             </div>
@@ -86,12 +83,35 @@
     </section>
 
     {{-- ═══════════════════════════════════════════════════════════ --}}
+    {{-- TRUST KEYWORDS --}}
+    {{-- ═══════════════════════════════════════════════════════════ --}}
+    <section class="py-8 bg-brand-green-light/40">
+        <div class="max-w-7xl mx-auto px-4">
+            <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-4">
+                @foreach([
+                    ['🌾', 'Direct From Farmers'],
+                    ['🌱', 'Naturally Ripened'],
+                    ['📦', 'Freshly Packed'],
+                    ['🚚', 'Fast Delivery'],
+                    ['🔒', 'Secure Payment'],
+                    ['⭐', 'Trusted Quality'],
+                ] as [$icon, $label])
+                    <div class="flex flex-col items-center text-center gap-1.5">
+                        <span class="text-2xl">{{ $icon }}</span>
+                        <span class="text-[11px] font-bold text-stone-700 leading-tight">{{ $label }}</span>
+                    </div>
+                @endforeach
+            </div>
+        </div>
+    </section>
+
+    {{-- ═══════════════════════════════════════════════════════════ --}}
     {{-- CATEGORIES --}}
     {{-- ═══════════════════════════════════════════════════════════ --}}
     <section class="max-w-7xl mx-auto px-4 py-12">
         <div class="text-center mb-8">
-            <span class="text-xs font-bold text-amber-600 uppercase tracking-widest">Mukkani & More</span>
-            <h2 class="text-3xl md:text-4xl font-extrabold text-stone-900 mt-1">Fruits & Farm Products</h2>
+            <span class="text-xs font-bold text-brand-green-dark uppercase tracking-widest">Mukkani & More</span>
+            <h2 class="text-3xl md:text-4xl font-extrabold text-brand-green-dark mt-1">Fruits & Farm Products</h2>
             <p class="text-stone-500 mt-2">Grown on our own fields in Bodinayakanur — 100% natural, zero artificial ingredients</p>
         </div>
 
@@ -125,21 +145,21 @@
                     'label' => 'Mukkani',
                 ],
                 [
+                    'emoji' => '🍉',
+                    'name'  => 'Seasonal Fruits',
+                    'sub'   => 'Whatever\'s in season, fresh',
+                    'from'  => '#fee2e2', 'to' => '#fecaca',
+                    'ring'  => 'ring-red-300',
+                    'badge' => 'bg-red-100 text-red-700',
+                    'label' => 'Mukkani',
+                ],
+                [
                     'emoji' => '🍊',
                     'name'  => 'Orange Squash',
                     'sub'   => 'No Artificial Colour',
                     'from'  => '#ffedd5', 'to' => '#fed7aa',
                     'ring'  => 'ring-orange-300',
                     'badge' => 'bg-orange-100 text-orange-700',
-                    'label' => 'Farm Made',
-                ],
-                [
-                    'emoji' => '🍦',
-                    'name'  => 'Banana Ice Cream',
-                    'sub'   => 'Creamy & Natural',
-                    'from'  => '#fce7f3', 'to' => '#fae8ff',
-                    'ring'  => 'ring-purple-300',
-                    'badge' => 'bg-purple-100 text-purple-700',
                     'label' => 'Farm Made',
                 ],
                 [
@@ -173,58 +193,14 @@
     </section>
 
     {{-- ═══════════════════════════════════════════════════════════ --}}
-    {{-- TRUST SIGNALS --}}
-    {{-- ═══════════════════════════════════════════════════════════ --}}
-    <section class="relative overflow-hidden py-12" style="background: linear-gradient(135deg, #fef3c7 0%, #fff7ed 50%, #ecfdf5 100%);">
-        <div class="max-w-7xl mx-auto px-4">
-            <div class="grid grid-cols-2 md:grid-cols-4 gap-6">
-                @foreach([
-                    [
-                        'icon' => '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>',
-                        'color' => 'from-amber-400 to-orange-500',
-                        'title' => 'Same-Day Delivery',
-                        'sub'   => 'Order before 12pm',
-                    ],
-                    [
-                        'icon' => '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"/>',
-                        'color' => 'from-emerald-400 to-emerald-600',
-                        'title' => '100% Farm Fresh',
-                        'sub'   => 'Direct from source',
-                    ],
-                    [
-                        'icon' => '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>',
-                        'color' => 'from-green-400 to-green-600',
-                        'title' => 'WhatsApp Support',
-                        'sub'   => 'Mon–Sat, 9am–6pm',
-                    ],
-                    [
-                        'icon' => '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>',
-                        'color' => 'from-orange-400 to-red-500',
-                        'title' => 'Bulk B2B Orders',
-                        'sub'   => 'Wholesale pricing',
-                    ],
-                ] as $trust)
-                    <div class="flex flex-col items-center text-center group">
-                        <div class="w-14 h-14 rounded-2xl bg-gradient-to-br {{ $trust['color'] }} text-white flex items-center justify-center mb-4 shadow-lg group-hover:scale-110 transition-transform duration-300">
-                            <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">{!! $trust['icon'] !!}</svg>
-                        </div>
-                        <h3 class="font-extrabold text-stone-800 text-sm mb-1">{{ $trust['title'] }}</h3>
-                        <p class="text-xs text-stone-500">{{ $trust['sub'] }}</p>
-                    </div>
-                @endforeach
-            </div>
-        </div>
-    </section>
-
-    {{-- ═══════════════════════════════════════════════════════════ --}}
-    {{-- FEATURED PRODUCTS --}}
+    {{-- FEATURED PRODUCTS / BEST SELLERS --}}
     {{-- ═══════════════════════════════════════════════════════════ --}}
     @if($featured->isNotEmpty())
     <section class="max-w-7xl mx-auto px-4 py-12">
         <div class="flex items-end justify-between mb-8">
             <div>
-                <span class="text-xs font-bold text-amber-600 uppercase tracking-widest">Editor's Pick</span>
-                <h2 class="text-3xl md:text-4xl font-extrabold text-stone-900 mt-1">Featured Fruits</h2>
+                <span class="text-xs font-bold text-brand-green-dark uppercase tracking-widest">Editor's Pick</span>
+                <h2 class="text-3xl md:text-4xl font-extrabold text-brand-green-dark mt-1">Best Sellers</h2>
             </div>
             <a href="{{ route('products.index') }}"
                class="hidden md:inline-flex items-center gap-1 text-sm font-bold text-amber-600 hover:text-amber-700 transition-colors">
@@ -270,7 +246,22 @@
                     <div class="p-4">
                         <p class="text-[10px] text-amber-600 font-bold uppercase tracking-wider mb-1">{{ $product->category?->name }}</p>
                         <h3 class="font-extrabold text-sm text-stone-800 leading-tight line-clamp-2 mb-2">{{ $product->name }}</h3>
-                        <div class="flex items-center justify-between">
+
+                        {{-- Weight & delivery badges --}}
+                        <div class="flex items-center gap-1.5 flex-wrap mb-2">
+                            @if($product->active_variants_count > 1)
+                                <span class="text-[9px] font-bold text-stone-600 bg-stone-100 px-2 py-0.5 rounded-full">⚖️ {{ $product->active_variants_count }} sizes</span>
+                            @elseif($product->activeVariants->isNotEmpty())
+                                @php $v = $product->activeVariants->first(); @endphp
+                                <span class="text-[9px] font-bold text-stone-600 bg-stone-100 px-2 py-0.5 rounded-full">⚖️ {{ rtrim(rtrim(number_format($v->weight_value, 2), '0'), '.') }}{{ $v->weight_unit }}</span>
+                            @endif
+                            <span class="text-[9px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full">⚡ Fast Delivery</span>
+                            @if($product->activeVariants->contains(fn ($v) => filled($v->free_gift_label)))
+                                <span class="text-[9px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full">🎁 Free Gift</span>
+                            @endif
+                        </div>
+
+                        <div class="flex items-center justify-between gap-2">
                             <span class="text-amber-600 font-extrabold text-base">
                                 @if($product->activeVariants->isNotEmpty())
                                     From ₹{{ number_format($product->activeVariants->min('price'), 2) }}
@@ -278,9 +269,10 @@
                                     ₹{{ number_format($product->base_price, 2) }}
                                 @endif
                             </span>
-                            <span class="w-8 h-8 rounded-xl bg-amber-500 flex items-center justify-center text-white shadow group-hover:bg-orange-500 transition-colors">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/>
+                            <span class="flex-shrink-0 inline-flex items-center gap-1 bg-amber-500 group-hover:bg-orange-500 text-white text-xs font-bold px-3 py-2 rounded-xl shadow transition-colors">
+                                Order Now
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M17 8l4 4m0 0l-4 4m4-4H3"/>
                                 </svg>
                             </span>
                         </div>
@@ -302,102 +294,146 @@
     @endif
 
     {{-- ═══════════════════════════════════════════════════════════ --}}
-    {{-- HOW IT WORKS --}}
+    {{-- WHY CUSTOMERS CHOOSE US --}}
     {{-- ═══════════════════════════════════════════════════════════ --}}
-    <section class="bg-white py-12">
+    <section class="py-12 bg-brand-green-light/40">
         <div class="max-w-7xl mx-auto px-4">
             <div class="text-center mb-10">
-                <span class="text-xs font-bold text-amber-600 uppercase tracking-widest">Simple & Easy</span>
-                <h2 class="text-3xl font-extrabold text-stone-900 mt-1">Order in 3 Steps</h2>
+                <span class="text-xs font-bold text-brand-green-dark uppercase tracking-widest">Why Merza</span>
+                <h2 class="text-3xl font-extrabold text-brand-green-dark mt-1">Why Customers Choose Us</h2>
             </div>
 
-            <div class="grid md:grid-cols-3 gap-8 relative">
-                {{-- connector line --}}
-                <div class="hidden md:block absolute top-8 left-1/4 right-1/4 h-0.5 bg-gradient-to-r from-amber-200 via-orange-300 to-emerald-300"></div>
-
+            <div class="grid grid-cols-2 md:grid-cols-5 gap-6 mb-10">
                 @foreach([
-                    ['num' => '01', 'emoji' => '🛍️', 'title' => 'Browse & Pick', 'desc' => 'Choose from our fresh selection of premium tropical fruits by category or search.', 'color' => 'from-amber-400 to-yellow-500'],
-                    ['num' => '02', 'emoji' => '📦', 'title' => 'Add to Cart', 'desc' => 'Select your variants, quantities, and checkout securely in minutes.', 'color' => 'from-orange-400 to-red-400'],
-                    ['num' => '03', 'emoji' => '🚚', 'title' => 'Fast Delivery', 'desc' => 'We pack with care and deliver fresh to your doorstep, same day available.', 'color' => 'from-emerald-400 to-green-500'],
-                ] as $step)
-                    <div class="flex flex-col items-center text-center relative z-10">
-                        <div class="w-16 h-16 rounded-2xl bg-gradient-to-br {{ $step['color'] }} text-white font-extrabold text-xl flex items-center justify-center shadow-lg mb-4">
-                            {{ $step['emoji'] }}
+                    ['🌿', 'Freshly Sourced'],
+                    ['📦', 'Carefully Packed'],
+                    ['✅', 'Quality Checked'],
+                    ['🔒', 'Secure Payment'],
+                    ['💬', 'Customer Support'],
+                ] as [$icon, $label])
+                    <div class="flex flex-col items-center text-center group">
+                        <div class="w-14 h-14 rounded-2xl bg-white text-2xl flex items-center justify-center mb-3 shadow-md group-hover:scale-110 transition-transform duration-300">
+                            {{ $icon }}
                         </div>
-                        <span class="text-xs font-bold text-stone-400 uppercase tracking-widest mb-1">Step {{ $step['num'] }}</span>
-                        <h3 class="font-extrabold text-lg text-stone-800 mb-2">{{ $step['title'] }}</h3>
-                        <p class="text-sm text-stone-500 max-w-xs">{{ $step['desc'] }}</p>
+                        <h3 class="font-extrabold text-stone-800 text-sm">{{ $label }}</h3>
                     </div>
                 @endforeach
+            </div>
+
+            {{-- Real stats --}}
+            <div class="flex flex-wrap items-center justify-center gap-8">
+                <div class="text-center">
+                    <p class="text-3xl font-extrabold text-emerald-700">3,500+</p>
+                    <p class="text-xs font-semibold text-stone-500 uppercase tracking-wide">Happy Customers</p>
+                </div>
+                <div class="text-center">
+                    <p class="text-3xl font-extrabold text-emerald-700">2,000+</p>
+                    <p class="text-xs font-semibold text-stone-500 uppercase tracking-wide">Orders Delivered</p>
+                </div>
             </div>
         </div>
     </section>
 
     {{-- ═══════════════════════════════════════════════════════════ --}}
-    {{-- TESTIMONIALS --}}
+    {{-- TESTIMONIALS (only real, admin-added reviews) --}}
     {{-- ═══════════════════════════════════════════════════════════ --}}
+    @if($testimonials->isNotEmpty())
     <section class="bg-white py-12">
         <div class="max-w-7xl mx-auto px-4">
             <div class="text-center mb-10">
-                <span class="text-xs font-bold text-amber-600 uppercase tracking-widest">Customer Love</span>
-                <h2 class="text-3xl font-extrabold text-stone-900 mt-1">What Our Customers Say</h2>
-                <div class="flex items-center justify-center gap-1 mt-3">
-                    @for($i=0;$i<5;$i++)<svg class="w-5 h-5 text-amber-400" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>@endfor
-                    <span class="text-sm font-bold text-stone-600 ml-2">4.9 / 5 from 500+ orders</span>
-                </div>
+                <span class="text-xs font-bold text-brand-green-dark uppercase tracking-widest">Customer Love</span>
+                <h2 class="text-3xl font-extrabold text-brand-green-dark mt-1">What Our Customers Say</h2>
             </div>
 
             <div class="grid md:grid-cols-3 gap-5">
-                @foreach([
-                    [
-                        'name'   => 'Priya S.',
-                        'loc'    => 'Chennai',
-                        'text'   => 'The Kasa Lattu Mangoes are unbelievably sweet! Ordered 10kg and the entire family finished it in 3 days. Will order every week during the season.',
-                        'rating' => 5,
-                        'emoji'  => '👩',
-                        'tag'    => 'Kasa Lattu Mango — 10kg',
-                    ],
-                    [
-                        'name'   => 'Rajan M.',
-                        'loc'    => 'Bengaluru',
-                        'text'   => 'Freshness is top-notch. Ordered from Bengaluru and the mangoes arrived perfectly packed. Courier charges are reasonable and delivery was on time.',
-                        'rating' => 5,
-                        'emoji'  => '👨',
-                        'tag'    => 'Kasa Lattu Mango — 5kg',
-                    ],
-                    [
-                        'name'   => 'Meena K.',
-                        'loc'    => 'Coimbatore',
-                        'text'   => 'Been ordering from Merza for 2 seasons now. The Vietnam Jackfruit is like nothing else — sweet, golden flesh. Customer support on WhatsApp is super responsive!',
-                        'rating' => 5,
-                        'emoji'  => '🧕',
-                        'tag'    => 'Vietnam Gold Jackfruit',
-                    ],
-                ] as $review)
+                @foreach($testimonials as $review)
                     <div class="bg-amber-50 border border-amber-100 rounded-3xl p-6 relative">
-                        {{-- Quote mark --}}
                         <div class="text-4xl text-amber-200 font-extrabold leading-none mb-2 select-none">"</div>
 
-                        <p class="text-stone-700 text-sm leading-relaxed mb-5">{{ $review['text'] }}</p>
+                        <p class="text-stone-700 text-sm leading-relaxed mb-5">{{ $review->quote }}</p>
 
-                        {{-- Stars --}}
                         <div class="flex items-center gap-0.5 mb-4">
-                            @for($i=0;$i<$review['rating'];$i++)
+                            @for($i=0;$i<$review->rating;$i++)
                                 <svg class="w-4 h-4 text-amber-400" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
                             @endfor
                         </div>
 
                         <div class="flex items-center gap-3">
-                            <span class="w-10 h-10 rounded-full bg-amber-200 flex items-center justify-center text-xl flex-shrink-0">{{ $review['emoji'] }}</span>
+                            <span class="w-10 h-10 rounded-full bg-amber-200 flex items-center justify-center text-xl flex-shrink-0">🙂</span>
                             <div>
-                                <p class="font-extrabold text-sm text-stone-800">{{ $review['name'] }}</p>
-                                <p class="text-xs text-stone-400">{{ $review['loc'] }}</p>
+                                <p class="font-extrabold text-sm text-stone-800">{{ $review->customer_name }}</p>
+                                @if($review->location)
+                                    <p class="text-xs text-stone-400">{{ $review->location }}</p>
+                                @endif
                             </div>
                         </div>
 
-                        {{-- Product tag --}}
-                        <span class="absolute top-5 right-5 text-[10px] font-bold bg-white border border-amber-200 text-amber-700 px-2 py-0.5 rounded-full">{{ $review['tag'] }}</span>
+                        @if($review->product_tag)
+                            <span class="absolute top-5 right-5 text-[10px] font-bold bg-white border border-amber-200 text-amber-700 px-2 py-0.5 rounded-full">{{ $review->product_tag }}</span>
+                        @endif
                     </div>
+                @endforeach
+            </div>
+        </div>
+    </section>
+    @endif
+
+    {{-- ═══════════════════════════════════════════════════════════ --}}
+    {{-- DELIVERY INFO --}}
+    {{-- ═══════════════════════════════════════════════════════════ --}}
+    @if($deliveryZones->isNotEmpty())
+    <section class="bg-white py-12">
+        <div class="max-w-7xl mx-auto px-4">
+            <div class="text-center mb-10">
+                <span class="text-xs font-bold text-brand-green-dark uppercase tracking-widest">Where We Deliver</span>
+                <h2 class="text-3xl font-extrabold text-brand-green-dark mt-1">Delivery Information</h2>
+            </div>
+
+            <div class="grid sm:grid-cols-2 md:grid-cols-3 gap-4">
+                @foreach($deliveryZones as $zone)
+                    <div class="bg-emerald-50 border border-emerald-100 rounded-2xl p-5 flex items-center justify-between">
+                        <div>
+                            <p class="font-extrabold text-sm text-stone-800">{{ $zone->name }}</p>
+                            <p class="text-xs text-stone-500 mt-0.5">₹{{ number_format($zone->rate_per_kg, 0) }}/kg</p>
+                        </div>
+                        <span class="text-xs font-bold text-emerald-700 bg-white px-2.5 py-1 rounded-full border border-emerald-200 flex-shrink-0">
+                            🚚 {{ $zone->eta_days ?? 2 }} day{{ ($zone->eta_days ?? 2) > 1 ? 's' : '' }}
+                        </span>
+                    </div>
+                @endforeach
+            </div>
+        </div>
+    </section>
+    @endif
+
+    {{-- ═══════════════════════════════════════════════════════════ --}}
+    {{-- FAQ --}}
+    {{-- ═══════════════════════════════════════════════════════════ --}}
+    <section class="bg-white py-12">
+        <div class="max-w-3xl mx-auto px-4">
+            <div class="text-center mb-10">
+                <span class="text-xs font-bold text-brand-green-dark uppercase tracking-widest">Got Questions?</span>
+                <h2 class="text-3xl font-extrabold text-brand-green-dark mt-1">Frequently Asked Questions</h2>
+            </div>
+
+            <div class="space-y-3">
+                @foreach([
+                    ['Which areas do you deliver to?', 'We deliver across Tamil Nadu and to select cities nationwide — see the Delivery Information section above for zones and rates, or message us on WhatsApp to check your area.'],
+                    ['What payment methods do you accept?', 'UPI (Google Pay, PhonePe, or any UPI app via QR code) and Cash on Delivery, where available. Card payments are coming soon.'],
+                    ['Are your fruits naturally ripened?', 'Yes — all our fruits are grown on our own farm in Bodinayakanur and naturally ripened, with no artificial ripening agents or added colours.'],
+                    ['Is there a minimum order or bulk pricing?', 'No minimum order for regular orders. For bulk or B2B orders, message us on WhatsApp for wholesale pricing.'],
+                    ['What if my fruits arrive damaged?', 'Message us on WhatsApp with a photo within 24 hours of delivery and we\'ll arrange a replacement or refund.'],
+                    ['How do I track my order?', 'We\'ll send updates and confirm delivery details on WhatsApp — you can also message us anytime with your order number.'],
+                ] as [$q, $a])
+                    <details class="group bg-amber-50 border border-amber-100 rounded-2xl p-5">
+                        <summary class="flex items-center justify-between cursor-pointer font-extrabold text-sm text-stone-800 list-none">
+                            {{ $q }}
+                            <svg class="w-4 h-4 text-amber-500 transition-transform group-open:rotate-45" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/>
+                            </svg>
+                        </summary>
+                        <p class="text-sm text-stone-600 mt-3 leading-relaxed">{{ $a }}</p>
+                    </details>
                 @endforeach
             </div>
         </div>

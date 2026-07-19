@@ -22,17 +22,11 @@
         <div class="grid md:grid-cols-2 gap-12 items-center">
             <div>
                 <span class="inline-block bg-amber-100 text-amber-700 text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider mb-3">Our Story</span>
-                <h2 class="text-3xl font-extrabold text-stone-900 mb-5 leading-tight">
+                <h2 class="text-3xl font-extrabold text-brand-green-dark mb-5 leading-tight">
                     From our fields to your table
                 </h2>
-                <p class="text-stone-600 leading-relaxed mb-4">
-                    We grow <strong class="text-stone-800">Imam Pasand mangoes</strong>, <strong class="text-stone-800">Red bananas</strong>, and <strong class="text-stone-800">Vietnam Early Gold jackfruit</strong> using sustainable agricultural methods that preserve nature and enhance flavour.
-                </p>
-                <p class="text-stone-600 leading-relaxed mb-4">
-                    From our farms to your table, we bring you not just fruits — but a healthy experience. Our products are <strong class="text-stone-800">100% real</strong>, free from artificial flavours and colours.
-                </p>
                 <p class="text-stone-600 leading-relaxed">
-                    Make the smart choice — go natural, go healthy. Try our farm-fresh fruits and homemade-style products today.
+                    We grow <strong class="text-stone-800">Imam Pasand mangoes</strong>, <strong class="text-stone-800">Red bananas</strong>, and <strong class="text-stone-800">Vietnam Early Gold jackfruit</strong> using sustainable methods, then bring them straight from our farm to your table — <strong class="text-stone-800">100% real</strong>, with no artificial flavours or colours.
                 </p>
             </div>
             <div class="grid grid-cols-2 gap-4">
@@ -57,7 +51,7 @@
         <div class="max-w-5xl mx-auto">
             <div class="text-center mb-10">
                 <span class="inline-block bg-emerald-100 text-emerald-700 text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider mb-3">Mukkani Fruits</span>
-                <h2 class="text-2xl font-extrabold text-stone-900 mb-2">The Three Sacred Fruits</h2>
+                <h2 class="text-2xl font-extrabold text-brand-green-dark mb-2">The Three Sacred Fruits</h2>
                 <p class="text-stone-500 text-sm max-w-xl mx-auto">In Tamil tradition, Mukkani (முக்கனி) means the three prized fruits — Mango, Banana, and Jackfruit. We grow all three on our farm.</p>
             </div>
             <div class="grid md:grid-cols-3 gap-6 mb-10">
@@ -98,7 +92,7 @@
     {{-- Values --}}
     <section class="max-w-5xl mx-auto px-4 py-16">
         <div class="text-center mb-10">
-            <h2 class="text-2xl font-extrabold text-stone-900 mb-2">What We Stand For</h2>
+            <h2 class="text-2xl font-extrabold text-brand-green-dark mb-2">What We Stand For</h2>
         </div>
         <div class="grid md:grid-cols-3 gap-6">
             @foreach([

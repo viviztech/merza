@@ -7,6 +7,12 @@
 
 @theme {
     --font-sans: 'Plus Jakarta Sans', 'Inter', ui-sans-serif, system-ui, sans-serif;
+
+    /* Brand palette — orange is reserved for buttons/CTAs only, green for
+       headings/highlights. See resources/views/storefront for usage. */
+    --color-brand-orange: #f97316;
+    --color-brand-green-dark: #14532d;
+    --color-brand-green-light: #dcfce7;
 }
 
 /* Safe area padding for mobile bottom nav */

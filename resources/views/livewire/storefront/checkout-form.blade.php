@@ -16,13 +16,20 @@
                 </span>
             </div>
 
-            <h1 class="text-3xl font-extrabold text-stone-900 mb-2">Order Placed! 🥭</h1>
+            <h1 class="text-3xl font-extrabold text-brand-green-dark mb-2">Order Placed! 🥭</h1>
             <p class="text-stone-500 mb-4">Your fresh fruits are being prepared.</p>
 
             <div class="bg-gradient-to-r from-amber-50 to-orange-50 border-2 border-amber-200 rounded-3xl p-5 mb-6">
                 <p class="text-xs text-amber-600 font-bold uppercase tracking-widest mb-1">Order Number</p>
                 <p class="text-3xl font-extrabold text-amber-600">{{ $orderNumber }}</p>
             </div>
+
+            @if($expectedDelivery)
+                <div class="inline-flex items-center gap-2 bg-emerald-50 border border-emerald-200 rounded-2xl px-5 py-3 mb-6">
+                    <span class="text-lg">🚚</span>
+                    <span class="text-sm font-bold text-emerald-700">Expected Delivery: {{ $expectedDelivery }}</span>
+                </div>
+            @endif
 
             <p class="text-stone-400 text-sm max-w-sm mx-auto mb-8 leading-relaxed">
                 We'll contact you on WhatsApp shortly to confirm your delivery details. Thank you for choosing Merza! 🌿
@@ -75,7 +82,7 @@
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
                 </svg>
             </div>
-            <h1 class="text-2xl font-extrabold text-stone-900">Checkout</h1>
+            <h1 class="text-2xl font-extrabold text-brand-green-dark">Checkout</h1>
         </div>
 
         @if($items->isEmpty())
@@ -109,6 +116,9 @@
                                     <div class="flex-1 min-w-0">
                                         <p class="text-xs font-extrabold text-stone-800 truncate">{{ $item->product_name }}</p>
                                         <p class="text-[10px] text-stone-400">{{ $item->variant_name }} × {{ $item->qty }}</p>
+                                        @if($item->free_gift_label ?? null)
+                                            <p class="text-[10px] font-bold text-emerald-700">🎁 {{ $item->free_gift_label }}</p>
+                                        @endif
                                     </div>
                                     <p class="text-sm font-extrabold text-amber-600 flex-shrink-0">₹{{ number_format($item->line_total, 2) }}</p>
                                 </div>
@@ -202,11 +212,6 @@
                                 </p>
                             </div>
 
-                            <div class="sm:col-span-2">
-                                <label class="block text-xs font-extrabold text-stone-600 mb-1.5 uppercase tracking-wide">Email <span class="font-normal text-stone-400 normal-case">(optional)</span></label>
-                                <input wire:model="customer_email" type="email" placeholder="email@example.com"
-                                       class="w-full border-2 border-stone-200 focus:border-amber-400 rounded-xl px-4 py-3 text-base focus:outline-none transition-colors bg-white placeholder-stone-300">
-                            </div>
                         </div>
                     </div>
 
@@ -226,83 +231,117 @@
                             </div>
 
                             <div>
-                                <label class="block text-xs font-extrabold text-stone-600 mb-1.5 uppercase tracking-wide">City *</label>
+                                <label class="block text-xs font-extrabold text-stone-600 mb-1.5 uppercase tracking-wide">Pincode *</label>
+                                <input wire:model.live="postcode" type="text" inputmode="numeric" maxlength="6" placeholder="625513"
+                                       class="w-full border-2 {{ $errors->has('postcode') || $errors->has('city') ? 'border-red-300 bg-red-50' : 'border-stone-200 focus:border-amber-400' }} rounded-xl px-4 py-3 text-base focus:outline-none transition-colors bg-white placeholder-stone-300">
+                                <div wire:loading wire:target="postcode" class="text-xs text-amber-500 mt-1">Looking up pincode…</div>
+                                @if($pincodeAutoFilled)
+                                    <p class="text-[11px] text-emerald-600 mt-1.5 font-medium">✓ District &amp; state detected automatically</p>
+                                @elseif($pincodeLookupFailed)
+                                    <p class="text-[11px] text-amber-600 mt-1.5">Couldn't auto-detect — please fill district &amp; state below.</p>
+                                @endif
+                                @error('postcode') <p class="text-red-500 text-xs mt-1 font-medium">{{ $message }}</p> @enderror
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-extrabold text-stone-600 mb-1.5 uppercase tracking-wide">Landmark <span class="font-normal text-stone-400 normal-case">(optional)</span></label>
+                                <input wire:model="landmark" type="text" placeholder="Near bus stand"
+                                       class="w-full border-2 border-stone-200 focus:border-amber-400 rounded-xl px-4 py-3 text-base focus:outline-none transition-colors bg-white placeholder-stone-300">
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-extrabold text-stone-600 mb-1.5 uppercase tracking-wide">District / City *</label>
                                 <input wire:model="city" type="text" placeholder="Bodinayakanur"
                                        class="w-full border-2 {{ $errors->has('city') ? 'border-red-300 bg-red-50' : 'border-stone-200 focus:border-amber-400' }} rounded-xl px-4 py-3 text-base focus:outline-none transition-colors bg-white placeholder-stone-300">
                                 @error('city') <p class="text-red-500 text-xs mt-1 font-medium">{{ $message }}</p> @enderror
                             </div>
 
                             <div>
-                                <label class="block text-xs font-extrabold text-stone-600 mb-1.5 uppercase tracking-wide">Postcode *</label>
-                                <input wire:model="postcode" type="text" placeholder="50000"
-                                       class="w-full border-2 {{ $errors->has('postcode') ? 'border-red-300 bg-red-50' : 'border-stone-200 focus:border-amber-400' }} rounded-xl px-4 py-3 text-base focus:outline-none transition-colors bg-white placeholder-stone-300">
-                                @error('postcode') <p class="text-red-500 text-xs mt-1 font-medium">{{ $message }}</p> @enderror
-                            </div>
-
-                            <div class="sm:col-span-2">
                                 <label class="block text-xs font-extrabold text-stone-600 mb-1.5 uppercase tracking-wide">State *</label>
-                                <select wire:model="state"
-                                        class="w-full border-2 {{ $errors->has('state') ? 'border-red-300 bg-red-50' : 'border-stone-200 focus:border-amber-400' }} rounded-xl px-4 py-3 text-base focus:outline-none transition-colors bg-white text-stone-700">
-                                    <option value="">Select your state…</option>
-                                    @foreach($states as $s)
-                                        <option value="{{ $s }}">{{ $s }}</option>
-                                    @endforeach
-                                </select>
+                                <input wire:model="state" type="text" placeholder="Tamil Nadu"
+                                       class="w-full border-2 {{ $errors->has('state') ? 'border-red-300 bg-red-50' : 'border-stone-200 focus:border-amber-400' }} rounded-xl px-4 py-3 text-base focus:outline-none transition-colors bg-white placeholder-stone-300">
                                 @error('state') <p class="text-red-500 text-xs mt-1 font-medium">{{ $message }}</p> @enderror
                             </div>
                         </div>
                     </div>
 
-                    {{-- Payment: UPI only (temporary until payment gateway is ready) --}}
+                    {{-- Payment --}}
                     <div class="bg-white rounded-3xl border border-amber-100 shadow-sm overflow-hidden">
                         <div class="bg-gradient-to-r from-amber-50 to-orange-50 border-b border-amber-100 px-5 py-4 flex items-center gap-2">
                             <span class="w-6 h-6 rounded-lg bg-amber-500 text-white flex items-center justify-center text-xs font-bold">3</span>
-                            <h2 class="font-extrabold text-stone-800">Pay via UPI</h2>
+                            <h2 class="font-extrabold text-stone-800">Payment Method</h2>
                         </div>
                         <div class="p-5 space-y-5">
-                            @if($qrDataUri)
-                                <div class="flex flex-col sm:flex-row items-center gap-5 bg-amber-50 rounded-2xl p-5">
-                                    <img src="{{ $qrDataUri }}" alt="UPI QR Code" class="w-40 h-40 rounded-xl border-2 border-white shadow-md flex-shrink-0">
-                                    <div class="text-center sm:text-left">
-                                        <p class="text-xs font-extrabold text-stone-500 uppercase tracking-wide mb-1">Scan &amp; pay with any UPI app</p>
-                                        <p class="text-2xl font-extrabold text-amber-600 mb-2">₹{{ number_format($total, 2) }}</p>
-                                        <p class="text-xs text-stone-500">Or pay manually to UPI ID:</p>
-                                        <p class="font-mono font-bold text-stone-800 bg-white rounded-lg px-3 py-1.5 inline-block mt-1 border border-amber-200">{{ $upiId }}</p>
+
+                            {{-- Method tiles --}}
+                            <div class="grid sm:grid-cols-3 gap-3">
+                                <button type="button" wire:click="$set('payment_method', 'upi')"
+                                        class="text-left p-4 rounded-2xl border-2 transition-all {{ $payment_method === 'upi' ? 'border-amber-500 bg-amber-50 shadow-sm' : 'border-stone-200 hover:border-amber-200' }}">
+                                    <p class="font-extrabold text-sm text-stone-800">UPI / GPay / PhonePe</p>
+                                    <p class="text-xs text-stone-400 mt-0.5">Scan &amp; pay with any UPI app</p>
+                                </button>
+
+                                <button type="button" wire:click="$set('payment_method', 'cod')"
+                                        class="text-left p-4 rounded-2xl border-2 transition-all {{ $payment_method === 'cod' ? 'border-amber-500 bg-amber-50 shadow-sm' : 'border-stone-200 hover:border-amber-200' }}">
+                                    <p class="font-extrabold text-sm text-stone-800">Cash on Delivery</p>
+                                    <p class="text-xs text-stone-400 mt-0.5">Pay when your order arrives</p>
+                                </button>
+
+                                <div class="text-left p-4 rounded-2xl border-2 border-stone-100 bg-stone-50 opacity-60 cursor-not-allowed">
+                                    <p class="font-extrabold text-sm text-stone-500">Card Payment</p>
+                                    <p class="text-xs text-stone-400 mt-0.5">Coming soon</p>
+                                </div>
+                            </div>
+
+                            @if($payment_method === 'upi')
+                                @if($qrDataUri)
+                                    <div class="flex flex-col sm:flex-row items-center gap-5 bg-amber-50 rounded-2xl p-5">
+                                        <img src="{{ $qrDataUri }}" alt="UPI QR Code" class="w-40 h-40 rounded-xl border-2 border-white shadow-md flex-shrink-0">
+                                        <div class="text-center sm:text-left">
+                                            <p class="text-xs font-extrabold text-stone-500 uppercase tracking-wide mb-1">Scan &amp; pay with any UPI app</p>
+                                            <p class="text-2xl font-extrabold text-amber-600 mb-2">₹{{ number_format($total, 2) }}</p>
+                                            <p class="text-xs text-stone-500">Or pay manually to UPI ID:</p>
+                                            <p class="font-mono font-bold text-stone-800 bg-white rounded-lg px-3 py-1.5 inline-block mt-1 border border-amber-200">{{ $upiId }}</p>
+                                        </div>
+                                    </div>
+                                @else
+                                    <div class="bg-amber-50 rounded-2xl p-5 text-sm text-stone-500">
+                                        UPI payment details are being set up. Please
+                                        <a href="https://wa.me/919360064278" target="_blank" class="text-amber-600 font-bold underline">message us on WhatsApp</a>
+                                        to complete payment for your order.
+                                    </div>
+                                @endif
+
+                                <p class="text-xs text-stone-400">
+                                    After paying, enter your UPI transaction ID <strong>or</strong> upload a payment screenshot below (at least one is required) — we'll verify and confirm your order shortly.
+                                </p>
+
+                                @error('payment_proof') <p class="bg-red-50 border border-red-200 text-red-600 text-sm px-4 py-3 rounded-2xl">{{ $message }}</p> @enderror
+
+                                <div class="grid sm:grid-cols-2 gap-4">
+                                    <div>
+                                        <label class="block text-xs font-extrabold text-stone-600 mb-1.5 uppercase tracking-wide">UPI Transaction ID</label>
+                                        <input wire:model="transaction_id" type="text" placeholder="e.g. 123456789012"
+                                               class="w-full border-2 border-stone-200 focus:border-amber-400 rounded-xl px-4 py-3 text-base focus:outline-none transition-colors bg-white placeholder-stone-300">
+                                        @error('transaction_id') <p class="text-red-500 text-xs mt-1 font-medium">{{ $message }}</p> @enderror
+                                    </div>
+
+                                    <div>
+                                        <label class="block text-xs font-extrabold text-stone-600 mb-1.5 uppercase tracking-wide">Payment Screenshot</label>
+                                        <input wire:model="paymentScreenshot" type="file" accept="image/*"
+                                               class="w-full border-2 border-stone-200 focus:border-amber-400 rounded-xl px-4 py-2.5 text-sm focus:outline-none transition-colors bg-white file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:bg-amber-100 file:text-amber-700 file:text-xs file:font-bold">
+                                        <div wire:loading wire:target="paymentScreenshot" class="text-xs text-amber-500 mt-1">Uploading…</div>
+                                        @if($paymentScreenshot)
+                                            <img src="{{ $paymentScreenshot->temporaryUrl() }}" class="mt-2 h-16 rounded-lg border border-amber-200">
+                                        @endif
+                                        @error('paymentScreenshot') <p class="text-red-500 text-xs mt-1 font-medium">{{ $message }}</p> @enderror
                                     </div>
                                 </div>
                             @else
-                                <div class="bg-amber-50 rounded-2xl p-5 text-sm text-stone-500">
-                                    UPI payment details are being set up. Please
-                                    <a href="https://wa.me/919360064278" target="_blank" class="text-amber-600 font-bold underline">message us on WhatsApp</a>
-                                    to complete payment for your order.
+                                <div class="bg-emerald-50 border border-emerald-100 rounded-2xl p-5 text-sm text-emerald-700">
+                                    💵 Pay ₹{{ number_format($total, 2) }} in cash to our delivery partner when your order arrives.
                                 </div>
                             @endif
-
-                            <p class="text-xs text-stone-400">
-                                After paying, enter your UPI transaction ID <strong>or</strong> upload a payment screenshot below (at least one is required) — we'll verify and confirm your order shortly.
-                            </p>
-
-                            @error('payment_proof') <p class="bg-red-50 border border-red-200 text-red-600 text-sm px-4 py-3 rounded-2xl">{{ $message }}</p> @enderror
-
-                            <div class="grid sm:grid-cols-2 gap-4">
-                                <div>
-                                    <label class="block text-xs font-extrabold text-stone-600 mb-1.5 uppercase tracking-wide">UPI Transaction ID</label>
-                                    <input wire:model="transaction_id" type="text" placeholder="e.g. 123456789012"
-                                           class="w-full border-2 border-stone-200 focus:border-amber-400 rounded-xl px-4 py-3 text-base focus:outline-none transition-colors bg-white placeholder-stone-300">
-                                    @error('transaction_id') <p class="text-red-500 text-xs mt-1 font-medium">{{ $message }}</p> @enderror
-                                </div>
-
-                                <div>
-                                    <label class="block text-xs font-extrabold text-stone-600 mb-1.5 uppercase tracking-wide">Payment Screenshot</label>
-                                    <input wire:model="paymentScreenshot" type="file" accept="image/*"
-                                           class="w-full border-2 border-stone-200 focus:border-amber-400 rounded-xl px-4 py-2.5 text-sm focus:outline-none transition-colors bg-white file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:bg-amber-100 file:text-amber-700 file:text-xs file:font-bold">
-                                    <div wire:loading wire:target="paymentScreenshot" class="text-xs text-amber-500 mt-1">Uploading…</div>
-                                    @if($paymentScreenshot)
-                                        <img src="{{ $paymentScreenshot->temporaryUrl() }}" class="mt-2 h-16 rounded-lg border border-amber-200">
-                                    @endif
-                                    @error('paymentScreenshot') <p class="text-red-500 text-xs mt-1 font-medium">{{ $message }}</p> @enderror
-                                </div>
-                            </div>
                         </div>
                     </div>
 
@@ -321,7 +360,11 @@
                             wire:loading.attr="disabled"
                             class="w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 disabled:opacity-60 text-white font-extrabold py-5 rounded-2xl transition-all text-base shadow-xl shadow-amber-200/60 hover:shadow-2xl hover:-translate-y-0.5">
                         <span wire:loading.remove wire:target="placeOrder" class="flex items-center justify-center gap-2">
-                            🛒 Place My Order
+                            @if($payment_method === 'upi')
+                                🔒 Pay Securely
+                            @else
+                                🛒 Confirm Order (Pay on Delivery)
+                            @endif
                         </span>
                         <span wire:loading wire:target="placeOrder" class="flex items-center justify-center gap-2">
                             <svg class="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">

@@ -44,4 +44,10 @@ return [
         'api_key' => env('ANTHROPIC_API_KEY'),
     ],
 
+    'sabpaisa' => [
+        'client_code' => env('SABPAISA_CLIENT_CODE'),
+        'auth_key'    => env('SABPAISA_AUTH_KEY'),
+        'auth_iv'     => env('SABPAISA_AUTH_IV'),
+    ],
+
 ];

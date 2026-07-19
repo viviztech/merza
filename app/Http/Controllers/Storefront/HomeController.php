@@ -3,7 +3,9 @@
 namespace App\Http\Controllers\Storefront;
 
 use App\Http\Controllers\Controller;
+use App\Models\DeliveryZone;
 use App\Models\Product;
+use App\Models\Testimonial;
 use Illuminate\View\View;
 
 class HomeController extends Controller
@@ -16,6 +18,9 @@ class HomeController extends Controller
             ->limit(4)
             ->get();
 
-        return view('storefront.home', compact('featured'));
+        $testimonials = Testimonial::active()->limit(6)->get();
+        $deliveryZones = DeliveryZone::active()->get();
+
+        return view('storefront.home', compact('featured', 'testimonials', 'deliveryZones'));
     }
 }

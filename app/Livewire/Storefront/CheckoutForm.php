@@ -3,10 +3,12 @@
 namespace App\Livewire\Storefront;
 
 use App\Models\BotSetting;
+use App\Models\DeliveryZone;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Services\CartService;
 use App\Services\DeliveryCalculatorService;
+use App\Services\PincodeService;
 use App\Services\UpiQrService;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
@@ -21,55 +23,90 @@ class CheckoutForm extends Component
 
     public string $customer_name    = '';
     public string $customer_phone   = '';
-    public string $customer_email   = '';
     public string $delivery_address = '';
-    public string $city             = '';
     public string $postcode         = '';
+    public string $city             = '';
     public string $state            = '';
+    public string $landmark         = '';
+    public bool   $pincodeAutoFilled = false;
+    public bool   $pincodeLookupFailed = false;
+
+    public string $payment_method   = 'upi';
     public string $transaction_id   = '';
     public $paymentScreenshot       = null;
     public string $notes            = '';
 
-    public bool   $orderPlaced  = false;
-    public string $orderNumber  = '';
+    public bool   $orderPlaced        = false;
+    public string $orderNumber        = '';
+    public ?string $expectedDelivery  = null;
 
     protected function rules(): array
     {
         return [
             'customer_name'      => 'required|string|max:120',
             'customer_phone'     => 'required|string|max:20',
-            'customer_email'     => 'nullable|email|max:150',
             'delivery_address'   => 'required|string|max:500',
+            'postcode'           => 'required|digits:6',
             'city'               => 'required|string|max:80',
-            'postcode'           => 'required|string|max:10',
             'state'              => 'required|string|max:80',
+            'landmark'           => 'nullable|string|max:150',
+            'payment_method'     => 'required|in:upi,cod',
             'transaction_id'     => 'nullable|string|max:100',
             'paymentScreenshot'  => 'nullable|image|max:5120',
             'notes'              => 'nullable|string|max:500',
         ];
     }
 
-    public function updatedCity(): void {}
-    public function updatedState(): void {}
+    public function updatedPostcode(): void
+    {
+        $this->pincodeAutoFilled   = false;
+        $this->pincodeLookupFailed = false;
 
-    private function getDeliveryBreakdown(): ?array
+        if (! preg_match('/^\d{6}$/', $this->postcode)) {
+            return;
+        }
+
+        $result = (new PincodeService())->lookup($this->postcode);
+
+        if (! $result || empty($result['district']) || empty($result['state'])) {
+            $this->pincodeLookupFailed = true;
+            return;
+        }
+
+        $this->city              = $result['district'];
+        $this->state             = $result['state'];
+        $this->pincodeAutoFilled = true;
+    }
+
+    private function resolveZone(): ?DeliveryZone
     {
         if (empty(trim($this->city)) && empty(trim($this->state))) {
             return null;
         }
 
-        $cart        = app(CartService::class);
-        $weightKg    = $cart->totalWeightKg();
-        $calculator  = new DeliveryCalculatorService();
+        return (new DeliveryCalculatorService())->findZone($this->city, $this->state);
+    }
 
-        return $calculator->calculate($this->city, $this->state, $weightKg);
+    private function getDeliveryBreakdown(): ?array
+    {
+        $zone = $this->resolveZone();
+
+        if (! $zone) {
+            return null;
+        }
+
+        $cart       = app(CartService::class);
+        $weightKg   = $cart->totalWeightKg();
+        $calculator = new DeliveryCalculatorService();
+
+        return $calculator->calculateForZone($zone, $weightKg);
     }
 
     public function placeOrder(): void
     {
         $this->validate();
 
-        if (empty(trim($this->transaction_id)) && ! $this->paymentScreenshot) {
+        if ($this->payment_method === 'upi' && empty(trim($this->transaction_id)) && ! $this->paymentScreenshot) {
             $this->addError('payment_proof', 'Please enter your UPI transaction ID or upload a payment screenshot.');
             return;
         }
@@ -81,12 +118,13 @@ class CheckoutForm extends Component
             return;
         }
 
-        $breakdown = $this->getDeliveryBreakdown();
+        $zone      = $this->resolveZone();
+        $breakdown = $zone ? (new DeliveryCalculatorService())->calculateForZone($zone, $cart->totalWeightKg()) : null;
 
         // No courier charge could be calculated for this area — do not let the
         // customer proceed to payment/order confirmation without a real charge.
         if (! $breakdown) {
-            $this->addError('city', "Sorry, we don't currently deliver to {$this->city}, {$this->state}. Please double-check the spelling, or contact us on WhatsApp for help arranging delivery.");
+            $this->addError('city', "Sorry, we don't currently deliver to {$this->city}, {$this->state}. Please double-check the pincode, or contact us on WhatsApp for help arranging delivery.");
             return;
         }
 
@@ -103,15 +141,15 @@ class CheckoutForm extends Component
             'user_id'                  => auth()->id(),
             'customer_name'            => $this->customer_name,
             'customer_phone'           => $this->customer_phone,
-            'customer_email'           => $this->customer_email ?: null,
             'delivery_address'         => $this->delivery_address,
             'city'                     => $this->city,
             'postcode'                 => $this->postcode,
             'state'                    => $this->state,
+            'landmark'                 => $this->landmark ?: null,
             'subtotal'                 => $subtotal,
             'delivery_fee'             => $deliveryFee,
             'total'                    => $total,
-            'payment_method'           => 'whatsapp',
+            'payment_method'           => $this->payment_method,
             'payment_reference'        => $this->transaction_id ?: null,
             'payment_screenshot_path'  => $screenshotPath,
             'notes'                    => $this->notes ?: null,
@@ -123,6 +161,7 @@ class CheckoutForm extends Component
                 'product_variant_id' => $item->variant_id,
                 'product_name'       => $item->product_name,
                 'variant_name'       => $item->variant_name,
+                'free_gift_label'    => $item->free_gift_label ?? null,
                 'sku'                => $item->sku,
                 'quantity'           => $item->qty,
                 'unit_price'         => $item->price,
@@ -132,8 +171,9 @@ class CheckoutForm extends Component
 
         $cart->clear();
 
-        $this->orderPlaced = true;
-        $this->orderNumber = $order->order_number;
+        $this->orderPlaced       = true;
+        $this->orderNumber       = $order->order_number;
+        $this->expectedDelivery  = now()->addDays($zone->eta_days ?? 2)->format('D, d M Y');
     }
 
     public function render()
@@ -158,18 +198,7 @@ class CheckoutForm extends Component
             $qrDataUri = 'data:image/png;base64,' . base64_encode($qrService->generatePng($uri));
         }
 
-        $states = [
-            'Andhra Pradesh', 'Arunachal Pradesh', 'Assam', 'Bihar',
-            'Chhattisgarh', 'Goa', 'Gujarat', 'Haryana', 'Himachal Pradesh',
-            'Jharkhand', 'Karnataka', 'Kerala', 'Madhya Pradesh', 'Maharashtra',
-            'Manipur', 'Meghalaya', 'Mizoram', 'Nagaland', 'Odisha', 'Punjab',
-            'Rajasthan', 'Sikkim', 'Tamil Nadu', 'Telangana', 'Tripura',
-            'Uttar Pradesh', 'Uttarakhand', 'West Bengal',
-            'Andaman and Nicobar Islands', 'Chandigarh', 'Dadra and Nagar Haveli and Daman and Diu',
-            'Delhi', 'Jammu and Kashmir', 'Ladakh', 'Lakshadweep', 'Puducherry',
-        ];
-
         return view('livewire.storefront.checkout-form',
-            compact('items', 'subtotal', 'weightKg', 'breakdown', 'deliveryFee', 'total', 'states', 'upiId', 'upiPayee', 'qrDataUri'));
+            compact('items', 'subtotal', 'weightKg', 'breakdown', 'deliveryFee', 'total', 'upiId', 'upiPayee', 'qrDataUri'));
     }
 }
