@@ -8,7 +8,8 @@ use App\Models\BotSetting;
 use App\Models\Contact;
 use App\Models\Conversation;
 use App\Models\Order;
-use App\Services\GroqService;
+use App\Models\ProductVariant;
+use App\Services\AiProviderService;
 use Filament\Actions;
 use Filament\Actions\Action;
 use Filament\Forms;
@@ -60,8 +61,9 @@ class OrderResource extends Resource
                 Forms\Components\Select::make('payment_method')
                     ->options([
                         'cod'           => 'Cash on Delivery',
+                        'upi'           => 'UPI Payment',
                         'bank_transfer' => 'Bank Transfer',
-                        'whatsapp'      => 'UPI Payment',
+                        'whatsapp'      => 'WhatsApp Order',
                     ])
                     ->required(),
 
@@ -84,10 +86,40 @@ class OrderResource extends Resource
                 Forms\Components\TextInput::make('customer_phone')->required()->tel(),
                 Forms\Components\TextInput::make('customer_email')->email()->nullable(),
                 Forms\Components\Textarea::make('delivery_address')->required()->columnSpanFull(),
-                Forms\Components\TextInput::make('city'),
+                Forms\Components\TextInput::make('city')->label('District / City'),
                 Forms\Components\TextInput::make('state'),
-                Forms\Components\TextInput::make('postcode'),
+                Forms\Components\TextInput::make('postcode')->label('Pincode'),
+                Forms\Components\TextInput::make('landmark'),
             ])->columns(2),
+
+            SchemaSection::make('Order Items')->schema([
+                Forms\Components\Repeater::make('items')
+                    ->relationship('items')
+                    ->schema([
+                        Forms\Components\Select::make('product_variant_id')
+                            ->label('Product')
+                            ->options(fn () => ProductVariant::with('product')
+                                ->where('is_active', true)
+                                ->get()
+                                ->mapWithKeys(fn (ProductVariant $v) => [
+                                    $v->id => "{$v->product->name} – {$v->name} (\u{20B9}{$v->price})",
+                                ]))
+                            ->searchable()
+                            ->required(),
+
+                        Forms\Components\TextInput::make('quantity')
+                            ->numeric()
+                            ->default(1)
+                            ->minValue(1)
+                            ->required(),
+                    ])
+                    ->mutateRelationshipDataBeforeCreateUsing(fn (array $data) => static::hydrateOrderItemData($data))
+                    ->mutateRelationshipDataBeforeSaveUsing(fn (array $data) => static::hydrateOrderItemData($data))
+                    ->columns(2)
+                    ->addActionLabel('Add Item')
+                    ->helperText('Adding, removing, or changing quantity here updates the order subtotal/total automatically.')
+                    ->columnSpanFull(),
+            ]),
 
             SchemaSection::make('Delivery Tracking')->schema([
                 Forms\Components\TextInput::make('tracking_number')
@@ -105,6 +137,33 @@ class OrderResource extends Resource
                 Forms\Components\Textarea::make('admin_notes')
                     ->label('Admin Notes')->rows(2)->nullable(),
             ])->columns(2),
+        ]);
+    }
+
+    /**
+     * Fill in the snapshot fields (product/variant name, sku, price, free
+     * gift) from the selected variant whenever an order-item repeater row
+     * is created or edited — mirrors what AdminOrderService does at
+     * creation time, so items added later look identical.
+     */
+    protected static function hydrateOrderItemData(array $data): array
+    {
+        $variant = ProductVariant::with('product')->find($data['product_variant_id'] ?? null);
+
+        if (! $variant) {
+            return $data;
+        }
+
+        $qty = max(1, (int) ($data['quantity'] ?? 1));
+
+        return array_merge($data, [
+            'product_name'    => $variant->product->name,
+            'variant_name'    => $variant->name,
+            'free_gift_label' => $variant->free_gift_label,
+            'sku'             => $variant->sku,
+            'quantity'        => $qty,
+            'unit_price'      => $variant->price,
+            'subtotal'        => (float) $variant->price * $qty,
         ]);
     }
 
@@ -141,8 +200,9 @@ class OrderResource extends Resource
                 TextEntry::make('payment_method')
                     ->formatStateUsing(fn ($state) => match ($state) {
                         'cod'           => 'Cash on Delivery',
+                        'upi'           => 'UPI Payment',
                         'bank_transfer' => 'Bank Transfer',
-                        'whatsapp'      => 'UPI Payment',
+                        'whatsapp'      => 'WhatsApp Order',
                         default         => $state,
                     }),
                 TextEntry::make('payment_status')
@@ -170,19 +230,21 @@ class OrderResource extends Resource
                 TextEntry::make('customer_phone'),
                 TextEntry::make('customer_email')->placeholder('—'),
                 TextEntry::make('delivery_address')->columnSpanFull(),
-                TextEntry::make('city')->placeholder('—'),
+                TextEntry::make('city')->label('District / City')->placeholder('—'),
                 TextEntry::make('state')->placeholder('—'),
-                TextEntry::make('postcode')->placeholder('—'),
+                TextEntry::make('postcode')->label('Pincode')->placeholder('—'),
+                TextEntry::make('landmark')->placeholder('—'),
             ])->columns(3),
 
             SchemaSection::make('Order Items')->schema([
                 RepeatableEntry::make('items')->schema([
                     TextEntry::make('product_name')->label('Product'),
                     TextEntry::make('variant_name')->label('Variant')->placeholder('—'),
+                    TextEntry::make('free_gift_label')->label('Free Gift')->placeholder('—')->color('success'),
                     TextEntry::make('quantity')->label('Qty'),
                     TextEntry::make('unit_price')->money('INR')->label('Unit Price'),
                     TextEntry::make('subtotal')->money('INR')->label('Subtotal'),
-                ])->columns(5),
+                ])->columns(6),
             ]),
 
             SchemaSection::make('Financials')->schema([
@@ -256,8 +318,9 @@ class OrderResource extends Resource
                     ->label('Payment')
                     ->formatStateUsing(fn ($state) => match ($state) {
                         'cod'           => 'COD',
+                        'upi'           => 'UPI',
                         'bank_transfer' => 'Bank Transfer',
-                        'whatsapp'      => 'UPI',
+                        'whatsapp'      => 'WhatsApp',
                         default         => $state,
                     })
                     ->toggleable(),
@@ -301,8 +364,9 @@ class OrderResource extends Resource
                     ->label('Payment Method')
                     ->options([
                         'cod'           => 'Cash on Delivery',
+                        'upi'           => 'UPI Payment',
                         'bank_transfer' => 'Bank Transfer',
-                        'whatsapp'      => 'UPI Payment',
+                        'whatsapp'      => 'WhatsApp Order',
                     ]),
                 Tables\Filters\Filter::make('today')
                     ->label('Today\'s Orders')
@@ -397,14 +461,15 @@ class OrderResource extends Resource
                         ];
                         $statusDesc = $statusDescriptions[$r->status] ?? $r->status;
 
-                        if (empty($settings->groq_api_key)) {
+                        $ai = new AiProviderService($settings);
+
+                        if (! $ai->isConfigured()) {
                             $fallback = "Hi {$r->customer_name}! Your order {$r->order_number} {$statusDesc}."
                                 . ($r->tracking_number ? " Tracking: {$r->tracking_number}." : '')
                                 . " Thank you for choosing Merza Bodi! 🥭";
                             return ['wa_message' => $fallback];
                         }
 
-                        $groq   = new GroqService($settings->groq_api_key, $settings->groq_model ?? 'llama-3.1-8b-instant');
                         $prompt = "Generate a friendly WhatsApp order status update message.
 Customer name: {$r->customer_name}
 Order number: {$r->order_number}
@@ -413,7 +478,7 @@ Order total: ₹{$r->total}"
                             . ($r->tracking_number ? "\nTracking number: {$r->tracking_number}" : '')
                             . "\n\nWrite 2-4 sentences. Warm and professional. Include the order number. End with 'Merza Bodi Team'. Plain text only, no markdown or asterisks.";
 
-                        $message = $groq->chat(
+                        $message = $ai->chat(
                             'You are a customer service representative for Merza Bodi, a premium tropical fruit brand. Write warm, professional WhatsApp order update messages in plain text.',
                             [['role' => 'user', 'content' => $prompt]],
                             200

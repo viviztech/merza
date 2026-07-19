@@ -123,20 +123,25 @@ class ProcessInboundWhatsAppJob implements ShouldQueue
             'status' => 'success',
         ]);
 
-        // ── CTWA: auto-create Lead ────────────────────────────────────────────
-        if ($isCTWA && $settings->auto_create_lead) {
-            $alreadyHasLead = Lead::where('contact_id', $contact->id)
-                ->where('source', 'meta_ads')
-                ->whereDate('created_at', today())
+        // ── Auto-create Lead for every enquiry with no active lead ────────────
+        // Every inbound WhatsApp message enters the pipeline automatically —
+        // not just Click-to-WhatsApp ad clicks — so staff never have to
+        // remember to log an organic "hi, do you have mangoes?" enquiry by
+        // hand. A Contact already mid-pipeline (stage not converted/lost)
+        // doesn't get a duplicate.
+        if ($settings->auto_create_lead) {
+            $hasActiveLead = Lead::where('contact_id', $contact->id)
+                ->whereNotIn('stage', ['converted', 'lost'])
                 ->exists();
 
-            if (! $alreadyHasLead) {
+            if (! $hasActiveLead) {
                 $lead = Lead::create([
                     'contact_id' => $contact->id,
                     'stage'      => 'new',
-                    'source'     => 'meta_ads',
-                    'notes'      => 'Auto-created from Click-to-WhatsApp ad.'
-                        . ($this->referral['headline'] ? ' Ad: ' . $this->referral['headline'] : ''),
+                    'source'     => $isCTWA ? 'meta_ads' : 'whatsapp',
+                    'notes'      => $isCTWA
+                        ? 'Auto-created from Click-to-WhatsApp ad.' . ($this->referral['headline'] ? ' Ad: ' . $this->referral['headline'] : '')
+                        : 'Auto-created from inbound WhatsApp message.',
                 ]);
 
                 BotActivityLog::create([

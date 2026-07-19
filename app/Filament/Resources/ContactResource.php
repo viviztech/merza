@@ -9,6 +9,7 @@ use Filament\Actions;
 use Filament\Actions\Action;
 use Filament\Forms;
 use Filament\Infolists;
+use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Schemas\Components\Group as SchemaGroup;
 use Filament\Schemas\Components\Section as SchemaSection;
@@ -102,6 +103,20 @@ class ContactResource extends Resource
                     Infolists\Components\TextEntry::make('notes')->columnSpanFull(),
                 ])->columns(2),
 
+                SchemaSection::make('Active Enquiry')
+                    ->visible(fn (Contact $r) => $r->active_lead !== null)
+                    ->schema([
+                        Infolists\Components\TextEntry::make('active_lead.stage_label')
+                            ->label('Stage')->badge()
+                            ->color(fn (Contact $r) => $r->active_lead?->stage_color ?? 'gray'),
+                        Infolists\Components\TextEntry::make('active_lead.product_interest')
+                            ->label('Interested In')->placeholder('—'),
+                        Infolists\Components\TextEntry::make('active_lead.estimated_value')
+                            ->label('Est. Value')->money('INR')->placeholder('—'),
+                        Infolists\Components\TextEntry::make('active_lead.notes')
+                            ->label('Notes')->placeholder('—')->columnSpanFull(),
+                    ])->columns(3),
+
                 SchemaSection::make('Orders')->schema([
                     Infolists\Components\RepeatableEntry::make('orders')
                         ->schema([
@@ -111,21 +126,6 @@ class ContactResource extends Resource
                             Infolists\Components\TextEntry::make('created_at')->dateTime('d M Y'),
                         ])
                         ->columns(4)
-                        ->label(''),
-                ]),
-
-                SchemaSection::make('Recent Conversations')->schema([
-                    Infolists\Components\RepeatableEntry::make('conversations')
-                        ->schema([
-                            Infolists\Components\TextEntry::make('channel')->badge(),
-                            Infolists\Components\TextEntry::make('direction')->badge()
-                                ->color(fn ($state) => $state === 'inbound' ? 'info' : 'success'),
-                            Infolists\Components\TextEntry::make('message')
-                                ->columnSpan(2)
-                                ->limit(120),
-                            Infolists\Components\TextEntry::make('sent_at')->dateTime('d M Y H:i'),
-                        ])
-                        ->columns(5)
                         ->label(''),
                 ]),
             ])->columnSpan(2),
@@ -205,11 +205,31 @@ class ContactResource extends Resource
                     ->color('success')
                     ->url(fn (Contact $r) => $r->whatsapp_url)
                     ->openUrlInNewTab(),
-                Action::make('createOrder')
-                    ->label('Create Order')
+                Action::make('convertToOrder')
+                    ->label('Convert to Order')
                     ->icon('heroicon-o-shopping-bag')
-                    ->color('primary')
+                    ->color('success')
+                    ->visible(fn (Contact $r) => $r->active_lead !== null)
+                    ->modalWidth('3xl')
+                    ->modalHeading('Convert Enquiry to Order')
+                    ->modalSubmitActionLabel('Create Order')
+                    ->steps(fn (Contact $r) => LeadResource::convertToOrderSteps($r->active_lead))
+                    ->fillForm(fn (Contact $r) => LeadResource::convertToOrderFormDefaults($r->active_lead))
+                    ->action(function (array $data, Contact $r) {
+                        $order = LeadResource::handleConvertToOrder($data, $r->active_lead);
+
+                        Notification::make()->title("Order {$order->order_number} created")->success()->send();
+
+                        return redirect(OrderResource::getUrl('view', ['record' => $order]));
+                    }),
+
+                Action::make('createOrder')
+                    ->label('New Order')
+                    ->icon('heroicon-o-plus-circle')
+                    ->color('gray')
+                    ->visible(fn (Contact $r) => $r->active_lead === null)
                     ->url(fn (Contact $r) => OrderResource::getUrl('create', ['contact_id' => $r->id])),
+
                 Actions\ViewAction::make(),
                 Actions\EditAction::make(),
             ])

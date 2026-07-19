@@ -9,9 +9,9 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class Order extends Model
 {
     protected $fillable = [
-        'order_number', 'channel', 'user_id', 'contact_id',
+        'order_number', 'channel', 'user_id', 'contact_id', 'lead_id',
         'customer_name', 'customer_phone', 'customer_email',
-        'delivery_address', 'city', 'postcode', 'state',
+        'delivery_address', 'city', 'postcode', 'state', 'landmark',
         'subtotal', 'delivery_fee', 'total',
         'status', 'payment_method', 'payment_status', 'payment_reference', 'payment_screenshot_path',
         'notes', 'admin_notes', 'tracking_number',
@@ -46,9 +46,29 @@ class Order extends Model
         return $this->belongsTo(Contact::class);
     }
 
+    public function lead(): BelongsTo
+    {
+        return $this->belongsTo(Lead::class);
+    }
+
     public function items(): HasMany
     {
         return $this->hasMany(OrderItem::class);
+    }
+
+    /**
+     * Recompute subtotal/total from current line items. Called whenever
+     * order items change (admin edit, storefront checkout, etc.) so totals
+     * never drift from what's actually in the order.
+     */
+    public function recalculateTotals(): void
+    {
+        $subtotal = $this->items()->sum('subtotal');
+
+        $this->forceFill([
+            'subtotal' => $subtotal,
+            'total'    => $subtotal + $this->delivery_fee,
+        ])->saveQuietly();
     }
 
     public function getStatusBadgeColorAttribute(): string

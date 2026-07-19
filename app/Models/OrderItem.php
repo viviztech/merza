@@ -9,7 +9,7 @@ class OrderItem extends Model
 {
     protected $fillable = [
         'order_id', 'product_variant_id',
-        'product_name', 'variant_name', 'sku',
+        'product_name', 'variant_name', 'free_gift_label', 'sku',
         'quantity', 'unit_price', 'subtotal',
     ];
 
@@ -17,6 +17,15 @@ class OrderItem extends Model
         'unit_price' => 'decimal:2',
         'subtotal'   => 'decimal:2',
     ];
+
+    protected static function booted(): void
+    {
+        // Keep the parent order's subtotal/total in sync whenever its items
+        // change — covers storefront checkout, admin creation, and inline
+        // editing on the Order edit screen alike.
+        static::saved(fn (OrderItem $item) => $item->order?->recalculateTotals());
+        static::deleted(fn (OrderItem $item) => $item->order?->recalculateTotals());
+    }
 
     public function order(): BelongsTo
     {

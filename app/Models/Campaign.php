@@ -9,17 +9,18 @@ class Campaign extends Model
 {
     protected $fillable = [
         'name', 'description', 'type', 'status', 'channel',
-        'filter_tags', 'filter_source', 'filter_city',
+        'filter_tags', 'filter_source', 'filter_city', 'filter_lead_stage',
         'message', 'scheduled_at', 'follow_up_after_days',
         'total_contacts', 'sent_count', 'failed_count',
         'started_at', 'completed_at',
     ];
 
     protected $casts = [
-        'filter_tags'    => 'array',
-        'scheduled_at'   => 'datetime',
-        'started_at'     => 'datetime',
-        'completed_at'   => 'datetime',
+        'filter_tags'       => 'array',
+        'filter_lead_stage' => 'array',
+        'scheduled_at'      => 'datetime',
+        'started_at'        => 'datetime',
+        'completed_at'      => 'datetime',
     ];
 
     public function steps(): HasMany

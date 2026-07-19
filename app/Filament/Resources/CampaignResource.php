@@ -4,12 +4,16 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\CampaignResource\Pages;
 use App\Jobs\DispatchCampaignJob;
+use App\Models\BotSetting;
 use App\Models\Campaign;
 use App\Models\Contact;
+use App\Models\Lead;
+use App\Services\AiProviderService;
 use Filament\Actions;
 use Filament\Actions\Action;
 use Filament\Forms;
 use Filament\Infolists\Components\TextEntry;
+use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Schemas\Components\Section as SchemaSection;
 use Filament\Schemas\Schema;
@@ -79,16 +83,24 @@ class CampaignResource extends Resource
                     Forms\Components\TextInput::make('filter_city')
                         ->label('City (partial match)')
                         ->placeholder('e.g. Mumbai'),
+
+                    Forms\Components\Select::make('filter_lead_stage')
+                        ->label('Enquiry Stage (abandoned leads)')
+                        ->multiple()
+                        ->options(Lead::$stages)
+                        ->helperText('Only target contacts whose enquiry is currently stuck at one of these stages — e.g. select New/Contacted/Interested/Quoted to re-engage leads that never became an order.')
+                        ->columnSpanFull(),
                 ])->columns(3),
 
             // Single message — shown for broadcast and follow_up
             SchemaSection::make('Message')
-                ->description('Use {{customer_name}}, {{city}}, {{phone}} as placeholders.')
+                ->description('Use {{customer_name}}, {{city}}, {{phone}}, {{product_interest}} as placeholders.')
                 ->schema([
                     Forms\Components\Textarea::make('message')
                         ->required()
                         ->rows(5)
-                        ->columnSpanFull(),
+                        ->columnSpanFull()
+                        ->hintAction(static::aiDraftAction()),
                 ])
                 ->visible(fn ($get) => in_array($get('type'), ['broadcast', 'follow_up', null, ''])),
 
@@ -126,7 +138,8 @@ class CampaignResource extends Resource
 
                             Forms\Components\Textarea::make('message')
                                 ->required()->rows(3)->columnSpanFull()
-                                ->placeholder('Use {{customer_name}}, {{city}}, {{phone}}'),
+                                ->placeholder('Use {{customer_name}}, {{city}}, {{phone}}, {{product_interest}}')
+                                ->hintAction(static::aiDraftAction()),
                         ])
                         ->columns(2)
                         ->addActionLabel('Add Step')
@@ -134,6 +147,50 @@ class CampaignResource extends Resource
                 ])
                 ->visible(fn ($get) => $get('type') === 'drip'),
         ]);
+    }
+
+    /**
+     * "✨ AI Draft" hint action reused on both the broadcast/follow-up
+     * message field and each drip step's message field — generates a
+     * template (with the {{}} placeholders left literal for per-contact
+     * substitution later) that staff review and edit before saving, same
+     * draft-then-review discipline as the WhatsApp reply bot.
+     */
+    protected static function aiDraftAction(): Action
+    {
+        return Action::make('aiDraftMessage')
+            ->label('✨ AI Draft')
+            ->icon('heroicon-o-sparkles')
+            ->action(function (Forms\Set $set) {
+                $settings = BotSetting::current();
+                $ai       = new AiProviderService($settings);
+
+                if (! $ai->isConfigured()) {
+                    Notification::make()->title("{$ai->providerLabel()} API key not configured in Bot Settings")->warning()->send();
+                    return;
+                }
+
+                $result = $ai->chat(
+                    'You are a copywriter for Merza, a premium tropical fruit brand from Tamil Nadu, India. '
+                    . 'Write short, warm WhatsApp follow-up message TEMPLATES (not a message to one specific '
+                    . 'person) meant to re-engage a customer whose enquiry stalled before they placed an order.',
+                    [['role' => 'user', 'content' =>
+                        'Write one WhatsApp follow-up message template, under 50 words, Indian English, no markdown. '
+                        . 'Use the literal placeholders {{customer_name}} and {{product_interest}} naturally in the '
+                        . 'text — they get substituted per-contact later, so keep them exactly as written. Gently '
+                        . 'nudge the customer to complete their order and mention home delivery. End with '
+                        . '"— Merza Team 🥭".'
+                    ]],
+                    120
+                );
+
+                if ($result) {
+                    $set('message', trim($result, " \n\r\"'"));
+                    Notification::make()->title('Draft generated — review before saving')->success()->send();
+                } else {
+                    Notification::make()->title('Could not generate a draft')->danger()->send();
+                }
+            });
     }
 
     public static function infolist(Schema $schema): Schema

@@ -4,9 +4,8 @@ namespace App\Filament\Resources\OrderResource\Pages;
 
 use App\Filament\Resources\OrderResource;
 use App\Models\Contact;
-use App\Models\Order;
-use App\Models\OrderItem;
 use App\Models\ProductVariant;
+use App\Services\AdminOrderService;
 use Filament\Forms;
 use Filament\Resources\Pages\CreateRecord;
 use Filament\Schemas\Components\Section as SchemaSection;
@@ -41,9 +40,10 @@ class CreateOrder extends CreateRecord
                 Forms\Components\TextInput::make('customer_phone')->required()->tel(),
                 Forms\Components\TextInput::make('customer_email')->email()->nullable(),
                 Forms\Components\Textarea::make('delivery_address')->required()->columnSpanFull(),
-                Forms\Components\TextInput::make('city'),
+                Forms\Components\TextInput::make('city')->label('District / City'),
                 Forms\Components\TextInput::make('state'),
-                Forms\Components\TextInput::make('postcode'),
+                Forms\Components\TextInput::make('postcode')->label('Pincode'),
+                Forms\Components\TextInput::make('landmark'),
             ])->columns(2),
 
             SchemaSection::make('Items')->schema([
@@ -76,8 +76,9 @@ class CreateOrder extends CreateRecord
                 Forms\Components\Select::make('payment_method')
                     ->options([
                         'cod'           => 'Cash on Delivery',
+                        'upi'           => 'UPI Payment',
                         'bank_transfer' => 'Bank Transfer',
-                        'whatsapp'      => 'UPI Payment',
+                        'whatsapp'      => 'WhatsApp Order',
                     ])
                     ->default('cod')
                     ->required(),
@@ -108,52 +109,20 @@ class CreateOrder extends CreateRecord
         $items = $data['items'] ?? [];
         unset($data['items']);
 
-        $variants = ProductVariant::with('product')
-            ->whereIn('id', collect($items)->pluck('product_variant_id'))
-            ->get()
-            ->keyBy('id');
-
-        $subtotal = 0;
-        $lines    = [];
-
-        foreach ($items as $row) {
-            $variant = $variants->get($row['product_variant_id']);
-            if (! $variant) {
-                continue;
-            }
-
-            $qty       = max(1, (int) $row['quantity']);
-            $lineTotal = (float) $variant->price * $qty;
-            $subtotal += $lineTotal;
-
-            $lines[] = [
-                'product_variant_id' => $variant->id,
-                'product_name'       => $variant->product->name,
-                'variant_name'       => $variant->name,
-                'sku'                => $variant->sku,
-                'quantity'           => $qty,
-                'unit_price'         => $variant->price,
-                'subtotal'           => $lineTotal,
-            ];
-        }
-
-        $data['channel']  = 'manual';
-        $data['subtotal'] = $subtotal;
-        $data['total']    = $subtotal + (float) ($data['delivery_fee'] ?? 0);
-
         $contact = Contact::find(request()->query('contact_id'));
-        if ($contact) {
-            $data['contact_id'] = $contact->id;
-            $contact->update(['is_customer' => true]);
-        }
 
-        $order = Order::create($data);
-
-        foreach ($lines as $line) {
-            OrderItem::create(['order_id' => $order->id, ...$line]);
-        }
-
-        return $order;
+        return (new AdminOrderService())->createOrder(
+            items: $items,
+            customerData: array_intersect_key($data, array_flip([
+                'customer_name', 'customer_phone', 'customer_email',
+                'delivery_address', 'city', 'state', 'postcode', 'landmark',
+            ])),
+            orderData: array_diff_key($data, array_flip([
+                'customer_name', 'customer_phone', 'customer_email',
+                'delivery_address', 'city', 'state', 'postcode', 'landmark',
+            ])),
+            contact: $contact,
+        );
     }
 
     protected function getRedirectUrl(): string

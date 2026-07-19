@@ -57,7 +57,7 @@ class Contact extends Model
         return $this->hasMany(CampaignContact::class);
     }
 
-    public function getActiveleadAttribute(): ?Lead
+    public function getActiveLeadAttribute(): ?Lead
     {
         return $this->leads()->whereNotIn('stage', ['converted', 'lost'])->latest()->first();
     }

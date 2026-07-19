@@ -31,6 +31,10 @@ class CampaignService
             $query->where('city', 'like', "%{$campaign->filter_city}%");
         }
 
+        if (!empty($campaign->filter_lead_stage)) {
+            $query->whereHas('leads', fn ($q) => $q->whereIn('stage', $campaign->filter_lead_stage));
+        }
+
         $enrolled = 0;
         $firstStepDelay = 0;
 
@@ -181,9 +185,11 @@ class CampaignService
 
     private function replacePlaceholders(string $message, Contact $contact): string
     {
+        $productInterest = $contact->active_lead?->product_interest ?? 'our fresh fruits';
+
         return str_replace(
-            ['{{customer_name}}', '{{city}}', '{{phone}}', '{{name}}'],
-            [$contact->name, $contact->city ?? '', $contact->phone, $contact->name],
+            ['{{customer_name}}', '{{city}}', '{{phone}}', '{{name}}', '{{product_interest}}'],
+            [$contact->name, $contact->city ?? '', $contact->phone, $contact->name, $productInterest],
             $message
         );
     }
