@@ -2,25 +2,20 @@
 
 namespace App\Livewire\Storefront;
 
-use App\Models\BotSetting;
 use App\Models\DeliveryZone;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Services\CartService;
 use App\Services\DeliveryCalculatorService;
 use App\Services\PincodeService;
-use App\Services\UpiQrService;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Component;
-use Livewire\WithFileUploads;
 
 #[Layout('components.layouts.storefront')]
 #[Title('Checkout — Merza')]
 class CheckoutForm extends Component
 {
-    use WithFileUploads;
-
     public string $customer_name    = '';
     public string $customer_phone   = '';
     public string $delivery_address = '';
@@ -30,11 +25,6 @@ class CheckoutForm extends Component
     public string $landmark         = '';
     public bool   $pincodeAutoFilled = false;
     public bool   $pincodeLookupFailed = false;
-
-    public string $payment_method   = 'upi';
-    public string $transaction_id   = '';
-    public $paymentScreenshot       = null;
-    public string $notes            = '';
 
     public bool   $orderPlaced        = false;
     public string $orderNumber        = '';
@@ -50,10 +40,6 @@ class CheckoutForm extends Component
             'city'               => 'required|string|max:80',
             'state'              => 'required|string|max:80',
             'landmark'           => 'nullable|string|max:150',
-            'payment_method'     => 'required|in:upi,cod',
-            'transaction_id'     => 'nullable|string|max:100',
-            'paymentScreenshot'  => 'nullable|image|max:5120',
-            'notes'              => 'nullable|string|max:500',
         ];
     }
 
@@ -63,6 +49,11 @@ class CheckoutForm extends Component
         $this->pincodeLookupFailed = false;
 
         if (! preg_match('/^\d{6}$/', $this->postcode)) {
+            // Surface "must be 6 digits" as soon as the customer pauses on an
+            // incomplete/invalid value, instead of only at final submit.
+            if (! empty($this->postcode)) {
+                $this->validateOnly('postcode');
+            }
             return;
         }
 
@@ -106,11 +97,6 @@ class CheckoutForm extends Component
     {
         $this->validate();
 
-        if ($this->payment_method === 'upi' && empty(trim($this->transaction_id)) && ! $this->paymentScreenshot) {
-            $this->addError('payment_proof', 'Please enter your UPI transaction ID or upload a payment screenshot.');
-            return;
-        }
-
         $cart = app(CartService::class);
 
         if ($cart->count() === 0) {
@@ -132,10 +118,6 @@ class CheckoutForm extends Component
         $deliveryFee = $breakdown['total_fee'];
         $total       = $subtotal + $deliveryFee;
 
-        $screenshotPath = $this->paymentScreenshot
-            ? $this->paymentScreenshot->store('payment-screenshots', config('media-library.disk_name', 'r2'))
-            : null;
-
         $order = Order::create([
             'channel'                  => 'website',
             'user_id'                  => auth()->id(),
@@ -149,23 +131,21 @@ class CheckoutForm extends Component
             'subtotal'                 => $subtotal,
             'delivery_fee'             => $deliveryFee,
             'total'                    => $total,
-            'payment_method'           => $this->payment_method,
-            'payment_reference'        => $this->transaction_id ?: null,
-            'payment_screenshot_path'  => $screenshotPath,
-            'notes'                    => $this->notes ?: null,
+            'payment_method'           => 'upi',
         ]);
 
         foreach ($cart->items() as $item) {
             OrderItem::create([
-                'order_id'           => $order->id,
-                'product_variant_id' => $item->variant_id,
-                'product_name'       => $item->product_name,
-                'variant_name'       => $item->variant_name,
-                'free_gift_label'    => $item->free_gift_label ?? null,
-                'sku'                => $item->sku,
-                'quantity'           => $item->qty,
-                'unit_price'         => $item->price,
-                'subtotal'           => $item->price * $item->qty,
+                'order_id'             => $order->id,
+                'product_variant_id'   => $item->variant_id,
+                'product_name'         => $item->product_name,
+                'variant_name'         => $item->variant_name,
+                'free_gift_label'      => $item->free_gift_label ?? null,
+                'free_gift_weight_kg'  => $item->free_gift_weight_kg ?? null,
+                'sku'                  => $item->sku,
+                'quantity'             => $item->qty,
+                'unit_price'           => $item->price,
+                'subtotal'             => $item->price * $item->qty,
             ]);
         }
 
@@ -178,27 +158,25 @@ class CheckoutForm extends Component
 
     public function render()
     {
-        $cart      = app(CartService::class);
-        $items     = $cart->items();
-        $subtotal  = $cart->subtotal();
-        $weightKg  = $cart->totalWeightKg();
-        $breakdown = $this->getDeliveryBreakdown();
+        $cart              = app(CartService::class);
+        $items             = $cart->items();
+        $subtotal          = $cart->subtotal();
+        $weightKg          = $cart->totalWeightKg();
+        $giftWeightKg      = $cart->totalFreeGiftWeightKg();
+        $breakdown         = $this->getDeliveryBreakdown();
 
         $deliveryFee = $breakdown ? $breakdown['total_fee'] : null;
         $total       = $subtotal + ($deliveryFee ?? 0);
 
-        $settings   = BotSetting::current();
-        $upiId      = $settings->upi_id;
-        $upiPayee   = $settings->upi_payee_name ?: 'Merza';
-        $qrDataUri  = null;
-
-        if (! empty($upiId) && $total > 0) {
-            $qrService = new UpiQrService();
-            $uri       = $qrService->buildUpiUri($upiId, $upiPayee, $total, 'Merza Order');
-            $qrDataUri = 'data:image/png;base64,' . base64_encode($qrService->generatePng($uri));
-        }
+        // Only states we actually have a delivery zone for — keeps customers
+        // from typing a state we don't serve (and from typos that would
+        // silently fail zone matching later at checkout).
+        $stateOptions = DeliveryZone::active()
+            ->where('match_type', 'state')
+            ->orderBy('name')
+            ->pluck('name');
 
         return view('livewire.storefront.checkout-form',
-            compact('items', 'subtotal', 'weightKg', 'breakdown', 'deliveryFee', 'total', 'upiId', 'upiPayee', 'qrDataUri'));
+            compact('items', 'subtotal', 'weightKg', 'giftWeightKg', 'breakdown', 'deliveryFee', 'total', 'stateOptions'));
     }
 }

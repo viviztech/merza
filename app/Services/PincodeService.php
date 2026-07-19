@@ -19,7 +19,9 @@ class PincodeService
         }
 
         try {
-            $response = Http::timeout(5)->get("https://api.postalpincode.in/pincode/{$pincode}");
+            // The public postal API is occasionally flaky — one quick retry
+            // before giving up and falling back to manual entry.
+            $response = Http::timeout(8)->retry(2, 300)->get("https://api.postalpincode.in/pincode/{$pincode}");
         } catch (\Throwable $e) {
             Log::warning('Pincode lookup failed', ['pincode' => $pincode, 'error' => $e->getMessage()]);
             return null;
