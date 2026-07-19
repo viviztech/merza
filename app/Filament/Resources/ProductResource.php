@@ -146,6 +146,14 @@ class ProductResource extends Resource
                                 ->maxLength(100)
                                 ->columnSpan(2),
 
+                            Forms\Components\TextInput::make('free_gift_weight_kg')
+                                ->label('Free Gift Weight (kg)')
+                                ->numeric()
+                                ->minValue(0)
+                                ->step(0.1)
+                                ->placeholder('e.g. 1')
+                                ->helperText('Extra weight the gift adds to the package — counted in courier charges.'),
+
                             Forms\Components\TextInput::make('weight_value')
                                 ->label('Weight')
                                 ->numeric()

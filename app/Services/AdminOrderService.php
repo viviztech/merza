@@ -50,15 +50,16 @@ class AdminOrderService
             $qty = max(1, (int) $row['quantity']);
 
             OrderItem::create([
-                'order_id'           => $order->id,
-                'product_variant_id' => $variant->id,
-                'product_name'       => $variant->product->name,
-                'variant_name'       => $variant->name,
-                'free_gift_label'    => $variant->free_gift_label,
-                'sku'                => $variant->sku,
-                'quantity'           => $qty,
-                'unit_price'         => $variant->price,
-                'subtotal'           => (float) $variant->price * $qty,
+                'order_id'             => $order->id,
+                'product_variant_id'   => $variant->id,
+                'product_name'         => $variant->product->name,
+                'variant_name'         => $variant->name,
+                'free_gift_label'      => $variant->free_gift_label,
+                'free_gift_weight_kg'  => $variant->free_gift_weight_kg,
+                'sku'                  => $variant->sku,
+                'quantity'             => $qty,
+                'unit_price'           => $variant->price,
+                'subtotal'             => (float) $variant->price * $qty,
             ]);
         }
 

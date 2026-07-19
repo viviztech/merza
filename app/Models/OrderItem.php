@@ -9,13 +9,14 @@ class OrderItem extends Model
 {
     protected $fillable = [
         'order_id', 'product_variant_id',
-        'product_name', 'variant_name', 'free_gift_label', 'sku',
+        'product_name', 'variant_name', 'free_gift_label', 'free_gift_weight_kg', 'sku',
         'quantity', 'unit_price', 'subtotal',
     ];
 
     protected $casts = [
-        'unit_price' => 'decimal:2',
-        'subtotal'   => 'decimal:2',
+        'unit_price'           => 'decimal:2',
+        'subtotal'             => 'decimal:2',
+        'free_gift_weight_kg'  => 'decimal:3',
     ];
 
     protected static function booted(): void

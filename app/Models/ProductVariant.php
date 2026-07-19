@@ -8,14 +8,15 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class ProductVariant extends Model
 {
     protected $fillable = [
-        'product_id', 'name', 'sku', 'price', 'free_gift_label', 'weight_value', 'weight_unit',
+        'product_id', 'name', 'sku', 'price', 'free_gift_label', 'free_gift_weight_kg', 'weight_value', 'weight_unit',
         'stock_qty', 'low_stock_threshold', 'is_active', 'sort_order',
     ];
 
     protected $casts = [
-        'price'        => 'decimal:2',
-        'weight_value' => 'decimal:3',
-        'is_active'    => 'boolean',
+        'price'                => 'decimal:2',
+        'weight_value'         => 'decimal:3',
+        'free_gift_weight_kg'  => 'decimal:3',
+        'is_active'            => 'boolean',
     ];
 
     public function product(): BelongsTo

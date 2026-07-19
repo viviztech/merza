@@ -27,16 +27,17 @@ class CartService
                 : (float) $variant->weight_value;
 
             $cart[$variantId] = [
-                'variant_id'      => $variantId,
-                'product_id'      => $variant->product_id,
-                'product_name'    => $variant->product->name,
-                'variant_name'    => $variant->name,
-                'free_gift_label' => $variant->free_gift_label,
-                'sku'             => $variant->sku,
-                'price'           => (float) $variant->price,
-                'qty'             => $qty,
-                'thumbnail_url'   => $variant->product->thumbnail_url,
-                'weight_kg'       => $weightKg,
+                'variant_id'           => $variantId,
+                'product_id'           => $variant->product_id,
+                'product_name'         => $variant->product->name,
+                'variant_name'         => $variant->name,
+                'free_gift_label'      => $variant->free_gift_label,
+                'free_gift_weight_kg'  => (float) ($variant->free_gift_weight_kg ?? 0),
+                'sku'                  => $variant->sku,
+                'price'                => (float) $variant->price,
+                'qty'                  => $qty,
+                'thumbnail_url'        => $variant->product->thumbnail_url,
+                'weight_kg'            => $weightKg,
             ];
         }
 
@@ -87,10 +88,26 @@ class CartService
         ));
     }
 
+    /**
+     * Total physical weight of the cart, including free-gift weight —
+     * couriers charge for what's actually in the box, gift or not.
+     */
     public function totalWeightKg(): float
     {
         return array_sum(array_map(
-            fn($item) => ($item['weight_kg'] ?? 0) * $item['qty'],
+            fn($item) => (($item['weight_kg'] ?? 0) + ($item['free_gift_weight_kg'] ?? 0)) * $item['qty'],
+            $this->all()
+        ));
+    }
+
+    /**
+     * Free-gift weight only, broken out so the checkout UI can show
+     * customers why the courier weight is higher than the product weight.
+     */
+    public function totalFreeGiftWeightKg(): float
+    {
+        return array_sum(array_map(
+            fn($item) => ($item['free_gift_weight_kg'] ?? 0) * $item['qty'],
             $this->all()
         ));
     }

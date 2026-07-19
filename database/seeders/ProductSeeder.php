@@ -26,9 +26,9 @@ class ProductSeeder extends Seeder
             'unit'              => 'kg',
             'is_featured'       => true,
             'variants'          => [
-                ['name' => '5 kg',  'price' => 500.00,  'free_gift_label' => null,             'weight_value' => 5.0,  'weight_unit' => 'kg', 'stock_qty' => 50, 'sku' => 'KLM-5KG'],
-                ['name' => '10 kg', 'price' => 950.00,  'free_gift_label' => 'Free 1kg Mango',  'weight_value' => 10.0, 'weight_unit' => 'kg', 'stock_qty' => 30, 'sku' => 'KLM-10KG'],
-                ['name' => '15 kg', 'price' => 1350.00, 'free_gift_label' => null,             'weight_value' => 15.0, 'weight_unit' => 'kg', 'stock_qty' => 20, 'sku' => 'KLM-15KG'],
+                ['name' => '5 kg',  'price' => 500.00,  'free_gift_label' => null,             'free_gift_weight_kg' => null, 'weight_value' => 5.0,  'weight_unit' => 'kg', 'stock_qty' => 50, 'sku' => 'KLM-5KG'],
+                ['name' => '10 kg', 'price' => 950.00,  'free_gift_label' => 'Free 1kg Mango',  'free_gift_weight_kg' => 1.0,  'weight_value' => 10.0, 'weight_unit' => 'kg', 'stock_qty' => 30, 'sku' => 'KLM-10KG'],
+                ['name' => '15 kg', 'price' => 1350.00, 'free_gift_label' => null,             'free_gift_weight_kg' => null, 'weight_value' => 15.0, 'weight_unit' => 'kg', 'stock_qty' => 20, 'sku' => 'KLM-15KG'],
             ],
         ];
 
@@ -57,6 +57,7 @@ class ProductSeeder extends Seeder
                     'sku'                 => $v['sku'],
                     'price'               => $v['price'],
                     'free_gift_label'     => $v['free_gift_label'],
+                    'free_gift_weight_kg' => $v['free_gift_weight_kg'],
                     'weight_value'        => $v['weight_value'],
                     'weight_unit'         => $v['weight_unit'],
                     'stock_qty'           => $v['stock_qty'],
