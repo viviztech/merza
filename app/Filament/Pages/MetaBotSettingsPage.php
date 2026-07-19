@@ -94,18 +94,24 @@ class MetaBotSettingsPage extends Page
                             ->content(fn () => url('/webhook/meta')),
                     ]),
 
-                SchemaSection::make('🤖 Groq AI (Primary — Free)')
-                    ->description('Fast, free LLM API for WhatsApp auto-replies. Get your key at console.groq.com.')
+                SchemaSection::make('Active AI Provider')
+                    ->description('Every AI feature — WhatsApp auto-reply, Meta Lead follow-ups, product description drafts, campaign message drafts, order status updates — uses whichever provider is selected here. Fill in the matching API key below.')
                     ->schema([
                         Forms\Components\Select::make('ai_provider')
                             ->label('Active AI Provider')
                             ->options([
-                                'groq'      => '⚡ Groq (Recommended — Free)',
-                                'anthropic' => '🤖 Anthropic Claude (Paid)',
+                                'groq'      => '⚡ Groq (Fast, Free)',
+                                'openai'    => '🧠 ChatGPT (OpenAI)',
+                                'anthropic' => '🤖 Claude (Anthropic)',
                             ])
                             ->default('groq')
-                            ->required(),
+                            ->required()
+                            ->columnSpanFull(),
+                    ]),
 
+                SchemaSection::make('🤖 Groq AI')
+                    ->description('Fast, free LLM API. Get your key at console.groq.com.')
+                    ->schema([
                         Forms\Components\Select::make('groq_model')
                             ->label('Groq Model')
                             ->options([
@@ -120,6 +126,26 @@ class MetaBotSettingsPage extends Page
                             ->password()->revealable()
                             ->placeholder('gsk_...')
                             ->helperText('From console.groq.com — free account, no card required.')
+                            ->columnSpanFull(),
+                    ])->columns(2),
+
+                SchemaSection::make('🧠 ChatGPT (OpenAI)')
+                    ->description('Get your key at platform.openai.com/api-keys.')
+                    ->schema([
+                        Forms\Components\Select::make('openai_model')
+                            ->label('OpenAI Model')
+                            ->options([
+                                'gpt-4o-mini' => 'GPT-4o mini (Fast, cheap)',
+                                'gpt-4o'      => 'GPT-4o (Better quality)',
+                                'gpt-4.1'     => 'GPT-4.1',
+                            ])
+                            ->default('gpt-4o-mini'),
+
+                        Forms\Components\TextInput::make('openai_api_key')
+                            ->label('OpenAI API Key')
+                            ->password()->revealable()
+                            ->placeholder('sk-...')
+                            ->helperText('From platform.openai.com/api-keys.')
                             ->columnSpanFull(),
                     ])->columns(2),
 
@@ -139,8 +165,8 @@ class MetaBotSettingsPage extends Page
                             ->columnSpanFull(),
                     ])->columns(2),
 
-                SchemaSection::make('Claude AI (Anthropic — Fallback)')
-                    ->description('Used as fallback when Groq is unavailable, or for Meta Lead follow-ups.')
+                SchemaSection::make('🤖 Claude (Anthropic)')
+                    ->description('Get your key at console.anthropic.com.')
                     ->schema([
                         Forms\Components\TextInput::make('anthropic_api_key')
                             ->label('Anthropic API Key')
@@ -192,7 +218,7 @@ class MetaBotSettingsPage extends Page
                     ])->columns(2),
 
                 SchemaSection::make('Lead Follow-up Prompt')
-                    ->description('Claude AI prompt for Meta Lead Ad follow-ups. Placeholders: {{customer_name}}, {{city}}, {{product_interest}}')
+                    ->description('AI prompt for Meta Lead Ad follow-ups, sent to whichever provider is active above. Placeholders: {{customer_name}}, {{city}}, {{product_interest}}')
                     ->schema([
                         Forms\Components\Textarea::make('follow_up_prompt_template')
                             ->label('Prompt Template')
@@ -201,7 +227,7 @@ class MetaBotSettingsPage extends Page
                     ]),
 
                 SchemaSection::make('WhatsApp Auto-reply Prompt')
-                    ->description('Claude AI prompt for replying to inbound WhatsApp messages. Placeholders: {{customer_name}}, {{customer_message}}, {{product_interest}}')
+                    ->description('AI prompt for replying to inbound WhatsApp messages, sent to whichever provider is active above. Placeholders: {{customer_name}}, {{customer_message}}, {{product_interest}}')
                     ->schema([
                         Forms\Components\Textarea::make('wa_reply_prompt_template')
                             ->label('Reply Prompt Template')

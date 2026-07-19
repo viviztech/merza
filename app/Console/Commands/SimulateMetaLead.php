@@ -4,7 +4,7 @@ namespace App\Console\Commands;
 
 use App\Jobs\ProcessMetaLeadJob;
 use App\Models\BotSetting;
-use App\Services\ClaudeAiService;
+use App\Services\LeadFollowUpAiService;
 use App\Services\MetaLeadsService;
 use Illuminate\Console\Command;
 
@@ -125,9 +125,9 @@ class SimulateMetaLead extends Command
         $this->info("Lead created: [{$lead->id}]");
 
         // Generate AI message
-        $this->info('Calling Claude AI to generate follow-up message...');
-        $claude  = new ClaudeAiService($settings);
-        $message = $claude->generateFollowUpMessage($fields, $fields['product']);
+        $this->info('Calling AI to generate follow-up message (active provider: ' . $settings->ai_provider . ')...');
+        $followUpAi = new LeadFollowUpAiService($settings);
+        $message    = $followUpAi->generateFollowUpMessage($fields, $fields['product']);
 
         if ($message) {
             $this->newLine();
@@ -146,7 +146,7 @@ class SimulateMetaLead extends Command
             ]);
             $this->info("Draft conversation saved: [{$conv->id}]");
         } else {
-            $this->warn('No message generated (Anthropic API key not configured?)');
+            $this->warn('No message generated (API key for the active provider not configured?)');
         }
 
         // Log everything

@@ -7,6 +7,7 @@ use App\Jobs\SendWhatsAppMessageJob;
 use App\Models\BotSetting;
 use App\Models\Conversation;
 use App\Models\User;
+use App\Services\AiProviderService;
 use App\Services\BotReplyService;
 use Filament\Actions;
 use Filament\Actions\Action;
@@ -176,8 +177,9 @@ class ConversationResource extends Resource
                     ->visible(fn (Conversation $r) => $r->direction === 'inbound' && $r->channel === 'whatsapp')
                     ->fillForm(function (Conversation $r): array {
                         $settings = BotSetting::current();
-                        if (empty($settings->groq_api_key)) {
-                            return ['reply_text' => 'No Groq API key configured. Go to Bot Settings to add one.', 'send_now' => false];
+                        $ai       = new AiProviderService($settings);
+                        if (! $ai->isConfigured()) {
+                            return ['reply_text' => "No {$ai->providerLabel()} API key configured. Go to Bot Settings to add one.", 'send_now' => false];
                         }
                         $service = new BotReplyService($settings);
                         $reply   = $service->generateReply($r->contact, $r->message, $r);

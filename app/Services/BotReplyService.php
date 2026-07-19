@@ -7,48 +7,31 @@ use App\Models\Contact;
 use App\Models\Conversation;
 use App\Models\Order;
 use App\Models\Product;
-use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Log;
 
 class BotReplyService
 {
-    // Fallback: Anthropic (legacy)
-    private const ANTHROPIC_URL     = 'https://api.anthropic.com/v1/messages';
-    private const ANTHROPIC_VERSION = '2023-06-01';
-
     public function __construct(private readonly BotSetting $settings) {}
 
     /**
-     * Generate an AI reply for an inbound WhatsApp message.
-     * Supports Groq (primary) and Anthropic (fallback).
+     * Generate an AI reply for an inbound WhatsApp message, using whichever
+     * provider is set active in Bot Settings (Groq, ChatGPT, or Claude).
      */
     public function generateReply(Contact $contact, string $inboundMessage, Conversation $inboundConversation): ?string
     {
         $systemPrompt = $this->buildSystemPrompt($contact, $inboundMessage);
         $history      = $this->buildMessageHistory($contact, $inboundConversation);
 
-        // Prefer Groq when configured
-        if ($this->settings->ai_provider === 'groq' && ! empty($this->settings->groq_api_key)) {
-            $groq = new GroqService($this->settings->groq_api_key, $this->settings->groq_model ?? 'llama-3.1-8b-instant');
-            return $groq->chat($systemPrompt, $history, 400);
-        }
-
-        // Fallback to Anthropic
-        if (! empty($this->settings->anthropic_api_key)) {
-            return $this->callAnthropic($systemPrompt, $history, $inboundMessage);
-        }
-
-        Log::warning('BotReplyService: No AI provider configured (no groq_api_key or anthropic_api_key)');
-        return null;
+        return (new AiProviderService($this->settings))->chat($systemPrompt, $history, 400);
     }
 
     // ─── System prompt ───────────────────────────────────────────────────────
 
     private function buildSystemPrompt(Contact $contact, string $inboundMessage): string
     {
-        $products   = $this->getProductSummary();
-        $orderInfo  = $this->getOrderContext($contact);
+        $products    = $this->getProductSummary();
+        $orderInfo   = $this->getOrderContext($contact);
         $customerContext = $this->getCustomerContext($contact);
+        $ownerNotes  = $this->buildOwnerInstructions($contact, $inboundMessage);
 
         return <<<PROMPT
 You are the WhatsApp assistant for Merza Natural Squash, a premium tropical fruit brand in Bodinayakanur, Tamil Nadu, India.
@@ -79,7 +62,33 @@ INSTRUCTIONS:
 - You are an automated assistant. Do not claim to be human if directly asked.
 - End every reply with "— Merza Automated Assistant 🥭"
 - Do NOT use markdown, bullet points, or headers in your reply.
+{$ownerNotes}
 PROMPT;
+    }
+
+    /**
+     * Store owner's own instructions from Bot Settings → WhatsApp Auto-reply
+     * Prompt, layered on top of the auto-generated context above rather than
+     * replacing it — so they can tweak tone/policy without losing the live
+     * product catalogue and order lookup.
+     */
+    private function buildOwnerInstructions(Contact $contact, string $inboundMessage): string
+    {
+        $template = trim($this->settings->wa_reply_prompt_template ?? '');
+
+        if ($template === '') {
+            return '';
+        }
+
+        $name = $contact->name && ! str_starts_with($contact->name, 'WA:') ? $contact->name : 'Customer';
+
+        $filled = str_replace(
+            ['{{customer_name}}', '{{customer_message}}', '{{product_interest}}'],
+            [$name, $inboundMessage, $contact->active_lead?->product_interest ?? 'our fresh fruits'],
+            $template
+        );
+
+        return "\nSTORE OWNER'S ADDITIONAL INSTRUCTIONS:\n{$filled}";
     }
 
     private function getProductSummary(): string
@@ -158,33 +167,5 @@ PROMPT;
         $messages[] = ['role' => 'user', 'content' => $current->message];
 
         return $messages;
-    }
-
-    // ─── Anthropic fallback ──────────────────────────────────────────────────
-
-    private function callAnthropic(string $systemPrompt, array $messages, string $inboundMessage): ?string
-    {
-        $response = Http::timeout(30)
-            ->withHeaders([
-                'x-api-key'         => $this->settings->anthropic_api_key,
-                'anthropic-version' => self::ANTHROPIC_VERSION,
-                'content-type'      => 'application/json',
-            ])
-            ->post(self::ANTHROPIC_URL, [
-                'model'      => $this->settings->anthropic_model ?? 'claude-haiku-4-5-20251001',
-                'max_tokens' => 400,
-                'system'     => $systemPrompt,
-                'messages'   => $messages,
-            ]);
-
-        if ($response->failed()) {
-            Log::error('BotReplyService(Anthropic): API error', [
-                'status' => $response->status(),
-                'body'   => $response->body(),
-            ]);
-            return null;
-        }
-
-        return $response->json('content.0.text');
     }
 }

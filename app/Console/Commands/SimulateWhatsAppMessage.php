@@ -74,7 +74,7 @@ class SimulateWhatsAppMessage extends Command
         $this->info("Inbound conversation stored: [{$inbound->id}]");
 
         // Generate AI reply
-        $this->info('Calling Claude AI for bot reply...');
+        $this->info('Calling AI for bot reply (active provider: ' . $settings->ai_provider . ')...');
         $replyService = new BotReplyService($settings);
         $reply        = $replyService->generateReply($contact, $message, $inbound);
 

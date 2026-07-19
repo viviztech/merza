@@ -7,7 +7,7 @@ use App\Models\BotSetting;
 use App\Models\Contact;
 use App\Models\Conversation;
 use App\Models\Lead;
-use App\Services\ClaudeAiService;
+use App\Services\LeadFollowUpAiService;
 use App\Services\MetaLeadsService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -32,9 +32,9 @@ class ProcessMetaLeadJob implements ShouldQueue
 
     public function handle(): void
     {
-        $settings = BotSetting::current();
-        $metaService   = new MetaLeadsService($settings);
-        $claudeService = new ClaudeAiService($settings);
+        $settings          = BotSetting::current();
+        $metaService       = new MetaLeadsService($settings);
+        $followUpAiService = new LeadFollowUpAiService($settings);
 
         // Log webhook received
         $log = BotActivityLog::create([
@@ -78,7 +78,7 @@ class ProcessMetaLeadJob implements ShouldQueue
             }
 
             // 4. Generate AI follow-up message
-            $message = $claudeService->generateFollowUpMessage($fields, $fields['product'] ?? null);
+            $message = $followUpAiService->generateFollowUpMessage($fields, $fields['product'] ?? null);
 
             if ($message) {
                 BotActivityLog::create([

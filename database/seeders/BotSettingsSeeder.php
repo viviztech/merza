@@ -18,12 +18,14 @@ class BotSettingsSeeder extends Seeder
 
         $updates = array_filter([
             // AI providers
-            'ai_provider'   => env('AI_PROVIDER', 'groq'),
-            'groq_api_key'  => env('GROQ_API_KEY'),
-            'groq_model'    => env('GROQ_MODEL', 'llama-3.1-8b-instant'),
-            'sarvam_api_key'=> env('SARVAM_API_KEY'),
+            'ai_provider'    => env('AI_PROVIDER', 'groq'),
+            'groq_api_key'   => env('GROQ_API_KEY'),
+            'groq_model'     => env('GROQ_MODEL', 'llama-3.1-8b-instant'),
+            'openai_api_key' => env('OPENAI_API_KEY'),
+            'openai_model'   => env('OPENAI_MODEL', 'gpt-4o-mini'),
+            'sarvam_api_key' => env('SARVAM_API_KEY'),
 
-            // Anthropic (legacy fallback)
+            // Claude / Anthropic
             'anthropic_api_key' => env('ANTHROPIC_API_KEY'),
             'anthropic_model'   => env('ANTHROPIC_MODEL'),
 
