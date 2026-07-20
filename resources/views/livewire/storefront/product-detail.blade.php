@@ -32,6 +32,7 @@
                     @foreach($product->getMedia('images') as $media)
                         <img src="{{ $media->getUrl('thumb') }}"
                              alt="{{ $product->name }}"
+                             loading="lazy"
                              class="w-16 h-16 object-cover rounded-xl border-2 border-transparent hover:border-amber-400 cursor-pointer flex-shrink-0 transition-all"
                              onerror="this.style.display='none'">
                     @endforeach
@@ -111,6 +112,36 @@
                     @endif
                 @endif
             </div>
+
+            {{-- Farm details --}}
+            @if($product->harvest_date || $product->farm_location || $product->sweetness_level || $product->delivery_time)
+                <div class="grid grid-cols-2 gap-2 mb-5">
+                    @if($product->harvest_date)
+                        <div class="bg-stone-50 border border-stone-100 rounded-xl px-3 py-2">
+                            <p class="text-[10px] font-bold text-stone-400 uppercase tracking-wide">🗓️ Harvested</p>
+                            <p class="text-xs font-bold text-stone-700 mt-0.5">{{ $product->harvest_date->format('d M Y') }}</p>
+                        </div>
+                    @endif
+                    @if($product->farm_location)
+                        <div class="bg-stone-50 border border-stone-100 rounded-xl px-3 py-2">
+                            <p class="text-[10px] font-bold text-stone-400 uppercase tracking-wide">📍 Farm Location</p>
+                            <p class="text-xs font-bold text-stone-700 mt-0.5">{{ $product->farm_location }}</p>
+                        </div>
+                    @endif
+                    @if($product->sweetness_level)
+                        <div class="bg-stone-50 border border-stone-100 rounded-xl px-3 py-2">
+                            <p class="text-[10px] font-bold text-stone-400 uppercase tracking-wide">🍯 Sweetness</p>
+                            <p class="text-xs font-bold text-stone-700 mt-0.5">{{ $product->sweetness_level }}</p>
+                        </div>
+                    @endif
+                    @if($product->delivery_time)
+                        <div class="bg-emerald-50 border border-emerald-100 rounded-xl px-3 py-2">
+                            <p class="text-[10px] font-bold text-emerald-600 uppercase tracking-wide">🚚 Delivery</p>
+                            <p class="text-xs font-bold text-emerald-700 mt-0.5">{{ $product->delivery_time }}</p>
+                        </div>
+                    @endif
+                </div>
+            @endif
 
             {{-- Variant selector --}}
             @if($product->activeVariants->isNotEmpty())
@@ -214,6 +245,86 @@
             </div>
         </div>
     @endif
+
+    {{-- Reviews --}}
+    <div class="mt-8 bg-white rounded-3xl border border-amber-100 shadow-sm overflow-hidden">
+        <div class="bg-gradient-to-r from-amber-50 to-orange-50 border-b border-amber-100 px-6 py-4 flex items-center justify-between">
+            <h2 class="font-extrabold text-stone-800">Customer Reviews</h2>
+            @if($product->approvedReviews->isNotEmpty())
+                <span class="text-xs font-bold text-amber-600">
+                    {{ str_repeat('★', (int) round($product->approvedReviews->avg('rating'))) }}
+                    {{ number_format($product->approvedReviews->avg('rating'), 1) }} ({{ $product->approvedReviews->count() }})
+                </span>
+            @endif
+        </div>
+
+        <div class="p-6 space-y-4">
+            @forelse($product->approvedReviews as $review)
+                <div class="flex gap-3 pb-4 border-b border-stone-100 last:border-0 last:pb-0">
+                    @if($review->photo_url)
+                        <img src="{{ $review->photo_url }}" alt="{{ $review->customer_name }}" loading="lazy"
+                             class="w-12 h-12 rounded-full object-cover flex-shrink-0 border border-amber-100">
+                    @else
+                        <div class="w-12 h-12 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center font-extrabold flex-shrink-0">
+                            {{ strtoupper(substr($review->customer_name, 0, 1)) }}
+                        </div>
+                    @endif
+                    <div class="flex-1 min-w-0">
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <p class="font-bold text-sm text-stone-800">{{ $review->customer_name }}</p>
+                            <span class="text-amber-500 text-xs">{{ str_repeat('★', $review->rating) }}{{ str_repeat('☆', 5 - $review->rating) }}</span>
+                        </div>
+                        @if($review->comment)
+                            <p class="text-sm text-stone-600 mt-1 leading-relaxed">{{ $review->comment }}</p>
+                        @endif
+                        @if($review->video_url)
+                            <a href="{{ $review->video_url }}" target="_blank" class="inline-flex items-center gap-1 text-xs font-bold text-amber-600 hover:text-amber-700 mt-1.5">
+                                🎥 Watch video review
+                            </a>
+                        @endif
+                    </div>
+                </div>
+            @empty
+                <p class="text-sm text-stone-400">No reviews yet — be the first to share your experience!</p>
+            @endforelse
+        </div>
+
+        {{-- Submit a review --}}
+        <div class="border-t border-stone-100 px-6 py-5 bg-stone-50">
+            @if($reviewSubmitted)
+                <p class="flex items-center gap-2 text-sm font-bold text-emerald-700">
+                    <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+                    Thanks! Your review will appear here once approved.
+                </p>
+            @else
+                <p class="text-sm font-extrabold text-stone-700 mb-3">Write a Review</p>
+                <div class="grid sm:grid-cols-2 gap-3 mb-3">
+                    <input wire:model="reviewName" type="text" placeholder="Your name"
+                           class="px-3 py-2.5 text-sm bg-white border border-stone-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-400">
+                    @error('reviewName') <p class="text-xs text-red-500 sm:col-span-2">{{ $message }}</p> @enderror
+
+                    <select wire:model="reviewRating" class="px-3 py-2.5 text-sm bg-white border border-stone-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-400">
+                        @foreach([5,4,3,2,1] as $r)
+                            <option value="{{ $r }}">{{ str_repeat('★', $r) }} ({{ $r }})</option>
+                        @endforeach
+                    </select>
+                </div>
+                <textarea wire:model="reviewComment" rows="3" placeholder="Share your experience with this product…"
+                          class="w-full px-3 py-2.5 text-sm bg-white border border-stone-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-400 mb-1"></textarea>
+                @error('reviewComment') <p class="text-xs text-red-500 mb-2">{{ $message }}</p> @enderror
+
+                <div class="flex items-center gap-3 flex-wrap">
+                    <input type="file" wire:model="reviewPhoto" accept="image/*"
+                           class="text-xs text-stone-500 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-amber-100 file:text-amber-700 hover:file:bg-amber-200">
+                    <button wire:click="submitReview" wire:loading.attr="disabled"
+                            class="ml-auto bg-amber-500 hover:bg-amber-600 text-white text-sm font-bold px-6 py-2.5 rounded-xl transition-colors">
+                        Submit Review
+                    </button>
+                </div>
+                @error('reviewPhoto') <p class="text-xs text-red-500 mt-1">{{ $message }}</p> @enderror
+            @endif
+        </div>
+    </div>
 
     {{-- Mobile sticky CTA --}}
     <div class="md:hidden fixed bottom-20 left-0 right-0 z-30 px-4 pb-2">

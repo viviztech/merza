@@ -109,9 +109,10 @@
                 {{-- Right side actions --}}
                 <div class="flex items-center gap-2">
 
-                    {{-- Cart --}}
+                    {{-- Cart (hidden on mobile — the bottom tab bar already has a cart button there) --}}
                     <div x-data="{ count: {{ session('cart_count', 0) }} }"
-                         x-on:cart-updated.window="count = $event.detail?.count ?? count">
+                         x-on:cart-updated.window="count = $event.detail?.count ?? count"
+                         class="hidden md:block">
                         <a href="{{ route('cart.index') }}"
                            class="relative flex items-center gap-1.5 px-3 py-2 rounded-xl border-2 border-amber-200 bg-amber-50 hover:bg-amber-100 hover:border-amber-300 text-brand-green-dark font-semibold text-sm transition-all">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -315,7 +316,7 @@
                 {{-- Brand --}}
                 <div class="md:col-span-1">
                     <div class="flex items-center mb-3 bg-white rounded-xl p-2 w-fit">
-                        <img src="/images/logo.png" alt="Merza Natural Squash" class="h-10 w-auto">
+                        <img src="/images/logo.png" alt="Merza Natural Squash" loading="lazy" class="h-10 w-auto">
                     </div>
                     <p class="text-emerald-300 text-sm leading-relaxed">
                         Premium tropical fruits delivered fresh from the farm to your door. Quality you can taste.

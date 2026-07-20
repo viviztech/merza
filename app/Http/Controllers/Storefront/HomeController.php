@@ -18,9 +18,16 @@ class HomeController extends Controller
             ->limit(4)
             ->get();
 
+        $todaysArrivals = Product::with(['activeVariants', 'media'])
+            ->where('is_active', true)
+            ->where('is_available_today', true)
+            ->orderBy('sort_order')
+            ->limit(6)
+            ->get();
+
         $testimonials = Testimonial::active()->limit(6)->get();
         $deliveryZones = DeliveryZone::active()->get();
 
-        return view('storefront.home', compact('featured', 'testimonials', 'deliveryZones'));
+        return view('storefront.home', compact('featured', 'todaysArrivals', 'testimonials', 'deliveryZones'));
     }
 }

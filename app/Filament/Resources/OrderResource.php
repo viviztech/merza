@@ -506,7 +506,7 @@ Order total: ₹{$r->total}"
                                 'name'   => $r->customer_name,
                                 'phone'  => $phone,
                                 'email'  => $r->customer_email,
-                                'source' => 'storefront',
+                                'source' => 'website',
                             ]);
                         }
 

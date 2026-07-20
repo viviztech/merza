@@ -28,7 +28,22 @@
             </a>
         </div>
     @else
-        <div class="grid lg:grid-cols-5 gap-6">
+        {{-- Mobile sticky checkout bar (desktop already has a sticky order summary sidebar) --}}
+        <div class="lg:hidden fixed inset-x-0 z-30 bg-white border-t border-amber-100 shadow-[0_-2px_12px_rgba(0,0,0,0.08)] px-4 py-3"
+             style="bottom: calc(4rem + env(safe-area-inset-bottom));">
+            <div class="flex items-center justify-between gap-4 max-w-3xl mx-auto">
+                <div>
+                    <p class="text-[10px] text-stone-400 font-semibold uppercase tracking-wide">Total</p>
+                    <p class="text-xl font-extrabold text-amber-600">₹{{ number_format($subtotal, 2) }}</p>
+                </div>
+                <a href="{{ route('checkout.index') }}"
+                   class="inline-flex items-center gap-2 bg-gradient-to-r from-amber-500 to-orange-500 text-white font-extrabold px-6 py-3 rounded-2xl shadow-lg shadow-amber-200/50">
+                    Checkout →
+                </a>
+            </div>
+        </div>
+
+        <div class="grid lg:grid-cols-5 gap-6 pb-24 lg:pb-0">
 
             {{-- Cart items --}}
             <div class="lg:col-span-3 space-y-3">

@@ -2,20 +2,27 @@
 
 namespace App\Livewire\Storefront;
 
+use App\Jobs\SendWhatsAppMessageJob;
+use App\Models\Contact;
+use App\Models\Conversation;
 use App\Models\DeliveryZone;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Services\CartService;
 use App\Services\DeliveryCalculatorService;
 use App\Services\PincodeService;
+use Illuminate\Support\Facades\Log;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Component;
+use Livewire\WithFileUploads;
 
 #[Layout('components.layouts.storefront')]
 #[Title('Checkout — Merza')]
 class CheckoutForm extends Component
 {
+    use WithFileUploads;
+
     public string $customer_name    = '';
     public string $customer_phone   = '';
     public string $delivery_address = '';
@@ -27,8 +34,12 @@ class CheckoutForm extends Component
     public bool   $pincodeLookupFailed = false;
 
     public bool   $orderPlaced        = false;
+    public ?int   $orderId            = null;
     public string $orderNumber        = '';
     public ?string $expectedDelivery  = null;
+
+    public $paymentScreenshot        = null;
+    public bool $screenshotUploaded  = false;
 
     protected function rules(): array
     {
@@ -151,9 +162,82 @@ class CheckoutForm extends Component
 
         $cart->clear();
 
+        $this->sendWhatsAppConfirmation($order);
+
         $this->orderPlaced       = true;
+        $this->orderId           = $order->id;
         $this->orderNumber       = $order->order_number;
         $this->expectedDelivery  = now()->addDays($zone->eta_days ?? 2)->format('D, d M Y');
+    }
+
+    /**
+     * Best-effort WhatsApp order confirmation, reusing the same
+     * Contact/Conversation/SendWhatsAppMessageJob pipeline the admin
+     * "Send WhatsApp Order Update" action already uses. Must never break
+     * order placement itself, so failures are logged and swallowed.
+     */
+    private function sendWhatsAppConfirmation(Order $order): void
+    {
+        try {
+            $phone   = preg_replace('/[^0-9+]/', '', $order->customer_phone);
+            $contact = Contact::where('phone', $phone)
+                             ->orWhere('phone', ltrim($phone, '+'))
+                             ->first();
+
+            if (! $contact) {
+                $contact = Contact::create([
+                    'name'        => $order->customer_name,
+                    'phone'       => $phone,
+                    'source'      => 'website',
+                    'is_customer' => true,
+                ]);
+            }
+
+            if ($contact->wa_opted_out || $contact->is_blocked) {
+                return;
+            }
+
+            $conversation = Conversation::create([
+                'contact_id' => $contact->id,
+                'channel'    => 'whatsapp',
+                'direction'  => 'outbound',
+                'message'    => "Hi {$order->customer_name}! 🥭 Your Merza order *{$order->order_number}* has been placed successfully. We'll confirm your delivery details here shortly. Thank you for choosing Merza Bodi!",
+                'is_bot'     => false,
+                'status'     => 'sent',
+            ]);
+
+            SendWhatsAppMessageJob::dispatch($conversation->id);
+        } catch (\Throwable $e) {
+            Log::error('CheckoutForm: failed to queue WhatsApp order confirmation', [
+                'order_id' => $order->id,
+                'error'    => $e->getMessage(),
+            ]);
+        }
+    }
+
+    public function uploadScreenshot(): void
+    {
+        $this->validate([
+            'paymentScreenshot' => 'required|image|max:5120',
+        ]);
+
+        $order = Order::find($this->orderId);
+
+        if (! $order) {
+            return;
+        }
+
+        $disk = config('media-library.disk_name', 'r2');
+        $path = $this->paymentScreenshot->storeAs(
+            'payment-screenshots',
+            $order->order_number . '.' . $this->paymentScreenshot->getClientOriginalExtension(),
+            $disk
+        );
+
+        $order->update(['payment_screenshot_path' => $path]);
+
+        $this->paymentScreenshot   = null;
+        $this->screenshotUploaded  = true;
     }
 
     public function render()

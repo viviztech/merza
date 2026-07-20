@@ -22,8 +22,26 @@ class ProductCatalogue extends Component
     #[Url(as: 'cat')]
     public string $categorySlug = '';
 
-    public function updatedSearch(): void    { $this->resetPage(); }
+    #[Url(as: 'min')]
+    public ?int $priceMin = null;
+
+    #[Url(as: 'max')]
+    public ?int $priceMax = null;
+
+    #[Url(as: 'stock')]
+    public bool $inStockOnly = false;
+
+    public function updatedSearch(): void       { $this->resetPage(); }
     public function updatedCategorySlug(): void { $this->resetPage(); }
+    public function updatedPriceMin(): void     { $this->resetPage(); }
+    public function updatedPriceMax(): void     { $this->resetPage(); }
+    public function updatedInStockOnly(): void  { $this->resetPage(); }
+
+    public function clearFilters(): void
+    {
+        $this->reset('search', 'categorySlug', 'priceMin', 'priceMax', 'inStockOnly');
+        $this->resetPage();
+    }
 
     public function render()
     {
@@ -37,6 +55,12 @@ class ProductCatalogue extends Component
                   ->orWhere('short_description', 'like', "%{$this->search}%"))
             ->when($this->categorySlug, fn($q) =>
                 $q->whereHas('category', fn($c) => $c->where('slug', $this->categorySlug)))
+            ->when($this->priceMin, fn($q) =>
+                $q->whereHas('activeVariants', fn($v) => $v->where('price', '>=', $this->priceMin)))
+            ->when($this->priceMax, fn($q) =>
+                $q->whereHas('activeVariants', fn($v) => $v->where('price', '<=', $this->priceMax)))
+            ->when($this->inStockOnly, fn($q) =>
+                $q->whereHas('activeVariants', fn($v) => $v->where('stock_qty', '>', 0)))
             ->orderBy('sort_order')
             ->paginate(12);
 

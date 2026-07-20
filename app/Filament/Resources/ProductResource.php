@@ -119,6 +119,29 @@ class ProductResource extends Resource
                         ),
                 ])->columns(2),
 
+                SchemaSection::make('Freshness & Origin')
+                    ->description('Shown on the product page to build trust — all optional.')
+                    ->schema([
+                        Forms\Components\DatePicker::make('harvest_date')
+                            ->label('Harvest Date')
+                            ->native(false),
+
+                        Forms\Components\TextInput::make('farm_location')
+                            ->label('Farm Location')
+                            ->placeholder('e.g. Bodinayakanur, Tamil Nadu')
+                            ->maxLength(150),
+
+                        Forms\Components\TextInput::make('sweetness_level')
+                            ->label('Sweetness')
+                            ->placeholder('e.g. Very Sweet, Tangy-Sweet')
+                            ->maxLength(50),
+
+                        Forms\Components\TextInput::make('delivery_time')
+                            ->label('Delivery Time')
+                            ->placeholder('e.g. Delivered within 24 hours')
+                            ->maxLength(100),
+                    ])->columns(2),
+
                 SchemaSection::make('Variants & Pricing')->schema([
                     Forms\Components\Repeater::make('variants')
                         ->relationship('variants')
@@ -201,6 +224,11 @@ class ProductResource extends Resource
                         ->label('Featured on homepage')
                         ->default(false),
 
+                    Forms\Components\Toggle::make('is_available_today')
+                        ->label("Show in Today's Fresh Arrival")
+                        ->helperText('Toggle on mornings this product is available, off when sold out for the day.')
+                        ->default(false),
+
                     Forms\Components\TextInput::make('base_price')
                         ->label('Starting price (display)')
                         ->numeric()
@@ -266,6 +294,10 @@ class ProductResource extends Resource
                     ->boolean()
                     ->label('Featured'),
 
+                Tables\Columns\IconColumn::make('is_available_today')
+                    ->boolean()
+                    ->label("Today's Arrival"),
+
                 Tables\Columns\IconColumn::make('is_active')
                     ->boolean()
                     ->label('Active'),
@@ -282,6 +314,7 @@ class ProductResource extends Resource
                     ->relationship('category', 'name'),
                 Tables\Filters\TernaryFilter::make('is_active')->label('Published'),
                 Tables\Filters\TernaryFilter::make('is_featured')->label('Featured'),
+                Tables\Filters\TernaryFilter::make('is_available_today')->label("Today's Arrival"),
             ])
             ->actions([
                 Actions\EditAction::make(),

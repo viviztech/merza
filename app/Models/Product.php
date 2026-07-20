@@ -15,13 +15,16 @@ class Product extends Model implements HasMedia
 
     protected $fillable = [
         'category_id', 'name', 'slug', 'short_description', 'description',
-        'base_price', 'unit', 'is_active', 'is_featured', 'sort_order',
+        'harvest_date', 'farm_location', 'sweetness_level', 'delivery_time',
+        'base_price', 'unit', 'is_active', 'is_featured', 'is_available_today', 'sort_order',
     ];
 
     protected $casts = [
-        'base_price'  => 'decimal:2',
-        'is_active'   => 'boolean',
-        'is_featured' => 'boolean',
+        'base_price'         => 'decimal:2',
+        'harvest_date'       => 'date',
+        'is_active'          => 'boolean',
+        'is_featured'        => 'boolean',
+        'is_available_today' => 'boolean',
     ];
 
     public function registerMediaCollections(): void
@@ -66,6 +69,16 @@ class Product extends Model implements HasMedia
         return $this->hasMany(ProductVariant::class)
                     ->where('is_active', true)
                     ->orderBy('sort_order');
+    }
+
+    public function reviews(): HasMany
+    {
+        return $this->hasMany(ProductReview::class)->latest();
+    }
+
+    public function approvedReviews(): HasMany
+    {
+        return $this->reviews()->approved();
     }
 
     public function getThumbnailUrlAttribute(): string

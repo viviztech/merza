@@ -3,24 +3,34 @@
 namespace App\Livewire\Storefront;
 
 use App\Models\Product;
+use App\Models\ProductReview;
 use App\Services\CartService;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Component;
+use Livewire\WithFileUploads;
 
 #[Layout('components.layouts.storefront')]
 class ProductDetail extends Component
 {
+    use WithFileUploads;
+
     public Product $product;
     public int $selectedVariantId = 0;
     public int $qty = 1;
     public string $addedMessage = '';
 
+    public string $reviewName    = '';
+    public int    $reviewRating  = 5;
+    public string $reviewComment = '';
+    public $reviewPhoto          = null;
+    public bool   $reviewSubmitted = false;
+
     public function mount(string $slug): void
     {
         $this->product = Product::where('slug', $slug)
             ->where('is_active', true)
-            ->with(['category', 'activeVariants'])
+            ->with(['category', 'activeVariants', 'approvedReviews'])
             ->firstOrFail();
 
         $first = $this->product->activeVariants->first();
@@ -48,6 +58,35 @@ class ProductDetail extends Component
 
         // Auto-clear the message after 3s via JS
         $this->dispatch('flash-added');
+    }
+
+    public function submitReview(): void
+    {
+        $this->validate([
+            'reviewName'    => 'required|string|max:100',
+            'reviewRating'  => 'required|integer|min:1|max:5',
+            'reviewComment' => 'nullable|string|max:1000',
+            'reviewPhoto'   => 'nullable|image|max:5120',
+        ]);
+
+        $photoPath = null;
+        if ($this->reviewPhoto) {
+            $disk      = config('media-library.disk_name', 'r2');
+            $photoPath = $this->reviewPhoto->store('product-review-photos', $disk);
+        }
+
+        ProductReview::create([
+            'product_id'    => $this->product->id,
+            'customer_name' => $this->reviewName,
+            'rating'        => $this->reviewRating,
+            'comment'       => $this->reviewComment ?: null,
+            'photo_path'    => $photoPath,
+            'is_approved'   => false,
+        ]);
+
+        $this->reset('reviewName', 'reviewRating', 'reviewComment', 'reviewPhoto');
+        $this->reviewRating     = 5;
+        $this->reviewSubmitted  = true;
     }
 
     public function render()

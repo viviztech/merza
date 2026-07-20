@@ -21,6 +21,21 @@ class OrderPdfController extends Controller
         return $pdf->download("Invoice-{$order->order_number}.pdf");
     }
 
+    /**
+     * Customer-facing invoice download. No login required — access is
+     * controlled by the route's signed-URL middleware instead, since
+     * checkout allows guest orders with no account to authenticate against.
+     */
+    public function customerInvoice(Order $order): Response
+    {
+        $order->load('items');
+
+        $pdf = Pdf::loadView('pdf.invoice', compact('order'))
+            ->setPaper('a4', 'portrait');
+
+        return $pdf->download("Invoice-{$order->order_number}.pdf");
+    }
+
     public function deliverySlip(Order $order): Response
     {
         abort_if(! auth()->user()?->hasAnyRole(['Admin', 'Sales', 'Operations', 'Delivery']), 403);

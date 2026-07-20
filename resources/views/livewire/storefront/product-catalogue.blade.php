@@ -35,6 +35,28 @@
                     @endforeach
                 </div>
             </div>
+
+            {{-- Price range + availability --}}
+            <div class="flex flex-wrap items-center gap-3 mt-3">
+                <span class="text-[11px] font-bold text-stone-400 uppercase tracking-wide">Price</span>
+                <input wire:model.live.debounce.500ms="priceMin" type="number" min="0" placeholder="Min ₹"
+                       class="w-24 px-3 py-1.5 text-xs bg-amber-50 border border-amber-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-400 focus:bg-white transition-all">
+                <span class="text-stone-300 text-xs">–</span>
+                <input wire:model.live.debounce.500ms="priceMax" type="number" min="0" placeholder="Max ₹"
+                       class="w-24 px-3 py-1.5 text-xs bg-amber-50 border border-amber-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-400 focus:bg-white transition-all">
+
+                <label class="flex items-center gap-1.5 ml-2 cursor-pointer">
+                    <input wire:model.live="inStockOnly" type="checkbox"
+                           class="w-4 h-4 rounded text-amber-500 border-amber-300 focus:ring-amber-400">
+                    <span class="text-xs font-semibold text-stone-600">In stock only</span>
+                </label>
+
+                @if($search || $categorySlug || $priceMin || $priceMax || $inStockOnly)
+                    <button wire:click="clearFilters" class="text-xs font-bold text-amber-600 hover:text-amber-700 ml-auto">
+                        Clear filters ✕
+                    </button>
+                @endif
+            </div>
         </div>
     </div>
 
@@ -46,7 +68,7 @@
                 <div class="text-7xl mb-5 float-fruit inline-block">🥭</div>
                 <h3 class="text-xl font-extrabold text-stone-700 mb-2">No fruits found</h3>
                 <p class="text-stone-400 text-sm mb-5">Try a different search term or browse all products</p>
-                <button wire:click="$set('search','')" wire:click="$set('categorySlug','')"
+                <button wire:click="clearFilters"
                         class="inline-flex items-center gap-2 bg-amber-500 hover:bg-amber-600 text-white font-bold px-6 py-3 rounded-2xl transition-colors">
                     Clear filters
                 </button>
@@ -73,6 +95,7 @@
                             @if($thumbUrl)
                                 <img src="{{ $thumbUrl }}"
                                      alt="{{ $product->name }}"
+                                     loading="lazy"
                                      class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                                      onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
                                 <div class="w-full h-full items-center justify-center text-6xl group-hover:scale-110 transition-transform duration-300" style="display:none">🥭</div>

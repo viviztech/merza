@@ -77,6 +77,10 @@ Route::middleware('auth')->prefix('admin/orders')->name('admin.orders.')->group(
 Route::middleware('auth')->get('/admin/order-pdf/daily-report', [OrderPdfController::class, 'dailyReport'])->name('admin.orders.daily-report');
 Route::middleware('auth')->get('/admin/order-pdf/delivery-challans', [OrderPdfController::class, 'deliveryChallans'])->name('admin.orders.delivery-challans');
 
+// Customer-facing invoice link shown on the order confirmation screen — signed
+// so a guest (no account) can still open it, without exposing other orders.
+Route::middleware('signed')->get('/orders/{order}/invoice', [OrderPdfController::class, 'customerInvoice'])->name('customer.orders.invoice');
+
 /*
 |--------------------------------------------------------------------------
 | Webhook Routes (Phase 6)
