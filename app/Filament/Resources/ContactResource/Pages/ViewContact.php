@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\ContactResource\Pages;
 
+use App\Filament\Pages\QuickOrder;
 use App\Filament\Resources\ContactResource;
 use App\Filament\Resources\LeadResource;
 use App\Filament\Resources\OrderResource;
@@ -42,6 +43,13 @@ class ViewContact extends ViewRecord
 
                     return redirect(OrderResource::getUrl('view', ['record' => $order]));
                 }),
+
+            Action::make('quickOrder')
+                ->label('Quick Order')
+                ->icon('heroicon-o-bolt')
+                ->color('warning')
+                ->visible(fn () => $this->record->active_lead === null)
+                ->url(fn () => QuickOrder::getUrl(['phone' => $this->record->phone])),
 
             Actions\EditAction::make(),
         ];

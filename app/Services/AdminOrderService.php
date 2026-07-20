@@ -63,6 +63,8 @@ class AdminOrderService
             ]);
         }
 
+        $order->recalculateTotals();
+
         if ($contact) {
             $contact->update(['is_customer' => true]);
         }
@@ -72,5 +74,58 @@ class AdminOrderService
         }
 
         return $order->fresh();
+    }
+
+    /**
+     * Check each requested item against live stock before an order is
+     * created. Returns one message per line item that can't be fulfilled —
+     * an empty array means everything is available.
+     *
+     * @param  array<int, array{product_variant_id: int, quantity: int}>  $items
+     * @return array<int, string>
+     */
+    public function checkAvailability(array $items): array
+    {
+        $variants = ProductVariant::with('product')
+            ->whereIn('id', collect($items)->pluck('product_variant_id'))
+            ->get()
+            ->keyBy('id');
+
+        $issues = [];
+
+        foreach ($items as $row) {
+            $variant = $variants->get($row['product_variant_id'] ?? null);
+
+            if (! $variant) {
+                continue;
+            }
+
+            $qty = max(1, (int) ($row['quantity'] ?? 1));
+
+            if ($qty > $variant->stock_qty) {
+                $issues[] = "{$variant->product->name} ({$variant->name}): only {$variant->stock_qty} in stock, {$qty} requested.";
+            }
+        }
+
+        return $issues;
+    }
+
+    /**
+     * Heuristic duplicate-order check: same phone number, order placed in
+     * the last 2 hours. Staff decide whether to proceed — this only warns,
+     * it never blocks (repeat customers legitimately order again quickly).
+     */
+    public function findRecentDuplicate(string $phone): ?Order
+    {
+        $digits = preg_replace('/[^0-9+]/', '', $phone);
+
+        if (strlen($digits) < 10) {
+            return null;
+        }
+
+        return Order::where('customer_phone', $digits)
+            ->where('created_at', '>=', now()->subHours(2))
+            ->latest()
+            ->first();
     }
 }

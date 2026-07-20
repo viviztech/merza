@@ -17,6 +17,7 @@ use Filament\Resources\Resource;
 use Filament\Schemas\Components\Section as SchemaSection;
 use Filament\Schemas\Components\Wizard\Step;
 use Filament\Schemas\Schema;
+use Filament\Support\Exceptions\Halt;
 use Filament\Tables;
 use Filament\Tables\Table;
 
@@ -249,7 +250,9 @@ class LeadResource extends Resource
                     Forms\Components\Textarea::make('delivery_address')->required()->columnSpanFull(),
                     Forms\Components\TextInput::make('city')->label('District / City'),
                     Forms\Components\TextInput::make('state'),
-                    Forms\Components\TextInput::make('postcode')->label('Pincode'),
+                    Forms\Components\TextInput::make('postcode')
+                        ->label('Pincode')
+                        ->rule('digits:6'),
                     Forms\Components\TextInput::make('landmark'),
                 ])->columns(2),
 
@@ -321,13 +324,23 @@ class LeadResource extends Resource
     {
         $contact = $lead->contact;
 
+        // Prefer the contact's most recent order for the delivery address —
+        // Contact itself only stores city/state, not a full street address,
+        // so without this a returning customer's address gets retyped every time.
+        $lastOrder = $contact
+            ? \App\Models\Order::where('contact_id', $contact->id)->latest()->first()
+            : null;
+
         return [
-            'customer_name'  => $contact?->name,
-            'customer_phone' => $contact?->phone,
-            'customer_email' => $contact?->email,
-            'city'           => $contact?->city,
-            'state'          => $contact?->state,
-            'admin_notes'    => $lead->notes,
+            'customer_name'    => $contact?->name,
+            'customer_phone'   => $contact?->phone,
+            'customer_email'   => $contact?->email,
+            'delivery_address' => $lastOrder?->delivery_address,
+            'city'             => $lastOrder?->city ?? $contact?->city,
+            'state'            => $lastOrder?->state ?? $contact?->state,
+            'postcode'         => $lastOrder?->postcode,
+            'landmark'         => $lastOrder?->landmark,
+            'admin_notes'      => $lead->notes,
         ];
     }
 
@@ -336,7 +349,21 @@ class LeadResource extends Resource
         $items = $data['items'] ?? [];
         unset($data['items'], $data['interest_hint']);
 
-        return (new AdminOrderService())->createOrder(
+        $service = new AdminOrderService();
+
+        $stockIssues = $service->checkAvailability($items);
+
+        if (! empty($stockIssues)) {
+            Notification::make()
+                ->title('Not enough stock to confirm this order')
+                ->body(implode("\n", $stockIssues))
+                ->danger()
+                ->send();
+
+            throw new Halt();
+        }
+
+        return $service->createOrder(
             items: $items,
             customerData: array_intersect_key($data, array_flip([
                 'customer_name', 'customer_phone', 'customer_email',

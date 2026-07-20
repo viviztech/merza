@@ -14,6 +14,8 @@ use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Schemas\Components\Group as SchemaGroup;
 use Filament\Schemas\Components\Section as SchemaSection;
+use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
 use Filament\Tables;
 use Filament\Tables\Table;
@@ -36,7 +38,7 @@ class ProductResource extends Resource
                         ->required()
                         ->maxLength(200)
                         ->live(onBlur: true)
-                        ->afterStateUpdated(fn ($state, Forms\Set $set) =>
+                        ->afterStateUpdated(fn ($state, Set $set) =>
                             $set('slug', Str::slug($state))),
 
                     Forms\Components\TextInput::make('slug')
@@ -58,7 +60,7 @@ class ProductResource extends Resource
                             Action::make('genShortDesc')
                                 ->label('✨ Generate')
                                 ->icon('heroicon-o-sparkles')
-                                ->action(function (Forms\Get $get, Forms\Set $set) {
+                                ->action(function (Get $get, Set $set) {
                                     $name = $get('name');
                                     if (empty($name)) {
                                         Notification::make()->title('Enter a product name first')->warning()->send();
@@ -89,7 +91,7 @@ class ProductResource extends Resource
                             Action::make('genDescription')
                                 ->label('✨ Generate')
                                 ->icon('heroicon-o-sparkles')
-                                ->action(function (Forms\Get $get, Forms\Set $set) {
+                                ->action(function (Get $get, Set $set) {
                                     $name     = $get('name');
                                     $category = Category::find($get('category_id'))?->name ?? 'fruit';
                                     if (empty($name)) {

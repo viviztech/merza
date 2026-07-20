@@ -14,7 +14,11 @@ use Filament\Panel;
 use Filament\PanelProvider;
 use Filament\Support\Colors\Color;
 use App\Filament\Widgets\CrmStatsWidget;
+use App\Filament\Widgets\DailySummaryWidget;
+use App\Filament\Widgets\FollowUpQueueWidget;
 use App\Filament\Widgets\LeadsByStageWidget;
+use App\Filament\Widgets\PaymentPendingOrdersWidget;
+use App\Filament\Widgets\ReadyToPackOrdersWidget;
 use App\Filament\Widgets\RecentLeadsWidget;
 use Filament\Widgets\AccountWidget;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
@@ -67,7 +71,11 @@ class AdminPanelProvider extends PanelProvider
             ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\Filament\Widgets')
             ->widgets([
                 AccountWidget::class,
+                DailySummaryWidget::class,
                 CrmStatsWidget::class,
+                FollowUpQueueWidget::class,
+                PaymentPendingOrdersWidget::class,
+                ReadyToPackOrdersWidget::class,
                 LeadsByStageWidget::class,
                 RecentLeadsWidget::class,
             ])

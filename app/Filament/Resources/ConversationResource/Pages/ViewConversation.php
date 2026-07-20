@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\ConversationResource\Pages;
 
+use App\Filament\Pages\QuickOrder;
 use App\Filament\Resources\ConversationResource;
 use App\Jobs\SendWhatsAppMessageJob;
 use App\Models\Conversation;
@@ -27,6 +28,13 @@ class ViewConversation extends ViewRecord
                     SendWhatsAppMessageJob::dispatch($this->record->id);
                     $this->refreshFormData(['sent_at', 'status', 'wa_message_id']);
                 }),
+
+            Action::make('quickOrder')
+                ->label('Quick Order')
+                ->icon('heroicon-o-bolt')
+                ->color('warning')
+                ->visible(fn () => filled($this->record->contact?->phone))
+                ->url(fn () => QuickOrder::getUrl(['phone' => $this->record->contact->phone])),
 
             Actions\EditAction::make(),
             Actions\DeleteAction::make(),

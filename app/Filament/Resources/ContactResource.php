@@ -3,6 +3,7 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\ContactResource\Pages;
+use App\Filament\Pages\QuickOrder;
 use App\Models\Contact;
 use App\Models\User;
 use Filament\Actions;
@@ -222,6 +223,12 @@ class ContactResource extends Resource
 
                         return redirect(OrderResource::getUrl('view', ['record' => $order]));
                     }),
+                Action::make('quickOrder')
+                    ->label('Quick Order')
+                    ->icon('heroicon-o-bolt')
+                    ->color('warning')
+                    ->visible(fn (Contact $r) => $r->active_lead === null)
+                    ->url(fn (Contact $r) => QuickOrder::getUrl(['phone' => $r->phone])),
 
                 Action::make('createOrder')
                     ->label('New Order')

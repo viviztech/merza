@@ -7,8 +7,10 @@ use App\Models\Contact;
 use App\Models\ProductVariant;
 use App\Services\AdminOrderService;
 use Filament\Forms;
+use Filament\Notifications\Notification;
 use Filament\Resources\Pages\CreateRecord;
 use Filament\Schemas\Components\Section as SchemaSection;
+use Filament\Support\Exceptions\Halt;
 use Illuminate\Database\Eloquent\Model;
 
 class CreateOrder extends CreateRecord
@@ -22,12 +24,17 @@ class CreateOrder extends CreateRecord
         $contact = Contact::find(request()->query('contact_id'));
 
         if ($contact) {
+            $lastOrder = \App\Models\Order::where('contact_id', $contact->id)->latest()->first();
+
             $this->form->fill([
-                'customer_name'  => $contact->name,
-                'customer_phone' => $contact->phone,
-                'customer_email' => $contact->email,
-                'city'           => $contact->city,
-                'state'          => $contact->state,
+                'customer_name'    => $contact->name,
+                'customer_phone'   => $contact->phone,
+                'customer_email'   => $contact->email,
+                'delivery_address' => $lastOrder?->delivery_address,
+                'city'             => $lastOrder?->city ?? $contact->city,
+                'state'            => $lastOrder?->state ?? $contact->state,
+                'postcode'         => $lastOrder?->postcode,
+                'landmark'         => $lastOrder?->landmark,
             ]);
         }
     }
@@ -42,7 +49,9 @@ class CreateOrder extends CreateRecord
                 Forms\Components\Textarea::make('delivery_address')->required()->columnSpanFull(),
                 Forms\Components\TextInput::make('city')->label('District / City'),
                 Forms\Components\TextInput::make('state'),
-                Forms\Components\TextInput::make('postcode')->label('Pincode'),
+                Forms\Components\TextInput::make('postcode')
+                    ->label('Pincode')
+                    ->rule('digits:6'),
                 Forms\Components\TextInput::make('landmark'),
             ])->columns(2),
 
@@ -109,9 +118,23 @@ class CreateOrder extends CreateRecord
         $items = $data['items'] ?? [];
         unset($data['items']);
 
+        $service = new AdminOrderService();
+
+        $stockIssues = $service->checkAvailability($items);
+
+        if (! empty($stockIssues)) {
+            Notification::make()
+                ->title('Not enough stock to confirm this order')
+                ->body(implode("\n", $stockIssues))
+                ->danger()
+                ->send();
+
+            throw new Halt();
+        }
+
         $contact = Contact::find(request()->query('contact_id'));
 
-        return (new AdminOrderService())->createOrder(
+        return $service->createOrder(
             items: $items,
             customerData: array_intersect_key($data, array_flip([
                 'customer_name', 'customer_phone', 'customer_email',
