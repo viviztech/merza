@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Order;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 
 class OrderPdfController extends Controller
@@ -30,22 +31,40 @@ class OrderPdfController extends Controller
         return $pdf->download("DeliveryChallan-{$order->order_number}.pdf");
     }
 
-    public function confirmedDeliveryChallans(): Response
+    public function deliveryChallans(Request $request): Response
     {
         abort_if(! auth()->user()?->hasAnyRole(['Admin', 'Sales', 'Operations', 'Delivery']), 403);
 
-        $orders = Order::where('status', 'confirmed')
-            ->orderBy('created_at')
-            ->get();
+        $status   = $request->query('status', 'confirmed');
+        $dateFrom = $request->query('date_from');
+        $dateTo   = $request->query('date_to');
+
+        $query = Order::query()->orderBy('created_at');
+
+        if ($status !== 'all') {
+            $query->where('status', $status);
+        }
+
+        if ($dateFrom) {
+            $query->whereDate('created_at', '>=', $dateFrom);
+        }
+
+        if ($dateTo) {
+            $query->whereDate('created_at', '<=', $dateTo);
+        }
+
+        $orders = $query->get();
 
         if ($orders->isEmpty()) {
-            return response('No confirmed orders to include.', 200);
+            return response('No orders match the selected filters.', 200);
         }
 
         $pdf = Pdf::loadView('pdf.delivery-slip-bulk', compact('orders'))
             ->setPaper('a5', 'portrait');
 
-        return $pdf->download('DeliveryChallans-Confirmed-' . now()->format('Y-m-d') . '.pdf');
+        $label = $status === 'all' ? 'All' : ucfirst($status);
+
+        return $pdf->download("DeliveryChallans-{$label}-" . now()->format('Y-m-d') . '.pdf');
     }
 
     public function dailyReport(): Response

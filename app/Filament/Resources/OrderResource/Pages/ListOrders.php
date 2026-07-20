@@ -34,16 +34,41 @@ class ListOrders extends ListRecords
                     $this->redirect(route('admin.orders.daily-report', ['date' => $data['date']]));
                 }),
 
-            Action::make('confirmedChallans')
+            Action::make('deliveryChallans')
                 ->label('Download Confirmed Challans')
                 ->icon('heroicon-o-document-arrow-down')
                 ->color('gray')
-                ->requiresConfirmation()
-                ->modalHeading('Download Confirmed Delivery Challans')
-                ->modalDescription(fn () => 'This will combine the delivery challans of all ' . Order::where('status', 'confirmed')->count() . ' confirmed order(s) into a single PDF.')
+                ->modalHeading('Download Delivery Challans')
+                ->modalDescription('Combine the delivery challans of orders matching the selected status and date range into a single PDF.')
                 ->modalSubmitActionLabel('Download')
-                ->action(function () {
-                    $this->redirect(route('admin.orders.delivery-challans.confirmed'));
+                ->form([
+                    Forms\Components\Select::make('status')
+                        ->label('Order Status')
+                        ->options([
+                            'all'        => 'All Statuses',
+                            'pending'    => 'Pending',
+                            'confirmed'  => 'Confirmed',
+                            'preparing'  => 'Preparing',
+                            'delivering' => 'Delivering',
+                            'delivered'  => 'Delivered',
+                            'cancelled'  => 'Cancelled',
+                        ])
+                        ->default('confirmed')
+                        ->required(),
+                    Forms\Components\DatePicker::make('date_from')
+                        ->label('From Date')
+                        ->native(false),
+                    Forms\Components\DatePicker::make('date_to')
+                        ->label('To Date')
+                        ->native(false)
+                        ->afterOrEqual('date_from'),
+                ])
+                ->action(function (array $data) {
+                    $this->redirect(route('admin.orders.delivery-challans', [
+                        'status'    => $data['status'],
+                        'date_from' => $data['date_from'] ?? null,
+                        'date_to'   => $data['date_to'] ?? null,
+                    ]));
                 }),
         ];
     }
