@@ -3,8 +3,11 @@
 <head>
 <meta charset="UTF-8">
 <style>
+  @font-face { font-family: 'Noto Sans Tamil'; src: url('{{ public_path('fonts/pdf/NotoSansTamil-Regular.ttf') }}'); font-weight: normal; font-style: normal; }
+  @font-face { font-family: 'Noto Sans Tamil'; src: url('{{ public_path('fonts/pdf/NotoSansTamil-Bold.ttf') }}'); font-weight: bold; font-style: normal; }
+
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { font-family: DejaVu Sans, sans-serif; font-size: 11px; color: #1a1a1a; background: #fff; }
+  body { font-family: 'DejaVu Sans', 'Noto Sans Tamil', sans-serif; font-size: 11px; color: #1a1a1a; background: #fff; }
 
   .page { padding: 24px 28px; }
 
