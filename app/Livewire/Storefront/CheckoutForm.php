@@ -161,6 +161,7 @@ class CheckoutForm extends Component
         }
 
         $cart->clear();
+        $this->dispatch('cart-updated', count: 0);
 
         $this->sendWhatsAppConfirmation($order);
 

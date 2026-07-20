@@ -51,10 +51,11 @@ class ProductDetail extends Component
             'qty'               => 'required|integer|min:1|max:100',
         ]);
 
-        app(CartService::class)->add($this->selectedVariantId, $this->qty);
+        $cart = app(CartService::class);
+        $cart->add($this->selectedVariantId, $this->qty);
 
         $this->addedMessage = 'Added to cart!';
-        $this->dispatch('cart-updated');
+        $this->dispatch('cart-updated', count: $cart->count());
 
         // Auto-clear the message after 3s via JS
         $this->dispatch('flash-added');

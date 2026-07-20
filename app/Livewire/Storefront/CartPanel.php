@@ -17,14 +17,16 @@ class CartPanel extends Component
 
     public function updateQty(int $variantId, int $qty): void
     {
-        app(CartService::class)->update($variantId, $qty);
-        $this->dispatch('cart-updated');
+        $cart = app(CartService::class);
+        $cart->update($variantId, $qty);
+        $this->dispatch('cart-updated', count: $cart->count());
     }
 
     public function remove(int $variantId): void
     {
-        app(CartService::class)->remove($variantId);
-        $this->dispatch('cart-updated');
+        $cart = app(CartService::class);
+        $cart->remove($variantId);
+        $this->dispatch('cart-updated', count: $cart->count());
     }
 
     public function render()
