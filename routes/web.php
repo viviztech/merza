@@ -71,8 +71,11 @@ Route::middleware('auth')->prefix('admin/orders')->name('admin.orders.')->group(
     Route::get('/{order}/invoice',       [OrderPdfController::class, 'invoice'])      ->name('invoice');
     Route::get('/{order}/delivery-slip', [OrderPdfController::class, 'deliverySlip']) ->name('delivery-slip');
 });
-Route::middleware('auth')->get('/admin/orders/daily-report', [OrderPdfController::class, 'dailyReport'])->name('admin.orders.daily-report');
-Route::middleware('auth')->get('/admin/orders/delivery-challans', [OrderPdfController::class, 'deliveryChallans'])->name('admin.orders.delivery-challans');
+// Routed outside /admin/orders/{segment} because Filament's OrderResource ViewOrder
+// page claims that exact pattern (/admin/orders/{record}) and would otherwise treat
+// these path segments as an order ID lookup.
+Route::middleware('auth')->get('/admin/order-pdf/daily-report', [OrderPdfController::class, 'dailyReport'])->name('admin.orders.daily-report');
+Route::middleware('auth')->get('/admin/order-pdf/delivery-challans', [OrderPdfController::class, 'deliveryChallans'])->name('admin.orders.delivery-challans');
 
 /*
 |--------------------------------------------------------------------------
