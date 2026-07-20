@@ -26,25 +26,24 @@ class ProductSeeder extends Seeder
             'unit'              => 'kg',
             'is_featured'       => true,
             'variants'          => [
-                ['name' => '5 kg',  'price' => 500.00,  'free_gift_label' => null,             'free_gift_weight_kg' => null, 'weight_value' => 5.0,  'weight_unit' => 'kg', 'stock_qty' => 50, 'sku' => 'KLM-5KG'],
-                ['name' => '10 kg', 'price' => 950.00,  'free_gift_label' => 'Free 1kg Mango',  'free_gift_weight_kg' => 1.0,  'weight_value' => 10.0, 'weight_unit' => 'kg', 'stock_qty' => 30, 'sku' => 'KLM-10KG'],
-                ['name' => '15 kg', 'price' => 1350.00, 'free_gift_label' => null,             'free_gift_weight_kg' => null, 'weight_value' => 15.0, 'weight_unit' => 'kg', 'stock_qty' => 20, 'sku' => 'KLM-15KG'],
+                ['name' => '5 kg',  'price' => 499.00,  'free_gift_label' => null,               'free_gift_weight_kg' => null, 'weight_value' => 5.0,  'weight_unit' => 'kg', 'stock_qty' => 50, 'sku' => 'KLM-5KG'],
+                ['name' => '10 kg', 'price' => 999.00,  'free_gift_label' => 'Free 0.5kg Mango',  'free_gift_weight_kg' => 0.0,  'weight_value' => 10.0, 'weight_unit' => 'kg', 'stock_qty' => 30, 'sku' => 'KLM-10KG'],
+                ['name' => '15 kg', 'price' => 1499.00, 'free_gift_label' => 'Free 1kg Mango',    'free_gift_weight_kg' => 1.0,  'weight_value' => 15.0, 'weight_unit' => 'kg', 'stock_qty' => 20, 'sku' => 'KLM-15KG'],
             ],
         ];
 
-        $product = Product::firstOrCreate(
+        $product = Product::updateOrCreate(
             ['slug' => Str::slug($data['name'])],
             [
                 'category_id'       => $data['category']->id,
                 'name'              => $data['name'],
-                'slug'              => Str::slug($data['name']),
                 'short_description' => $data['short_description'],
                 'description'       => $data['description'],
                 'base_price'        => $data['base_price'],
                 'unit'              => $data['unit'],
                 'is_active'         => true,
                 'is_featured'       => $data['is_featured'],
-                'sort_order'        => 0,
+                'sort_order'        => 3,
             ]
         );
 
