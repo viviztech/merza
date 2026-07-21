@@ -47,13 +47,11 @@
   <div class="block">
     <div class="block-heading">From :</div>
     <div class="block-body">
-      <div class="party-name">Merza Bodi</div>
+      <div class="party-name">Merza</div>
       <div class="party-address">
-        HP Petrol Bunk, Pankajam School Opp., Thevaram Road,<br>
-        Bodinayakanur-625513<br>
-        Theni District, Tamil Nadu
+        Bodinayakanur, Theni District - 625513
       </div>
-      <div class="party-mobile">Mobile : 9360064278</div>
+      <div class="party-mobile">Mobile : 8667696278</div>
     </div>
   </div>
 
