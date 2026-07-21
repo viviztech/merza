@@ -194,7 +194,7 @@ class ContactResource extends Resource
                     ->label('Last Contact'),
 
                 Tables\Columns\TextColumn::make('created_at')
-                    ->dateTime('d M Y')
+                    ->dateTime('d M Y, h:i A')
                     ->sortable()
                     ->label('Added')
                     ->toggleable(),

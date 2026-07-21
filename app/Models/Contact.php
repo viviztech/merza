@@ -70,6 +70,15 @@ class Contact extends Model
 
     public function getCallUrlAttribute(): string
     {
-        return 'tel:' . preg_replace('/[^0-9+]/', '', $this->phone);
+        $digits = preg_replace('/\D/', '', $this->phone);
+
+        // Bare 10-digit Indian mobile number — add the country code so the
+        // dialer treats it as international (+91…), not a literal 12-digit
+        // number if it already happened to start with "91" some other way.
+        if (strlen($digits) === 10) {
+            $digits = '91' . $digits;
+        }
+
+        return 'tel:+' . $digits;
     }
 }

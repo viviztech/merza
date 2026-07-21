@@ -157,7 +157,7 @@ class ConversationResource extends Resource
                     ->placeholder('Draft'),
 
                 Tables\Columns\TextColumn::make('created_at')
-                    ->dateTime('d M Y H:i')
+                    ->dateTime('d M Y, h:i A')
                     ->sortable()
                     ->label('Received')
                     ->toggleable(),
