@@ -93,7 +93,13 @@ class ContactResource extends Resource
                     Infolists\Components\TextEntry::make('phone')
                         ->url(fn (Contact $r) => $r->whatsapp_url)
                         ->openUrlInNewTab()
-                        ->icon('heroicon-m-chat-bubble-left-ellipsis'),
+                        ->icon('heroicon-m-chat-bubble-left-ellipsis')
+                        ->hintAction(
+                            Action::make('call')
+                                ->label('Call')
+                                ->icon('heroicon-m-phone')
+                                ->url(fn (Contact $r) => $r->call_url)
+                        ),
                     Infolists\Components\TextEntry::make('email')->icon('heroicon-m-envelope'),
                     Infolists\Components\TextEntry::make('source')->badge(),
                     Infolists\Components\TextEntry::make('city'),
@@ -156,8 +162,13 @@ class ContactResource extends Resource
         return $table
             ->columns([
                 Tables\Columns\TextColumn::make('name')
-                    ->searchable()->sortable()
-                    ->description(fn (Contact $r) => $r->phone),
+                    ->searchable()->sortable(),
+
+                Tables\Columns\TextColumn::make('phone')
+                    ->searchable()
+                    ->icon('heroicon-m-phone')
+                    ->url(fn (Contact $r) => $r->call_url)
+                    ->color('primary'),
 
                 Tables\Columns\TextColumn::make('source')
                     ->badge()

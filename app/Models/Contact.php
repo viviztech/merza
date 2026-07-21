@@ -67,4 +67,9 @@ class Contact extends Model
         $phone = preg_replace('/\D/', '', $this->phone);
         return "https://wa.me/{$phone}";
     }
+
+    public function getCallUrlAttribute(): string
+    {
+        return 'tel:' . preg_replace('/[^0-9+]/', '', $this->phone);
+    }
 }

@@ -84,8 +84,14 @@ class LeadResource extends Resource
         return $table
             ->columns([
                 Tables\Columns\TextColumn::make('contact.name')
-                    ->searchable()->sortable()
-                    ->description(fn (Lead $r) => $r->contact?->phone),
+                    ->searchable()->sortable(),
+
+                Tables\Columns\TextColumn::make('contact.phone')
+                    ->label('Phone')
+                    ->searchable()
+                    ->icon('heroicon-m-phone')
+                    ->url(fn (Lead $r) => $r->contact?->call_url)
+                    ->color('primary'),
 
                 Tables\Columns\TextColumn::make('stage')
                     ->badge()
