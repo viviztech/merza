@@ -158,19 +158,17 @@ class QuickOrder extends Page
                     Forms\Components\Textarea::make('admin_notes')
                         ->label('Notes')->rows(2)->nullable()->columnSpanFull(),
                 ])->columns(3),
+
+                ActionsGroup::make([
+                    Action::make('createOrder')
+                        ->label('Create Order')
+                        ->color('success')
+                        ->icon('heroicon-o-shopping-bag')
+                        ->size('lg')
+                        ->action(fn () => $this->createOrder()),
+                ])->fullWidth(),
             ])->statePath('data'),
         ]);
-    }
-
-    protected function getFormActions(): array
-    {
-        return [
-            Action::make('createOrder')
-                ->label('Create Order')
-                ->color('success')
-                ->icon('heroicon-o-shopping-bag')
-                ->action('createOrder'),
-        ];
     }
 
     /**

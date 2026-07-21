@@ -6,6 +6,7 @@ use App\Models\DeliverySetting;
 use Filament\Forms;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
+use Filament\Schemas\Components\Actions as ActionsGroup;
 use Filament\Schemas\Components\Form;
 use Filament\Schemas\Components\Section as SchemaSection;
 use Filament\Schemas\Schema;
@@ -63,17 +64,14 @@ class DeliverySettingsPage extends Page
                             ->label('Orders at/above threshold')
                             ->content('Chargeable weight = Order weight + Packing weight − Free weight  |  Fee = Chargeable weight × Zone rate  (no packing charge)'),
                     ]),
+
+                ActionsGroup::make([
+                    Action::make('save')
+                        ->label('Save Settings')
+                        ->action(fn () => $this->save()),
+                ])->fullWidth(),
             ])->statePath('data'),
         ]);
-    }
-
-    protected function getFormActions(): array
-    {
-        return [
-            Action::make('save')
-                ->label('Save Settings')
-                ->action('save'),
-        ];
     }
 
     public function save(): void

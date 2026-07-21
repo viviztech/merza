@@ -174,8 +174,13 @@ class QuickOrderPageTest extends TestCase
             ->assertSet('data.items.0.quantity', 2);
     }
 
-    public function test_creating_an_order_with_valid_data_succeeds_and_recalculates_totals(): void
+    public function test_create_order_button_exists_and_is_clickable(): void
     {
+        // Regression test: getFormActions() is only wired up on
+        // CreateRecord/EditRecord-style pages via InteractsWithFormActions,
+        // NOT on a plain Filament\Pages\Page — so a submit button declared
+        // that way silently never renders. The button must live as an
+        // Actions::make([...]) component inside content() instead.
         $this->actingAs($this->admin);
 
         $test = Livewire::test(QuickOrder::class)
@@ -186,12 +191,13 @@ class QuickOrderPageTest extends TestCase
             ->set('data.state', 'Tamil Nadu')
             ->set('data.postcode', '625513')
             ->set('data.items.0.product_variant_id', $this->variant->id)
-            ->set('data.items.0.quantity', 3)
-            ->call('createOrder');
+            ->set('data.items.0.quantity', 3);
+
+        $this->callSchemaAction($test, 'createOrder');
 
         $order = Order::where('customer_phone', '9444444444')->first();
 
-        $this->assertNotNull($order);
+        $this->assertNotNull($order, 'Clicking the Create Order button did not create an order.');
         $this->assertEquals(1500, (float) $order->subtotal);
     }
 
