@@ -241,13 +241,36 @@
 
                             <div>
                                 <label class="block text-xs font-extrabold text-stone-600 mb-1.5 uppercase tracking-wide">Phone Number *</label>
-                                <input wire:model="customer_phone" type="tel" placeholder="93600 64278"
+                                <input wire:model.live.debounce.600ms="customer_phone" type="tel" placeholder="93600 64278"
                                        class="w-full border-2 {{ $errors->has('customer_phone') ? 'border-red-300 bg-red-50' : 'border-stone-200 focus:border-amber-400' }} rounded-xl px-4 py-3 text-base focus:outline-none transition-colors bg-white placeholder-stone-300">
                                 @error('customer_phone') <p class="text-red-500 text-xs mt-1 font-medium">{{ $message }}</p> @enderror
                                 <p class="text-[11px] text-stone-400 mt-1.5 leading-relaxed">
                                     📱 We'll send order updates to this number via WhatsApp. Reply <strong>STOP</strong> to that message anytime to opt out.
                                 </p>
                             </div>
+
+                            @if($returningCustomerName)
+                                <div class="sm:col-span-2 bg-emerald-50 border border-emerald-200 rounded-2xl p-4 flex items-center justify-between gap-3 flex-wrap">
+                                    <div>
+                                        <p class="text-sm font-extrabold text-emerald-800">Welcome back, {{ $returningCustomerName }}! ❤️</p>
+                                        @if($hasPreviousAddress)
+                                            <p class="text-xs text-emerald-600 mt-0.5">
+                                                @if($previousAddressApplied)
+                                                    ✓ Previous address applied below.
+                                                @else
+                                                    We found your previous delivery address.
+                                                @endif
+                                            </p>
+                                        @endif
+                                    </div>
+                                    @if($hasPreviousAddress && ! $previousAddressApplied)
+                                        <button type="button" wire:click="useSameAddress"
+                                                class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-4 py-2.5 rounded-xl transition-colors flex-shrink-0">
+                                            Use Same Address
+                                        </button>
+                                    @endif
+                                </div>
+                            @endif
 
                             <div class="sm:col-span-2">
                                 <label class="block text-xs font-extrabold text-stone-600 mb-1.5 uppercase tracking-wide">Address *</label>
@@ -319,9 +342,23 @@
                             </div>
 
                             <div class="flex flex-col sm:flex-row items-center gap-5 bg-amber-50 rounded-2xl p-5">
-                                <div class="text-center sm:text-left flex-1">
-                                    <p class="text-xs font-extrabold text-stone-500 uppercase tracking-wide mb-1">Pay via GPay / PhonePe / any UPI app</p>
+                                <div class="text-center sm:text-left flex-1 w-full">
+                                    <p class="text-xs font-extrabold text-stone-500 uppercase tracking-wide mb-1">Pay via any UPI app</p>
                                     <p class="text-2xl font-extrabold text-amber-600 mb-3">₹{{ number_format($total, 2) }}</p>
+
+                                    {{-- App badges (all pay the same GPay number below — no single app required) --}}
+                                    <div class="flex items-center justify-center sm:justify-start gap-2 mb-3">
+                                        <span class="inline-flex items-center gap-1.5 bg-white border border-stone-200 rounded-lg px-3 py-1.5 text-xs font-bold text-stone-700">
+                                            <span class="w-2 h-2 rounded-full bg-blue-500"></span> GPay
+                                        </span>
+                                        <span class="inline-flex items-center gap-1.5 bg-white border border-stone-200 rounded-lg px-3 py-1.5 text-xs font-bold text-stone-700">
+                                            <span class="w-2 h-2 rounded-full bg-purple-500"></span> PhonePe
+                                        </span>
+                                        <span class="inline-flex items-center gap-1.5 bg-white border border-stone-200 rounded-lg px-3 py-1.5 text-xs font-bold text-stone-700">
+                                            <span class="w-2 h-2 rounded-full bg-emerald-500"></span> UPI
+                                        </span>
+                                    </div>
+
                                     <p class="text-xs text-stone-500 mb-1.5">Send payment to our GPay number:</p>
                                     <div x-data="{ copied: false }" class="inline-flex items-center gap-2">
                                         <button type="button"
@@ -341,6 +378,21 @@
                                 </div>
                             </div>
                         </div>
+                    </div>
+
+                    {{-- Trust badges --}}
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                        @foreach([
+                            ['🔒', 'Secure Payment'],
+                            ['🚚', 'Fast Delivery'],
+                            ['🌱', 'Farm Fresh'],
+                            ['📞', 'Customer Support'],
+                        ] as [$icon, $label])
+                            <div class="bg-white border border-amber-100 rounded-2xl p-3 text-center">
+                                <span class="text-lg">{{ $icon }}</span>
+                                <p class="text-[10px] font-bold text-stone-600 mt-0.5 leading-tight">{{ $label }}</p>
+                            </div>
+                        @endforeach
                     </div>
 
                     {{-- Submit --}}

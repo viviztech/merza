@@ -33,6 +33,11 @@ class CheckoutForm extends Component
     public bool   $pincodeAutoFilled = false;
     public bool   $pincodeLookupFailed = false;
 
+    public ?string $returningCustomerName = null;
+    public bool     $hasPreviousAddress   = false;
+    public bool     $previousAddressApplied = false;
+    public ?Order   $lastOrderForPhone    = null;
+
     public bool   $orderPlaced        = false;
     public ?int   $orderId            = null;
     public string $orderNumber        = '';
@@ -52,6 +57,64 @@ class CheckoutForm extends Component
             'state'              => 'required|string|max:80',
             'landmark'           => 'nullable|string|max:150',
         ];
+    }
+
+    protected function messages(): array
+    {
+        return [
+            'customer_name.required'    => "Please tell us your name so we know who's ordering.",
+            'customer_phone.required'   => "We need a phone number to reach you about delivery.",
+            'delivery_address.required' => 'Please enter the full address where we should deliver.',
+            'postcode.required'         => 'Please enter your area pincode.',
+            'postcode.digits'           => 'That pincode looks off — it should be exactly 6 digits.',
+            'city.required'             => 'Please enter your district/city.',
+            'state.required'            => 'Please select your state.',
+        ];
+    }
+
+    public function updatedCustomerPhone(): void
+    {
+        $this->returningCustomerName   = null;
+        $this->hasPreviousAddress      = false;
+        $this->previousAddressApplied  = false;
+        $this->lastOrderForPhone       = null;
+
+        $digits = preg_replace('/[^0-9+]/', '', $this->customer_phone);
+
+        if (strlen($digits) < 10) {
+            return;
+        }
+
+        $contact = Contact::where('phone', $digits)
+            ->orWhere('phone', ltrim($digits, '+'))
+            ->first();
+
+        $lastOrder = $contact
+            ? Order::where('contact_id', $contact->id)->latest()->first()
+            : Order::where('customer_phone', $digits)->latest()->first();
+
+        if (! $lastOrder) {
+            return;
+        }
+
+        $this->returningCustomerName = $contact?->name ?: $lastOrder->customer_name;
+        $this->hasPreviousAddress    = filled($lastOrder->delivery_address);
+        $this->lastOrderForPhone     = $lastOrder;
+    }
+
+    public function useSameAddress(): void
+    {
+        if (! $this->lastOrderForPhone) {
+            return;
+        }
+
+        $this->delivery_address = $this->lastOrderForPhone->delivery_address;
+        $this->city             = $this->lastOrderForPhone->city;
+        $this->state            = $this->lastOrderForPhone->state;
+        $this->postcode         = $this->lastOrderForPhone->postcode;
+        $this->landmark         = $this->lastOrderForPhone->landmark ?? '';
+
+        $this->previousAddressApplied = true;
     }
 
     public function updatedPostcode(): void
@@ -129,35 +192,41 @@ class CheckoutForm extends Component
         $deliveryFee = $breakdown['total_fee'];
         $total       = $subtotal + $deliveryFee;
 
-        $order = Order::create([
-            'channel'                  => 'website',
-            'user_id'                  => auth()->id(),
-            'customer_name'            => $this->customer_name,
-            'customer_phone'           => $this->customer_phone,
-            'delivery_address'         => $this->delivery_address,
-            'city'                     => $this->city,
-            'postcode'                 => $this->postcode,
-            'state'                    => $this->state,
-            'landmark'                 => $this->landmark ?: null,
-            'subtotal'                 => $subtotal,
-            'delivery_fee'             => $deliveryFee,
-            'total'                    => $total,
-            'payment_method'           => 'upi',
-        ]);
-
-        foreach ($cart->items() as $item) {
-            OrderItem::create([
-                'order_id'             => $order->id,
-                'product_variant_id'   => $item->variant_id,
-                'product_name'         => $item->product_name,
-                'variant_name'         => $item->variant_name,
-                'free_gift_label'      => $item->free_gift_label ?? null,
-                'free_gift_weight_kg'  => $item->free_gift_weight_kg ?? null,
-                'sku'                  => $item->sku,
-                'quantity'             => $item->qty,
-                'unit_price'           => $item->price,
-                'subtotal'             => $item->price * $item->qty,
+        try {
+            $order = Order::create([
+                'channel'                  => 'website',
+                'user_id'                  => auth()->id(),
+                'customer_name'            => $this->customer_name,
+                'customer_phone'           => $this->customer_phone,
+                'delivery_address'         => $this->delivery_address,
+                'city'                     => $this->city,
+                'postcode'                 => $this->postcode,
+                'state'                    => $this->state,
+                'landmark'                 => $this->landmark ?: null,
+                'subtotal'                 => $subtotal,
+                'delivery_fee'             => $deliveryFee,
+                'total'                    => $total,
+                'payment_method'           => 'upi',
             ]);
+
+            foreach ($cart->items() as $item) {
+                OrderItem::create([
+                    'order_id'             => $order->id,
+                    'product_variant_id'   => $item->variant_id,
+                    'product_name'         => $item->product_name,
+                    'variant_name'         => $item->variant_name,
+                    'free_gift_label'      => $item->free_gift_label ?? null,
+                    'free_gift_weight_kg'  => $item->free_gift_weight_kg ?? null,
+                    'sku'                  => $item->sku,
+                    'quantity'             => $item->qty,
+                    'unit_price'           => $item->price,
+                    'subtotal'             => $item->price * $item->qty,
+                ]);
+            }
+        } catch (\Throwable $e) {
+            Log::error('CheckoutForm: order placement failed', ['error' => $e->getMessage()]);
+            $this->addError('cart', "Something went wrong placing your order — nothing was charged. Please try again, or message us on WhatsApp and we'll help right away.");
+            return;
         }
 
         $cart->clear();

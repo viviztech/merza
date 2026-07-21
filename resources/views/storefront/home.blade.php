@@ -112,12 +112,18 @@
     {{-- TODAY'S FRESH ARRIVAL --}}
     {{-- ═══════════════════════════════════════════════════════════ --}}
     @if($todaysArrivals->isNotEmpty())
+    @php
+        $dispatchCutoffHour = 16; // 4 PM
+        $nextDispatch = now()->hour < $dispatchCutoffHour
+            ? 'Today, 4:00 PM'
+            : 'Tomorrow, 4:00 PM';
+    @endphp
     <section class="max-w-7xl mx-auto px-4 py-12">
-        <div class="flex items-end justify-between mb-8">
+        <div class="flex items-end justify-between mb-4 flex-wrap gap-3">
             <div>
                 <span class="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-700 uppercase tracking-widest">
                     <span class="w-2 h-2 rounded-full bg-green-500 pulse-dot"></span>
-                    Available Today · {{ now()->format('d M') }}
+                    ⏰ Available Today Only · {{ now()->format('d M') }}
                 </span>
                 <h2 class="text-3xl md:text-4xl font-extrabold text-brand-green-dark mt-1">Today's Fresh Arrival</h2>
                 <p class="text-stone-500 mt-1 text-sm">Picked and packed this morning — order before it's gone</p>
@@ -131,10 +137,16 @@
             </a>
         </div>
 
+        <div class="inline-flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-xl px-4 py-2 mb-6">
+            <span class="text-sm">🚚</span>
+            <span class="text-xs font-bold text-amber-700">Next Dispatch: {{ $nextDispatch }}</span>
+        </div>
+
         <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
             @foreach($todaysArrivals as $product)
                 @php
-                    $soldOut = $product->activeVariants->where('stock_qty', '>', 0)->isEmpty();
+                    $totalStock = $product->activeVariants->sum('stock_qty');
+                    $soldOut = $totalStock <= 0;
                     $thumbUrl = $product->getFirstMediaUrl('thumbnail', 'thumb') ?: $product->getFirstMediaUrl('images', 'thumb');
                 @endphp
                 <a href="{{ route('products.show', $product->slug) }}"
@@ -167,6 +179,9 @@
                                 From ₹{{ number_format($product->base_price, 2) }}
                             @endif
                         </span>
+                        @if(! $soldOut)
+                            <p class="text-[10px] font-bold text-red-500 mt-1">📦 Only {{ $totalStock }} left</p>
+                        @endif
                     </div>
                 </a>
             @endforeach

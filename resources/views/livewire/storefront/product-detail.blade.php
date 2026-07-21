@@ -210,29 +210,45 @@
                 </a>
             </div>
 
-            {{-- Success flash --}}
-            @if($addedMessage)
-                <div x-data="{ show: true }"
-                     x-init="setTimeout(() => show = false, 3500)"
-                     x-show="show"
-                     x-transition:enter="transition ease-out duration-300"
-                     x-transition:enter-start="opacity-0 translate-y-2"
-                     x-transition:enter-end="opacity-100 translate-y-0"
-                     x-transition:leave="transition ease-in duration-200"
-                     x-transition:leave-start="opacity-100"
-                     x-transition:leave-end="opacity-0"
-                     class="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 flex items-center gap-3">
-                    <span class="w-8 h-8 rounded-full bg-emerald-500 text-white flex items-center justify-center flex-shrink-0">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
-                    </span>
-                    <div class="flex-1">
-                        <p class="text-sm font-bold text-emerald-800">{{ $addedMessage }}</p>
-                        <a href="{{ route('cart.index') }}" class="text-xs text-emerald-600 underline font-medium">View Cart & Checkout →</a>
-                    </div>
-                </div>
-            @endif
         </div>
     </div>
+
+    {{-- Add-to-cart confirmation toast --}}
+    @if($addedMessage)
+        <div wire:key="cart-toast-{{ $addedCount }}"
+             x-data="{ show: true }"
+             x-init="show = true; setTimeout(() => show = false, 4500)"
+             x-show="show"
+             x-transition:enter="transition ease-out duration-300"
+             x-transition:enter-start="opacity-0 -translate-y-4"
+             x-transition:enter-end="opacity-100 translate-y-0"
+             x-transition:leave="transition ease-in duration-200"
+             x-transition:leave-start="opacity-100"
+             x-transition:leave-end="opacity-0 -translate-y-2"
+             class="fixed top-20 md:top-24 inset-x-4 md:inset-x-auto md:right-6 z-50 md:w-96">
+            <div class="bg-white border-2 border-emerald-200 rounded-2xl shadow-2xl p-4">
+                <div class="flex items-center gap-3 mb-3">
+                    <span class="w-9 h-9 rounded-full bg-emerald-500 text-white flex items-center justify-center flex-shrink-0">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+                    </span>
+                    <p class="font-extrabold text-emerald-800">Added to Cart</p>
+                    <button @click="show = false" class="ml-auto text-stone-300 hover:text-stone-500 transition-colors">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"/></svg>
+                    </button>
+                </div>
+                <div class="flex gap-2">
+                    <a href="{{ route('cart.index') }}"
+                       class="flex-1 text-center bg-gradient-to-r from-amber-500 to-orange-500 text-white text-sm font-bold py-2.5 rounded-xl">
+                        🛒 View Cart
+                    </a>
+                    <button @click="show = false"
+                            class="flex-1 text-center bg-stone-100 hover:bg-stone-200 text-stone-600 text-sm font-bold py-2.5 rounded-xl transition-colors">
+                        ✔ Continue Shopping
+                    </button>
+                </div>
+            </div>
+        </div>
+    @endif
 
     {{-- Description --}}
     @if($product->description)

@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Storefront;
 
+use App\Models\Product;
 use App\Services\CartService;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
@@ -35,6 +36,15 @@ class CartPanel extends Component
         $items    = $cart->items();
         $subtotal = $cart->subtotal();
 
-        return view('livewire.storefront.cart-panel', compact('items', 'subtotal'));
+        $suggestedProducts = $items->isEmpty()
+            ? Product::with('activeVariants')
+                ->where('is_active', true)
+                ->where('is_featured', true)
+                ->orderBy('sort_order')
+                ->limit(4)
+                ->get()
+            : collect();
+
+        return view('livewire.storefront.cart-panel', compact('items', 'subtotal', 'suggestedProducts'));
     }
 }

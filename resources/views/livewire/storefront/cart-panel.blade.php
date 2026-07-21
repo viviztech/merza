@@ -27,6 +27,34 @@
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
             </a>
         </div>
+
+        @if($suggestedProducts->isNotEmpty())
+            <div class="mt-8">
+                <p class="text-xs font-bold text-amber-600 uppercase tracking-widest text-center mb-4">⭐ Best Sellers</p>
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    @foreach($suggestedProducts as $product)
+                        @php $thumbUrl = $product->getFirstMediaUrl('thumbnail', 'thumb') ?: $product->getFirstMediaUrl('images', 'thumb'); @endphp
+                        <a href="{{ route('products.show', $product->slug) }}"
+                           class="group bg-white rounded-2xl overflow-hidden border border-amber-100 hover:shadow-md transition-all">
+                            <div class="aspect-square" style="background: linear-gradient(135deg, #fef9c3, #fef3c7);">
+                                @if($thumbUrl)
+                                    <img src="{{ $thumbUrl }}" alt="{{ $product->name }}" loading="lazy"
+                                         class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300">
+                                @else
+                                    <div class="w-full h-full flex items-center justify-center text-4xl">🥭</div>
+                                @endif
+                            </div>
+                            <div class="p-2.5">
+                                <p class="text-xs font-bold text-stone-800 leading-tight line-clamp-2">{{ $product->name }}</p>
+                                @if($product->activeVariants->isNotEmpty())
+                                    <p class="text-xs font-extrabold text-amber-600 mt-1">From ₹{{ number_format($product->activeVariants->min('price'), 2) }}</p>
+                                @endif
+                            </div>
+                        </a>
+                    @endforeach
+                </div>
+            </div>
+        @endif
     @else
         {{-- Mobile sticky checkout bar (desktop already has a sticky order summary sidebar) --}}
         <div class="lg:hidden fixed inset-x-0 z-30 bg-white border-t border-amber-100 shadow-[0_-2px_12px_rgba(0,0,0,0.08)] px-4 py-3"

@@ -19,6 +19,7 @@ class ProductDetail extends Component
     public int $selectedVariantId = 0;
     public int $qty = 1;
     public string $addedMessage = '';
+    public int $addedCount = 0;
 
     public string $reviewName    = '';
     public int    $reviewRating  = 5;
@@ -55,6 +56,7 @@ class ProductDetail extends Component
         $cart->add($this->selectedVariantId, $this->qty);
 
         $this->addedMessage = 'Added to cart!';
+        $this->addedCount++;
         $this->dispatch('cart-updated', count: $cart->count());
 
         // Auto-clear the message after 3s via JS
