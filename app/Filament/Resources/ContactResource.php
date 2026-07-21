@@ -3,6 +3,7 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\ContactResource\Pages;
+use App\Filament\Filters\CreatedAtRangeFilter;
 use App\Filament\Pages\QuickOrder;
 use App\Models\Contact;
 use App\Models\User;
@@ -192,12 +193,19 @@ class ContactResource extends Resource
                     ->sortable()
                     ->label('Last Contact'),
 
+                Tables\Columns\TextColumn::make('created_at')
+                    ->dateTime('d M Y')
+                    ->sortable()
+                    ->label('Added')
+                    ->toggleable(),
+
                 Tables\Columns\TextColumn::make('assignedTo.name')
                     ->label('Assigned')
                     ->toggleable(),
             ])
             ->defaultSort('created_at', 'desc')
             ->filters([
+                CreatedAtRangeFilter::make(),
                 Tables\Filters\SelectFilter::make('source')
                     ->options([
                         'meta_ads' => 'Meta Ads', 'whatsapp' => 'WhatsApp',

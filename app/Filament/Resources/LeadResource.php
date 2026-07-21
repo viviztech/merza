@@ -4,6 +4,7 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\LeadResource\Pages;
 use App\Filament\Resources\OrderResource;
+use App\Filament\Filters\CreatedAtRangeFilter;
 use App\Models\Contact;
 use App\Models\Lead;
 use App\Models\ProductVariant;
@@ -123,6 +124,12 @@ class LeadResource extends Resource
                     ->color(fn (Lead $r) =>
                         $r->due_at?->isPast() && !in_array($r->stage, ['converted','lost'])
                             ? 'danger' : null),
+
+                Tables\Columns\TextColumn::make('created_at')
+                    ->dateTime('d M Y')
+                    ->sortable()
+                    ->label('Added')
+                    ->toggleable(),
             ])
             ->defaultSort('created_at', 'desc')
             ->groups([
@@ -131,6 +138,7 @@ class LeadResource extends Resource
                     ->getTitleFromRecordUsing(fn (Lead $r) => Lead::$stages[$r->stage] ?? $r->stage),
             ])
             ->filters([
+                CreatedAtRangeFilter::make(),
                 Tables\Filters\SelectFilter::make('stage')
                     ->options(Lead::$stages),
                 Tables\Filters\SelectFilter::make('source')

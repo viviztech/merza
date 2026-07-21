@@ -3,6 +3,7 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\ConversationResource\Pages;
+use App\Filament\Filters\CreatedAtRangeFilter;
 use App\Jobs\SendWhatsAppMessageJob;
 use App\Models\BotSetting;
 use App\Models\Conversation;
@@ -154,9 +155,16 @@ class ConversationResource extends Resource
                     ->dateTime('d M Y H:i')
                     ->sortable()->label('Sent')
                     ->placeholder('Draft'),
+
+                Tables\Columns\TextColumn::make('created_at')
+                    ->dateTime('d M Y H:i')
+                    ->sortable()
+                    ->label('Received')
+                    ->toggleable(),
             ])
             ->defaultSort('created_at', 'desc')
             ->filters([
+                CreatedAtRangeFilter::make(),
                 Tables\Filters\SelectFilter::make('channel')
                     ->options([
                         'whatsapp' => 'WhatsApp', 'facebook' => 'Facebook',
