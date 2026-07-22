@@ -36,12 +36,15 @@ class OrderPdfController extends Controller
         return $pdf->download("Invoice-{$order->order_number}.pdf");
     }
 
+    // 6in x 4in thermal label stock, in points (1in = 72pt): 6*72=432, 4*72=288.
+    private const CHALLAN_PAPER = [0, 0, 432, 288];
+
     public function deliverySlip(Order $order): Response
     {
         abort_if(! auth()->user()?->hasAnyRole(['Admin', 'Sales', 'Operations', 'Delivery']), 403);
 
         $pdf = Pdf::loadView('pdf.delivery-slip', compact('order'))
-            ->setPaper('a5', 'portrait');
+            ->setPaper(self::CHALLAN_PAPER);
 
         return $pdf->download("DeliveryChallan-{$order->order_number}.pdf");
     }
@@ -75,7 +78,7 @@ class OrderPdfController extends Controller
         }
 
         $pdf = Pdf::loadView('pdf.delivery-slip-bulk', compact('orders'))
-            ->setPaper('a5', 'portrait');
+            ->setPaper(self::CHALLAN_PAPER);
 
         $label = $status === 'all' ? 'All' : ucfirst($status);
 
