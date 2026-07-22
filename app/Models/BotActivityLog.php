@@ -26,6 +26,11 @@ class BotActivityLog extends Model
         'message_generated'   => 'Message Generated',
         'conversation_created'=> 'Conversation Created',
         'error'               => 'Error',
+        'flow_reply_sent'             => 'Flow Reply Sent',
+        'flow_distraction'            => 'Flow Distraction',
+        'cart_nudge_sent'             => 'Cart Nudge Sent',
+        'payment_followup_sent'       => 'Payment Follow-up Sent',
+        'payment_screenshot_verified' => 'Payment Screenshot Verified',
     ];
 
     public function contact(): BelongsTo

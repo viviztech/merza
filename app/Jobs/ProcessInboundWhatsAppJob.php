@@ -7,6 +7,7 @@ use App\Models\BotSetting;
 use App\Models\Contact;
 use App\Models\Conversation;
 use App\Models\Lead;
+use App\Models\WhatsAppSession;
 use App\Services\BotReplyService;
 use App\Services\SarvamService;
 use App\Services\WhatsAppFlowService;
@@ -17,6 +18,7 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 
 class ProcessInboundWhatsAppJob implements ShouldQueue
 {
@@ -30,7 +32,7 @@ class ProcessInboundWhatsAppJob implements ShouldQueue
         public readonly string  $waMessageId,
         public readonly string  $body,
         public readonly int     $timestamp,
-        public readonly string  $messageType    = 'text',  // 'text' | 'audio' | 'interactive'
+        public readonly string  $messageType    = 'text',  // 'text' | 'audio' | 'image' | 'interactive'
         public readonly ?string $mediaId        = null,
         public readonly ?array  $referral       = null,    // CTWA ad referral data
         public readonly ?string $interactiveId  = null,   // button/list reply ID
@@ -49,6 +51,24 @@ class ProcessInboundWhatsAppJob implements ShouldQueue
         // ── Resolve message text ──────────────────────────────────────────────
         $messageText = $this->body;
         $wasVoice    = false;
+        $mediaPath   = null;  // relative disk path — matches Order.payment_screenshot_path's convention
+        $mediaUrl    = null;  // resolved public URL — what Conversation.media_url renders directly
+
+        if ($this->messageType === 'image' && $this->mediaId) {
+            $mediaPath = $this->downloadAndStoreImage($settings);
+
+            if (empty($mediaPath)) {
+                Log::warning('ProcessInboundWhatsAppJob: image download/store failed', [
+                    'media_id' => $this->mediaId,
+                    'from'     => $this->fromPhone,
+                ]);
+            } else {
+                $mediaUrl = Storage::disk(config('media-library.disk_name', 'r2'))->url($mediaPath);
+            }
+
+            // Caption (if any) becomes the visible message text; otherwise a placeholder.
+            $messageText = $messageText !== '' ? $messageText : '[Image]';
+        }
 
         if ($this->messageType === 'audio' && $this->mediaId) {
             $messageText = $this->transcribeAudio($settings);
@@ -97,6 +117,7 @@ class ProcessInboundWhatsAppJob implements ShouldQueue
             'message'       => $wasVoice ? "🎤 {$messageText}" : $messageText,
             'wa_message_id' => $this->waMessageId,
             'ctwa_referral' => $this->referral,
+            'media_url'     => $mediaUrl,
             'is_bot'        => false,
             'sent_at'       => now()->setTimestamp($this->timestamp),
             'status'        => 'read',
@@ -177,6 +198,16 @@ class ProcessInboundWhatsAppJob implements ShouldQueue
             return;
         }
 
+        // Images are captured and attached to the conversation above. Only the
+        // payment-screenshot moment does anything further with one — anywhere
+        // else, a photo is logged but doesn't trigger a flow/AI reply.
+        if ($this->messageType === 'image') {
+            $session = WhatsAppSession::getOrCreate($contact->phone);
+            if ($session->state !== 'awaiting_payment_ref' || empty($mediaPath)) {
+                return;
+            }
+        }
+
         // ── Structured flow first ─────────────────────────────────────────────
         $flowService = new WhatsAppFlowService($waService, $settings);
         $flowHandled = $flowService->handle(
@@ -184,6 +215,7 @@ class ProcessInboundWhatsAppJob implements ShouldQueue
             $this->messageType,
             $messageText,
             $this->interactiveId ?? '',
+            $mediaPath,
         );
 
         if ($flowHandled) {
@@ -196,9 +228,12 @@ class ProcessInboundWhatsAppJob implements ShouldQueue
             return;
         }
 
-        // ── AI fallback for free text (ordering/talk-to-us states) ───────────
+        // ── AI fallback for free text (ordering/talk-to-us states, or a mid-flow
+        // distraction handed off by WhatsAppFlowService) — session is passed so
+        // the reply is aware of a cart/checkout already in progress.
+        $session      = WhatsAppSession::getOrCreate($contact->phone);
         $replyService = new BotReplyService($settings);
-        $replyMessage = $replyService->generateReply($contact, $messageText, $conversation);
+        $replyMessage = $replyService->generateReply($contact, $messageText, $conversation, $session);
 
         if ($replyMessage) {
             $draft = Conversation::create([
@@ -225,6 +260,32 @@ class ProcessInboundWhatsAppJob implements ShouldQueue
                 SendWhatsAppMessageJob::dispatch($draft->id);
             }
         }
+    }
+
+    // ── Private: inbound image storage ──────────────────────────────────────
+
+    private function downloadAndStoreImage(BotSetting $settings): ?string
+    {
+        $waService = new WhatsAppService($settings);
+        $media     = $waService->downloadMedia($this->mediaId);
+
+        if (! $media) {
+            return null;
+        }
+
+        $extension = match ($media['mime_type']) {
+            'image/png'  => 'png',
+            'image/webp' => 'webp',
+            default      => 'jpg',
+        };
+
+        $path = "whatsapp-inbound/{$this->waMessageId}.{$extension}";
+        Storage::disk(config('media-library.disk_name', 'r2'))->put($path, $media['content']);
+
+        // Relative path, not a URL — matches Order.payment_screenshot_path's
+        // existing convention (see getPaymentScreenshotUrlAttribute()); the
+        // caller resolves a URL separately when one is actually needed.
+        return $path;
     }
 
     // ── Private: audio transcription ──────────────────────────────────────────

@@ -244,7 +244,7 @@ class WhatsAppService
 
     /**
      * Parse the webhook payload for inbound WhatsApp message events.
-     * Handles both text and audio (voice) messages.
+     * Handles text, audio (voice), image, and interactive (button/list) messages.
      *
      * @return array<array{from: string, wa_message_id: string, body: string, timestamp: string, type: string, media_id: string|null}>
      */
@@ -293,6 +293,18 @@ class WhatsAppService
                             'timestamp'       => $msg['timestamp'] ?? now()->timestamp,
                             'type'            => 'audio',
                             'media_id'        => $msg['audio']['id'] ?? null,
+                            'interactive_id'  => null,
+                            'phone_number_id' => $value['metadata']['phone_number_id'] ?? '',
+                            'referral'        => $referral,
+                        ];
+                    } elseif ($type === 'image') {
+                        $messages[] = [
+                            'from'            => $msg['from'] ?? '',
+                            'wa_message_id'   => $msg['id'] ?? '',
+                            'body'            => $msg['image']['caption'] ?? '',
+                            'timestamp'       => $msg['timestamp'] ?? now()->timestamp,
+                            'type'            => 'image',
+                            'media_id'        => $msg['image']['id'] ?? null,
                             'interactive_id'  => null,
                             'phone_number_id' => $value['metadata']['phone_number_id'] ?? '',
                             'referral'        => $referral,

@@ -15,17 +15,19 @@ class Order extends Model
         'delivery_address', 'city', 'postcode', 'state', 'landmark',
         'subtotal', 'delivery_fee', 'total',
         'status', 'payment_method', 'payment_status', 'payment_reference', 'payment_screenshot_path',
+        'payment_verification_status', 'payment_verified_amount', 'payment_verification_notes',
         'notes', 'admin_notes', 'tracking_number',
         'confirmed_at', 'dispatched_at', 'delivered_at',
     ];
 
     protected $casts = [
-        'subtotal'      => 'decimal:2',
-        'delivery_fee'  => 'decimal:2',
-        'total'         => 'decimal:2',
-        'confirmed_at'  => 'datetime',
-        'dispatched_at' => 'datetime',
-        'delivered_at'  => 'datetime',
+        'subtotal'                 => 'decimal:2',
+        'delivery_fee'             => 'decimal:2',
+        'total'                    => 'decimal:2',
+        'payment_verified_amount'  => 'decimal:2',
+        'confirmed_at'             => 'datetime',
+        'dispatched_at'            => 'datetime',
+        'delivered_at'             => 'datetime',
     ];
 
     protected static function booted(): void

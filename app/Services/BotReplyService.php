@@ -7,6 +7,7 @@ use App\Models\Contact;
 use App\Models\Conversation;
 use App\Models\Order;
 use App\Models\Product;
+use App\Models\WhatsAppSession;
 
 class BotReplyService
 {
@@ -15,10 +16,17 @@ class BotReplyService
     /**
      * Generate an AI reply for an inbound WhatsApp message, using whichever
      * provider is set active in Bot Settings (Groq, ChatGPT, or Claude).
+     *
+     * $session (when passed) lets the reply be aware of a cart/checkout already
+     * in progress, so an off-script question doesn't get answered in a vacuum.
      */
-    public function generateReply(Contact $contact, string $inboundMessage, Conversation $inboundConversation): ?string
-    {
-        $systemPrompt = $this->buildSystemPrompt($contact, $inboundMessage);
+    public function generateReply(
+        Contact $contact,
+        string $inboundMessage,
+        Conversation $inboundConversation,
+        ?WhatsAppSession $session = null,
+    ): ?string {
+        $systemPrompt = $this->buildSystemPrompt($contact, $inboundMessage, $session);
         $history      = $this->buildMessageHistory($contact, $inboundConversation);
 
         return (new AiProviderService($this->settings))->chat($systemPrompt, $history, 400);
@@ -26,11 +34,12 @@ class BotReplyService
 
     // ─── System prompt ───────────────────────────────────────────────────────
 
-    private function buildSystemPrompt(Contact $contact, string $inboundMessage): string
+    private function buildSystemPrompt(Contact $contact, string $inboundMessage, ?WhatsAppSession $session = null): string
     {
         $products    = $this->getProductSummary();
         $orderInfo   = $this->getOrderContext($contact);
         $customerContext = $this->getCustomerContext($contact);
+        $cartContext = $session ? $this->getCartContext($session) : '';
         $ownerNotes  = $this->buildOwnerInstructions($contact, $inboundMessage);
 
         return <<<PROMPT
@@ -48,13 +57,16 @@ OUR PRODUCTS (Mukkani — Three Fruits, One Promise):
 CUSTOMER:
 {$customerContext}
 
+{$cartContext}
+
 {$orderInfo}
 
 INSTRUCTIONS:
 - Detect whether the customer writes in Tamil or English, and reply in the SAME language.
 - Be warm, helpful, and concise — this is WhatsApp, keep replies under 80 words.
 - If the customer asks about order status, use the ORDER INFO above.
-- If they want to order, ask for: product name, quantity, and delivery address.
+- If CURRENT CART is shown above, they already have items waiting — answer their question, then gently point them back to it (tell them to reply "checkout" to continue instantly). Don't ask them to re-describe what they already added.
+- If CURRENT CART is empty and they want to order, ask for: product name, quantity, and delivery address.
 - If they ask for prices, share the product info above.
 - Never make up information. If you don't know something, say you'll check and get back.
 - If the customer is frustrated, asks to speak to a person, or the issue is complex, always provide human contact: "Call +91 93600 64278 or email merzabodinayakanur@gmail.com (Mon–Sat 9 AM–6 PM)."
@@ -128,6 +140,33 @@ PROMPT;
             if ($order->tracking_number) {
                 $lines[] = "  Tracking: {$order->tracking_number}";
             }
+        }
+
+        return implode("\n", $lines);
+    }
+
+    private function getCartContext(WhatsAppSession $session): string
+    {
+        $cart = $session->data['cart'] ?? [];
+
+        if (empty($cart)) {
+            return '';
+        }
+
+        $lines = ['CURRENT CART (already in progress — do not ask them to repeat it):'];
+        $subtotal = 0;
+
+        foreach ($cart as $item) {
+            $lineTotal = $item['price'] * $item['qty'];
+            $subtotal += $lineTotal;
+            $lines[] = "- {$item['product_name']} ({$item['variant_name']}) x{$item['qty']} = ₹" . number_format($lineTotal, 2);
+        }
+
+        $lines[] = "Subtotal: ₹" . number_format($subtotal, 2);
+
+        $zone = $session->data['zone'] ?? null;
+        if ($zone) {
+            $lines[] = "Delivery zone: {$zone['name']} (₹{$zone['rate_per_kg']}/kg courier, added at checkout)";
         }
 
         return implode("\n", $lines);

@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\BotActivityLog;
 use App\Models\BotSetting;
 use App\Models\Category;
 use App\Models\Contact;
@@ -39,6 +40,16 @@ class WhatsAppFlowService
         'zone_manual_entry', 'checkout_name', 'checkout_address', 'awaiting_payment_ref',
     ];
 
+    // Phrases that mean "I want to (re)start ordering", checked anywhere mid-conversation
+    // (including while chatting with the AI) so the customer can jump back into the
+    // structured cart/checkout flow without restating everything as free text.
+    private const ORDER_INTENT_PHRASES = [
+        'i want to order', 'want to order', 'place an order', 'place order',
+        'continue order', 'continue my order', 'resume order', 'resume my order',
+        'add to cart', 'proceed to checkout', 'go to checkout',
+        'checkout', 'check out', 'buy now', 'i want to buy',
+    ];
+
     public function __construct(
         private readonly WhatsAppService $waService,
         private readonly BotSetting $settings,
@@ -53,6 +64,7 @@ class WhatsAppFlowService
         string  $messageType,
         string  $body,
         string  $interactiveId = '',
+        ?string $mediaPath = null,
     ): bool {
         $session = WhatsAppSession::getOrCreate($contact->phone);
 
@@ -61,6 +73,15 @@ class WhatsAppFlowService
             if (! $contact->wa_opted_out) {
                 $this->handleButton($contact, $session, $interactiveId);
             }
+            return true;
+        }
+
+        // Session expired with a cart still in it — WhatsAppSession stashed the
+        // progress and is waiting on resume_cart/fresh_start (handled above via
+        // the interactive branch). Anything else re-shows the same prompt rather
+        // than silently proceeding as if nothing had happened.
+        if ($session->state === 'resume_prompt') {
+            $this->sendResumePrompt($contact, $session);
             return true;
         }
 
@@ -90,6 +111,13 @@ class WhatsAppFlowService
             return true;
         }
 
+        // Payment screenshot — only meaningful reply to an image, so check it
+        // ahead of the general checkout-text branch below.
+        if ($session->state === 'awaiting_payment_ref' && $messageType === 'image' && $mediaPath) {
+            $this->capturePaymentScreenshot($contact, $session, $mediaPath);
+            return true;
+        }
+
         // Structured checkout steps — capture the reply, do not hand off to AI
         if (in_array($session->state, self::CHECKOUT_TEXT_STATES, true)) {
             $this->handleCheckoutText($contact, $session, trim($body));
@@ -102,20 +130,126 @@ class WhatsAppFlowService
             return true;
         }
 
-        // AI mode or legacy free-text ordering → let AI handle free text
-        if (in_array($session->state, ['ai', 'ordering'], true)) {
-            return false;
-        }
-
         // First contact / expired session → welcome
         if ($session->state === 'start') {
             $this->sendWelcome($contact, $session);
             return true;
         }
 
-        // Free text while in structured menu → show welcome again
+        // Explicit ordering intent, from ANY state (including mid-AI-chat) → resume
+        // the structured flow instead of leaving them to restate the order as free text.
+        if ($this->looksLikeOrderIntent($lower)) {
+            $this->logDistraction($contact, $session, 'resumed_ordering');
+            $this->resumeOrdering($contact, $session);
+            return true;
+        }
+
+        // AI mode or legacy free-text ordering → let AI handle free text
+        if (in_array($session->state, ['ai', 'ordering'], true)) {
+            return false;
+        }
+
+        // Free text mid-flow (browsing/cart/checkout-confirm) → hand off to the AI,
+        // which now sees the live cart via BotReplyService, instead of hard-resetting
+        // to Welcome. Only when AI is actually configured — otherwise the old safe
+        // fallback keeps working for deployments with no AI key set.
+        if ((new AiProviderService($this->settings))->isConfigured()) {
+            $this->logDistraction($contact, $session, 'ai_handoff');
+            return false;
+        }
+
+        $this->logDistraction($contact, $session, 'welcome_reset');
         $this->sendWelcome($contact, $session);
         return true;
+    }
+
+    /**
+     * Baseline telemetry for the conversion-gap fixes — how often, and from which
+     * state, a customer goes off-script mid-flow, and how it was handled.
+     */
+    private function logDistraction(Contact $contact, WhatsAppSession $session, string $action): void
+    {
+        BotActivityLog::create([
+            'event_type'  => 'flow_distraction',
+            'contact_id'  => $contact->id,
+            'raw_payload' => [
+                'state'      => $session->state,
+                'action'     => $action, // 'resumed_ordering' | 'ai_handoff' | 'welcome_reset'
+                'cart_items' => count($session->data['cart'] ?? []),
+            ],
+            'status' => 'success',
+        ]);
+    }
+
+    /**
+     * Cheap, deterministic ordering-intent check — no extra AI call needed.
+     * Tuneable later from real BotActivityLog data once flow_reset events (F6) are logged.
+     */
+    private function looksLikeOrderIntent(string $lower): bool
+    {
+        foreach (self::ORDER_INTENT_PHRASES as $phrase) {
+            if (str_contains($lower, $phrase)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private function resumeOrdering(Contact $contact, WhatsAppSession $session): void
+    {
+        $cart = $session->data['cart'] ?? [];
+
+        if (! empty($cart)) {
+            $this->sendCart($contact, $session);
+            return;
+        }
+
+        $this->startOrdering($contact, $session);
+    }
+
+    // ─── Soft session resume (replaces the old silent 30-min wipe) ────────────
+
+    private function sendResumePrompt(Contact $contact, WhatsAppSession $session): void
+    {
+        $cart  = $session->data['cart'] ?? [];
+        $count = array_sum(array_column($cart, 'qty'));
+        $itemsLabel = $count === 1 ? '1 item' : "{$count} items";
+
+        $this->sendInteractive($contact->phone, [
+            'type' => 'button',
+            'body' => [
+                'text' => "Welcome back! 👋\n\nYou still have *{$itemsLabel}* waiting in your cart from before.\n\nWant to pick up where you left off?",
+            ],
+            'action' => [
+                'buttons' => [
+                    ['type' => 'reply', 'reply' => ['id' => 'resume_cart', 'title' => '🛒 Resume Cart']],
+                    ['type' => 'reply', 'reply' => ['id' => 'fresh_start', 'title' => '🔄 Start Fresh']],
+                ],
+            ],
+        ], $contact);
+    }
+
+    private function resumeStashedSession(Contact $contact, WhatsAppSession $session): void
+    {
+        $data = $session->data;
+        unset($data['stashed_state']);
+
+        // setState() (not updateSession()) — it replaces the data blob outright,
+        // so the now-unset 'stashed_state' key doesn't get merged back in.
+        // Land everyone back at the cart regardless of the exact stashed sub-state
+        // (e.g. mid checkout_price_confirm) — simplest safe re-entry point, and
+        // the normal Checkout button carries them forward from there.
+        $session->setState('cart', $data);
+        $this->sendCart($contact, $session);
+    }
+
+    private function startFresh(Contact $contact, WhatsAppSession $session): void
+    {
+        // setState(), not updateSession() — a full replace so the stashed
+        // 'stashed_state' key from the resume prompt doesn't linger.
+        $session->setState('menu', ['cart' => [], 'draft' => [], 'zone' => null, 'zone_manual' => null]);
+        $this->sendWelcome($contact, $session);
     }
 
     // ─── Button router ────────────────────────────────────────────────────────
@@ -123,6 +257,8 @@ class WhatsAppFlowService
     private function handleButton(Contact $contact, WhatsAppSession $session, string $id): void
     {
         match (true) {
+            $id === 'resume_cart'           => $this->resumeStashedSession($contact, $session),
+            $id === 'fresh_start'           => $this->startFresh($contact, $session),
             $id === 'order_fruits'          => $this->startOrdering($contact, $session),
             $id === 'my_orders'             => $this->sendOrders($contact, $session),
             $id === 'talk_to_us'            => $this->sendTalkToUs($contact, $session),
@@ -901,7 +1037,7 @@ class WhatsAppFlowService
         $disk->put($path, $qrService->generatePng($uri));
         $imageUrl = $disk->url($path);
 
-        $caption = "Scan to pay \u{20B9}" . number_format((float) $order->total, 2) . " for order *{$order->order_number}*.\n\nOr pay manually to UPI ID: {$this->settings->upi_id}\n\nOnce paid, reply with your payment reference/UTR number so we can confirm it. 🥭";
+        $caption = "Scan to pay \u{20B9}" . number_format((float) $order->total, 2) . " for order *{$order->order_number}*.\n\nOr pay manually to UPI ID: {$this->settings->upi_id}\n\nOnce paid, *send a screenshot of the payment* (or reply with your UTR/reference number) and we'll confirm it right away. 🥭";
 
         $waId = $this->waService->sendImageMessage($contact->phone, $imageUrl, $caption);
 
@@ -940,6 +1076,67 @@ class WhatsAppFlowService
         $this->waService->sendTextMessage(
             $contact->phone,
             "Thank you! ✅ We've noted your payment reference for order *{$order->order_number}*.\n\nOur team will verify and confirm your order shortly. Type *menu* anytime.\n\n— Merza Team 🥭"
+        );
+    }
+
+    private function capturePaymentScreenshot(Contact $contact, WhatsAppSession $session, string $mediaPath): void
+    {
+        $orderId = $session->data['pending_order_id'] ?? null;
+        $order   = $orderId ? Order::find($orderId) : null;
+
+        if (! $order) {
+            $this->sendWelcome($contact, $session);
+            return;
+        }
+
+        $imageUrl = Storage::disk(config('media-library.disk_name', 'r2'))->url($mediaPath);
+
+        $order->update([
+            'payment_screenshot_path'     => $mediaPath,
+            'payment_verification_status' => 'pending',
+        ]);
+
+        // Acknowledge immediately — the vision call below can take a few seconds
+        // and the customer shouldn't be left wondering if it went through.
+        $this->waService->sendTextMessage($contact->phone, "Got your screenshot! ✅ Verifying now, one moment... 🥭");
+
+        $verification = (new PaymentScreenshotVerificationService($this->settings))->verify($order, $imageUrl);
+
+        $order->update([
+            'payment_verification_status' => $verification['status'],
+            'payment_verified_amount'     => $verification['extracted_amount'],
+            'payment_verification_notes'  => $verification['extracted_reference']
+                ? "Reference read from screenshot: {$verification['extracted_reference']}"
+                : null,
+        ]);
+
+        BotActivityLog::create([
+            'event_type'  => 'payment_screenshot_verified',
+            'contact_id'  => $contact->id,
+            'raw_payload' => [
+                'order_id' => $order->id,
+                'verdict'  => $verification['status'],
+                'amount'   => $verification['extracted_amount'],
+                'raw'      => $verification['raw'],
+            ],
+            'status' => 'success',
+        ]);
+
+        $this->updateSession($session, 'menu', ['cart' => [], 'draft' => [], 'pending_order_id' => null]);
+
+        if ($verification['status'] === 'ai_matched') {
+            $order->update(['payment_status' => 'paid']);
+
+            $this->waService->sendTextMessage(
+                $contact->phone,
+                "Payment confirmed! ✅\n\nOrder *{$order->order_number}* is now being prepared. We'll keep you posted. Type *menu* anytime.\n\n— Merza Team 🥭"
+            );
+            return;
+        }
+
+        $this->waService->sendTextMessage(
+            $contact->phone,
+            "Thanks! We couldn't automatically confirm this from the screenshot, so our team will verify it manually and get back to you shortly on order *{$order->order_number}*. Type *menu* anytime.\n\n— Merza Team 🥭"
         );
     }
 

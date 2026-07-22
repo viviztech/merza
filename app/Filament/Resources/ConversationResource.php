@@ -13,6 +13,7 @@ use App\Services\BotReplyService;
 use Filament\Actions;
 use Filament\Actions\Action;
 use Filament\Forms;
+use Filament\Infolists\Components\ImageEntry;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
@@ -95,6 +96,10 @@ class ConversationResource extends Resource
                 TextEntry::make('sent_at')->dateTime('d M Y, h:i A')->placeholder('Not sent yet'),
                 TextEntry::make('wa_message_id')->label('WA Message ID')->placeholder('—'),
                 TextEntry::make('message')->columnSpanFull(),
+                ImageEntry::make('media_url')
+                    ->label('Attachment')
+                    ->columnSpanFull()
+                    ->visible(fn ($record) => ! empty($record->media_url)),
             ])->columns(3),
 
             SchemaSection::make('Click-to-WhatsApp Ad Source')

@@ -229,6 +229,33 @@ class OrderResource extends Resource
                     ->placeholder('—'),
                 TextEntry::make('created_at')->dateTime('d M Y, h:i A')->label('Ordered At'),
 
+                TextEntry::make('payment_verification_status')
+                    ->label('Screenshot Verification')
+                    ->visible(fn (Order $r) => ! empty($r->payment_verification_status))
+                    ->badge()
+                    ->formatStateUsing(fn ($state) => match ($state) {
+                        'ai_matched'         => 'AI Matched',
+                        'ai_mismatch'        => 'AI: Mismatch — Review',
+                        'ai_unclear'         => 'AI: Unclear — Review',
+                        'manually_confirmed' => 'Manually Confirmed',
+                        'pending'            => 'Verifying...',
+                        default              => $state,
+                    })
+                    ->color(fn ($state) => match ($state) {
+                        'ai_matched', 'manually_confirmed' => 'success',
+                        'ai_mismatch', 'ai_unclear'         => 'danger',
+                        'pending'                           => 'warning',
+                        default                             => 'gray',
+                    }),
+                TextEntry::make('payment_verified_amount')
+                    ->label('AI-Read Amount')
+                    ->money('INR')
+                    ->visible(fn (Order $r) => ! is_null($r->payment_verified_amount)),
+                TextEntry::make('payment_verification_notes')
+                    ->label('Verification Notes')
+                    ->visible(fn (Order $r) => ! empty($r->payment_verification_notes))
+                    ->columnSpanFull(),
+
                 ImageEntry::make('payment_screenshot_url')
                     ->label('Payment Screenshot')
                     ->visible(fn (Order $r) => ! empty($r->payment_screenshot_path))
@@ -344,6 +371,26 @@ class OrderResource extends Resource
                         'refunded' => 'danger',
                         default    => 'gray',
                     }),
+
+                Tables\Columns\TextColumn::make('payment_verification_status')
+                    ->label('Screenshot')
+                    ->badge()
+                    ->placeholder('—')
+                    ->formatStateUsing(fn ($state) => match ($state) {
+                        'ai_matched'         => 'AI Matched',
+                        'ai_mismatch'        => 'Mismatch',
+                        'ai_unclear'         => 'Unclear',
+                        'manually_confirmed' => 'Confirmed',
+                        'pending'            => 'Verifying',
+                        default              => $state,
+                    })
+                    ->color(fn ($state) => match ($state) {
+                        'ai_matched', 'manually_confirmed' => 'success',
+                        'ai_mismatch', 'ai_unclear'         => 'danger',
+                        'pending'                           => 'warning',
+                        default                             => 'gray',
+                    })
+                    ->toggleable(),
 
                 Tables\Columns\TextColumn::make('created_at')
                     ->dateTime('d M Y')->sortable()->label('Date'),
