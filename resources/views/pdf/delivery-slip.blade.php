@@ -20,7 +20,7 @@
   .party-address { font-size: 10px; line-height: 1.3; margin-bottom: 2px; }
   .party-mobile { font-size: 10px; font-weight: 700; }
 
-  .to-address { font-size: 14px; font-weight: 700; line-height: 1.35; }
+  .address-lg { font-size: 14px; font-weight: 700; line-height: 1.35; }
 
   .from-box { border: 1px solid #000; padding: 6px 8px; }
 </style>
@@ -35,7 +35,7 @@
     <div class="block-heading">To:</div>
     <div class="block-body">
       <div class="party-name">{{ $order->customer_name }}</div>
-      <div class="party-address to-address">
+      <div class="party-address address-lg">
         {{ $order->delivery_address }}<br>
         {{ collect([$order->city, $order->state])->filter()->implode(', ') }}@if($order->postcode)-{{ $order->postcode }}@endif
       </div>
@@ -50,7 +50,7 @@
     <div class="block-heading">From:</div>
     <div class="block-body from-box">
       <div class="party-name">Merza</div>
-      <div class="party-address">
+      <div class="party-address address-lg">
         Bodinayakanur, Theni District - 625513
       </div>
       <div class="party-mobile">Mobile : 8667696278</div>
