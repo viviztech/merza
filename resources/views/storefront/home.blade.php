@@ -54,6 +54,12 @@
                         <span class="text-lg">🚚</span>
                         <span class="text-xs text-emerald-200">2,000+ orders delivered</span>
                     </div>
+                    @if($ordersToday > 0)
+                        <div class="flex items-center gap-2">
+                            <span class="w-2 h-2 rounded-full bg-amber-400 pulse-dot"></span>
+                            <span class="text-xs text-emerald-200">🔥 {{ $ordersToday }} {{ Str::plural('order', $ordersToday) }} placed today</span>
+                        </div>
+                    @endif
                 </div>
             </div>
 
@@ -501,25 +507,12 @@
                 <h2 class="text-3xl font-extrabold text-brand-green-dark mt-1">Frequently Asked Questions</h2>
             </div>
 
-            <div class="space-y-3">
-                @foreach([
-                    ['Which areas do you deliver to?', 'We deliver across Tamil Nadu and to select cities nationwide — see the Delivery Information section above for zones and rates, or message us on WhatsApp to check your area.'],
-                    ['What payment methods do you accept?', 'UPI (Google Pay, PhonePe, or any UPI app via QR code) and Cash on Delivery, where available. Card payments are coming soon.'],
-                    ['Are your fruits naturally ripened?', 'Yes — all our fruits are grown on our own farm in Bodinayakanur and naturally ripened, with no artificial ripening agents or added colours.'],
-                    ['Is there a minimum order or bulk pricing?', 'No minimum order for regular orders. For bulk or B2B orders, message us on WhatsApp for wholesale pricing.'],
-                    ['What if my fruits arrive damaged?', 'Message us on WhatsApp with a photo within 24 hours of delivery and we\'ll arrange a replacement or refund.'],
-                    ['How do I track my order?', 'We\'ll send updates and confirm delivery details on WhatsApp — you can also message us anytime with your order number.'],
-                ] as [$q, $a])
-                    <details class="group bg-amber-50 border border-amber-100 rounded-2xl p-5">
-                        <summary class="flex items-center justify-between cursor-pointer font-extrabold text-sm text-stone-800 list-none">
-                            {{ $q }}
-                            <svg class="w-4 h-4 text-amber-500 transition-transform group-open:rotate-45" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/>
-                            </svg>
-                        </summary>
-                        <p class="text-sm text-stone-600 mt-3 leading-relaxed">{{ $a }}</p>
-                    </details>
-                @endforeach
+            @include('storefront.partials.faq-list', ['limit' => 4])
+
+            <div class="text-center mt-6">
+                <a href="{{ route('faq') }}" class="text-sm font-bold text-amber-600 hover:text-amber-700">
+                    See all FAQs →
+                </a>
             </div>
         </div>
     </section>

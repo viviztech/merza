@@ -10,6 +10,7 @@ use App\Livewire\Storefront\CartPanel;
 use App\Livewire\Storefront\CheckoutForm;
 use App\Livewire\Storefront\ProductCatalogue;
 use App\Livewire\Storefront\ProductDetail;
+use App\Livewire\Storefront\TrackOrder;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -27,6 +28,8 @@ Route::get('/cart', CartPanel::class)->name('cart.index');
 Route::get('/cart/count', fn () => response()->json(['count' => session('cart_count', 0)]))->name('cart.count');
 Route::get('/checkout', CheckoutForm::class)->name('checkout.index');
 
+Route::get('/track', TrackOrder::class)->name('track.index');
+
 // Static pages
 Route::get('/about',     [PagesController::class, 'about'])     ->name('about');
 Route::get('/blog',      [PagesController::class, 'blog'])      ->name('blog');
@@ -34,6 +37,7 @@ Route::get('/wholesale', [PagesController::class, 'wholesale']) ->name('wholesal
 Route::get('/careers',   [PagesController::class, 'careers'])   ->name('careers');
 Route::get('/privacy',   [PagesController::class, 'privacy'])   ->name('privacy');
 Route::get('/terms',     [PagesController::class, 'terms'])     ->name('terms');
+Route::get('/faq',       [PagesController::class, 'faq'])       ->name('faq');
 
 /*
 |--------------------------------------------------------------------------

@@ -3,6 +3,7 @@
 namespace App\Filament\Pages;
 
 use App\Filament\Widgets\ContactsBySourceWidget;
+use App\Filament\Widgets\ConversionFunnelWidget;
 use App\Filament\Widgets\LeadStageWidget;
 use App\Filament\Widgets\OrderStatusChartWidget;
 use App\Filament\Widgets\OverviewStatsWidget;
@@ -25,6 +26,7 @@ class AnalyticsDashboard extends Dashboard
     {
         return [
             OverviewStatsWidget::class,
+            ConversionFunnelWidget::class,
             RevenueTrendWidget::class,
             OrderStatusChartWidget::class,
             LeadStageWidget::class,

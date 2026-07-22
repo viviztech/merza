@@ -2,9 +2,12 @@
 
 namespace App\Livewire\Storefront;
 
+use App\Models\AnalyticsEvent;
 use App\Models\Product;
 use App\Models\ProductReview;
+use App\Services\AnalyticsTracker;
 use App\Services\CartService;
+use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Component;
@@ -38,6 +41,19 @@ class ProductDetail extends Component
         if ($first) {
             $this->selectedVariantId = $first->id;
         }
+
+        app(AnalyticsTracker::class)->track('product_view', $this->product->id);
+    }
+
+    #[Computed]
+    public function viewedTodayCount(): int
+    {
+        return AnalyticsEvent::query()
+            ->where('event_type', 'product_view')
+            ->where('product_id', $this->product->id)
+            ->whereDate('created_at', today())
+            ->distinct('session_id')
+            ->count('session_id');
     }
 
     public function getTitle(): string
@@ -54,6 +70,8 @@ class ProductDetail extends Component
 
         $cart = app(CartService::class);
         $cart->add($this->selectedVariantId, $this->qty);
+
+        app(AnalyticsTracker::class)->track('add_to_cart', $this->product->id);
 
         $this->addedMessage = 'Added to cart!';
         $this->addedCount++;

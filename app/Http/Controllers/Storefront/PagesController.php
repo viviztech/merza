@@ -36,4 +36,9 @@ class PagesController extends Controller
     {
         return view('storefront.pages.terms');
     }
+
+    public function faq(): View
+    {
+        return view('storefront.pages.faq');
+    }
 }

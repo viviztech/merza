@@ -74,6 +74,30 @@
                 <p class="text-stone-500 text-sm mb-5 leading-relaxed">{{ $product->short_description }}</p>
             @endif
 
+            {{-- Value proposition badges --}}
+            <div class="flex flex-wrap gap-2 mb-5">
+                <span class="inline-flex items-center gap-1 bg-emerald-50 border border-emerald-100 text-emerald-700 text-xs font-bold px-3 py-1.5 rounded-full">
+                    ✋ Hand Picked
+                </span>
+                <span class="inline-flex items-center gap-1 bg-emerald-50 border border-emerald-100 text-emerald-700 text-xs font-bold px-3 py-1.5 rounded-full">
+                    ⭐ Premium Quality
+                </span>
+                @if($product->farm_location)
+                    <span class="inline-flex items-center gap-1 bg-amber-50 border border-amber-100 text-amber-700 text-xs font-bold px-3 py-1.5 rounded-full">
+                        🌱 Farm Direct — {{ $product->farm_location }}
+                    </span>
+                @endif
+                @if($product->harvest_date)
+                    <span class="inline-flex items-center gap-1 bg-amber-50 border border-amber-100 text-amber-700 text-xs font-bold px-3 py-1.5 rounded-full">
+                        📅 Harvested {{ $product->harvest_date->diffForHumans() }}
+                    </span>
+                @endif
+            </div>
+
+            @if($this->viewedTodayCount > 0)
+                <p class="text-xs text-stone-400 mb-4">👀 {{ $this->viewedTodayCount }} {{ $this->viewedTodayCount === 1 ? 'person has' : 'people have' }} viewed this today</p>
+            @endif
+
             {{-- Price --}}
             <div class="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-100 rounded-2xl p-4 mb-5">
                 @if($selectedVariant)
@@ -209,6 +233,8 @@
                     Order via WhatsApp
                 </a>
             </div>
+
+            <livewire:storefront.pincode-checker :key="'pincode-'.$product->id" />
 
         </div>
     </div>

@@ -8,6 +8,7 @@ use App\Models\Conversation;
 use App\Models\DeliveryZone;
 use App\Models\Order;
 use App\Models\OrderItem;
+use App\Services\AnalyticsTracker;
 use App\Services\CartService;
 use App\Services\DeliveryCalculatorService;
 use App\Services\PincodeService;
@@ -45,6 +46,11 @@ class CheckoutForm extends Component
 
     public $paymentScreenshot        = null;
     public bool $screenshotUploaded  = false;
+
+    public function mount(): void
+    {
+        app(AnalyticsTracker::class)->track('checkout_start');
+    }
 
     protected function rules(): array
     {
@@ -231,6 +237,8 @@ class CheckoutForm extends Component
 
         $cart->clear();
         $this->dispatch('cart-updated', count: 0);
+
+        app(AnalyticsTracker::class)->track('order_placed', null, $order->id);
 
         $this->sendWhatsAppConfirmation($order);
 

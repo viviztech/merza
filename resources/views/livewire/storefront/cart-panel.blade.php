@@ -169,6 +169,8 @@
                             <span class="text-[10px] text-stone-400">📦 Packed Fresh</span>
                             <span class="text-[10px] text-stone-400">🚚 Fast Shipping</span>
                         </div>
+
+                        <livewire:storefront.pincode-checker />
                     </div>
                 </div>
             </div>

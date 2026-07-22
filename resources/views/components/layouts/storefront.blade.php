@@ -353,6 +353,8 @@
                     <h4 class="font-bold text-sm text-emerald-100 mb-3 uppercase tracking-wider">Company</h4>
                     <ul class="space-y-2 text-sm">
                         <li><a href="{{ route('about') }}" class="text-emerald-300 hover:text-amber-400 transition-colors">About Us</a></li>
+                        <li><a href="{{ route('track.index') }}" class="text-emerald-300 hover:text-amber-400 transition-colors">Track Your Order</a></li>
+                        <li><a href="{{ route('faq') }}" class="text-emerald-300 hover:text-amber-400 transition-colors">FAQ</a></li>
                         <li><a href="{{ route('blog') }}" class="text-emerald-300 hover:text-amber-400 transition-colors">Blog & Recipes</a></li>
                         <li><a href="{{ route('wholesale') }}" class="text-emerald-300 hover:text-amber-400 transition-colors">B2B Wholesale</a></li>
                         <li><a href="{{ route('careers') }}" class="text-emerald-300 hover:text-amber-400 transition-colors">Careers</a></li>

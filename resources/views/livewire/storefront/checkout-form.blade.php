@@ -59,12 +59,10 @@
             </div>
 
             <div class="flex flex-col sm:flex-row gap-3 justify-center flex-wrap">
-                @auth
-                    <a href="{{ route('account.order.detail', $orderId) }}"
-                       class="inline-flex items-center justify-center gap-2 bg-white border-2 border-amber-200 text-amber-700 font-extrabold px-6 py-4 rounded-2xl hover:bg-amber-50 transition-all">
-                        Track Order
-                    </a>
-                @endauth
+                <a href="{{ auth()->check() ? route('account.order.detail', $orderId) : route('track.index', ['order' => $orderNumber]) }}"
+                   class="inline-flex items-center justify-center gap-2 bg-white border-2 border-amber-200 text-amber-700 font-extrabold px-6 py-4 rounded-2xl hover:bg-amber-50 transition-all">
+                    Track Order
+                </a>
                 <a href="{{ URL::signedRoute('customer.orders.invoice', ['order' => $orderId]) }}"
                    class="inline-flex items-center justify-center gap-2 bg-white border-2 border-amber-200 text-amber-700 font-extrabold px-6 py-4 rounded-2xl hover:bg-amber-50 transition-all">
                     Download Invoice
