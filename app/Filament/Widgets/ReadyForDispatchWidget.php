@@ -5,27 +5,26 @@ namespace App\Filament\Widgets;
 use App\Filament\Resources\OrderResource;
 use App\Models\Order;
 use Filament\Actions\Action;
+use Filament\Forms;
 use Filament\Notifications\Notification;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Filament\Widgets\TableWidget as BaseWidget;
 
 /**
- * Part of the "Today's Pipeline" trio (see also FollowUpQueueWidget,
- * PaymentPendingOrdersWidget) — confirmed orders waiting to be packed,
- * regardless of whether they came from the website, WhatsApp, or a
- * repeat-customer Quick Order.
+ * Part of the Delivery Dashboard pipeline — paid orders that are packed
+ * and just waiting to be handed off for delivery.
  */
-class ReadyToPackOrdersWidget extends BaseWidget
+class ReadyForDispatchWidget extends BaseWidget
 {
-    protected static ?int $sort = 2;
-    protected static ?string $heading = 'Ready to Pack';
+    protected static ?int $sort = 3;
+    protected static ?string $heading = 'Ready for Dispatch';
     protected int|string|array $columnSpan = 'full';
 
     public function table(Table $table): Table
     {
         return $table
-            ->query(Order::where('status', 'confirmed')->withCount('items')->latest())
+            ->query(Order::where('status', 'preparing')->where('payment_status', 'paid')->withCount('items')->latest())
             ->columns([
                 Tables\Columns\TextColumn::make('order_number')->label('Order')->weight('bold'),
                 Tables\Columns\TextColumn::make('customer_name')
@@ -35,19 +34,25 @@ class ReadyToPackOrdersWidget extends BaseWidget
                     ->badge()
                     ->color(fn (Order $r) => $r->channel_badge_color),
                 Tables\Columns\TextColumn::make('items_count')->label('Items'),
-                Tables\Columns\TextColumn::make('payment_status')
-                    ->badge()
-                    ->color(fn ($state) => $state === 'paid' ? 'success' : 'warning'),
                 Tables\Columns\TextColumn::make('created_at')->since()->label('Placed'),
             ])
             ->actions([
-                Action::make('markPreparing')
-                    ->label('Start Packing')
-                    ->icon('heroicon-m-archive-box')
-                    ->color('warning')
-                    ->action(function (Order $r) {
-                        $r->update(['status' => 'preparing']);
-                        Notification::make()->title("Order {$r->order_number} moved to Preparing")->success()->send();
+                Action::make('dispatch')
+                    ->label('Dispatch')
+                    ->icon('heroicon-m-truck')
+                    ->color('success')
+                    ->form([
+                        Forms\Components\TextInput::make('tracking_number')
+                            ->label('Tracking Number (optional)')
+                            ->placeholder('e.g. DTDC123456789'),
+                    ])
+                    ->action(function (Order $r, array $data) {
+                        $r->update([
+                            'status'          => 'delivering',
+                            'dispatched_at'   => now(),
+                            'tracking_number' => $data['tracking_number'] ?? null,
+                        ]);
+                        Notification::make()->title("Order {$r->order_number} dispatched")->success()->send();
                     }),
                 Action::make('view')
                     ->label('Open')

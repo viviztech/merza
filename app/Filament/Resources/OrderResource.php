@@ -3,13 +3,10 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\OrderResource\Pages;
-use App\Jobs\SendWhatsAppMessageJob;
 use App\Models\BotSetting;
-use App\Models\Contact;
-use App\Models\Conversation;
 use App\Models\Order;
 use App\Models\ProductVariant;
-use App\Services\AiProviderService;
+use App\Services\OrderNotificationService;
 use Filament\Actions;
 use Filament\Actions\Action;
 use Filament\Forms;
@@ -171,6 +168,19 @@ class OrderResource extends Resource
     public static function infolist(Schema $schema): Schema
     {
         return $schema->components([
+            SchemaSection::make('Next Step')
+                ->schema([
+                    TextEntry::make('next_action')
+                        ->hiddenLabel()
+                        ->state(fn (Order $r) => $r->nextAction()
+                            ? "Next: {$r->nextAction()['label']}"
+                            : 'No further action needed — order is ' . $r->status . '.')
+                        ->size('lg')
+                        ->weight('bold')
+                        ->color(fn (Order $r) => $r->nextAction()['color'] ?? 'gray'),
+                ])
+                ->visible(fn (Order $r) => ! in_array($r->status, ['cancelled'])),
+
             SchemaSection::make('Order Summary')->schema([
                 TextEntry::make('order_number')->badge()->color('primary'),
                 TextEntry::make('channel')
@@ -374,58 +384,7 @@ class OrderResource extends Resource
                     ->query(fn ($query) => $query->whereDate('created_at', today())),
             ])
             ->actions([
-                Action::make('confirm')
-                    ->label('Confirm')
-                    ->icon('heroicon-o-check-circle')
-                    ->color('info')
-                    ->visible(fn (Order $r) => $r->status === 'pending')
-                    ->requiresConfirmation()
-                    ->action(fn (Order $r) => $r->update([
-                        'status'       => 'confirmed',
-                        'confirmed_at' => now(),
-                    ])),
-
-                Action::make('prepare')
-                    ->label('Prepare')
-                    ->icon('heroicon-o-cube')
-                    ->color('primary')
-                    ->visible(fn (Order $r) => $r->status === 'confirmed')
-                    ->action(fn (Order $r) => $r->update(['status' => 'preparing'])),
-
-                Action::make('dispatch')
-                    ->label('Dispatch')
-                    ->icon('heroicon-o-truck')
-                    ->color('success')
-                    ->visible(fn (Order $r) => $r->status === 'preparing')
-                    ->form([
-                        Forms\Components\TextInput::make('tracking_number')
-                            ->label('Tracking Number (optional)')
-                            ->placeholder('e.g. DTDC123456789'),
-                    ])
-                    ->action(fn (Order $r, array $data) => $r->update([
-                        'status'         => 'delivering',
-                        'dispatched_at'  => now(),
-                        'tracking_number' => $data['tracking_number'] ?? null,
-                    ])),
-
-                Action::make('deliver')
-                    ->label('Delivered')
-                    ->icon('heroicon-o-check-badge')
-                    ->color('success')
-                    ->visible(fn (Order $r) => $r->status === 'delivering')
-                    ->requiresConfirmation()
-                    ->action(fn (Order $r) => $r->update([
-                        'status'       => 'delivered',
-                        'delivered_at' => now(),
-                    ])),
-
-                Action::make('markPaid')
-                    ->label('Mark Paid')
-                    ->icon('heroicon-o-banknotes')
-                    ->color('success')
-                    ->visible(fn (Order $r) => $r->payment_status === 'unpaid' && $r->status !== 'cancelled')
-                    ->requiresConfirmation()
-                    ->action(fn (Order $r) => $r->update(['payment_status' => 'paid'])),
+                static::nextActionButton(),
 
                 Action::make('invoice')
                     ->label('')
@@ -451,41 +410,7 @@ class OrderResource extends Resource
                     ->icon('heroicon-o-chat-bubble-left-ellipsis')
                     ->color('success')
                     ->visible(fn (Order $r) => ! in_array($r->status, ['cancelled']) && ! empty($r->customer_phone))
-                    ->fillForm(function (Order $r): array {
-                        $settings = BotSetting::current();
-                        $statusDescriptions = [
-                            'pending'    => 'received and is pending confirmation',
-                            'confirmed'  => 'has been confirmed and we\'re getting it ready',
-                            'preparing'  => 'is currently being prepared',
-                            'delivering' => 'is out for delivery',
-                            'delivered'  => 'has been delivered successfully',
-                        ];
-                        $statusDesc = $statusDescriptions[$r->status] ?? $r->status;
-
-                        $ai = new AiProviderService($settings);
-
-                        if (! $ai->isConfigured()) {
-                            $fallback = "Hi {$r->customer_name}! Your order {$r->order_number} {$statusDesc}."
-                                . ($r->tracking_number ? " Tracking: {$r->tracking_number}." : '')
-                                . " Thank you for choosing Merza Bodi! 🥭";
-                            return ['wa_message' => $fallback];
-                        }
-
-                        $prompt = "Generate a friendly WhatsApp order status update message.
-Customer name: {$r->customer_name}
-Order number: {$r->order_number}
-Order status: {$statusDesc}
-Order total: ₹{$r->total}"
-                            . ($r->tracking_number ? "\nTracking number: {$r->tracking_number}" : '')
-                            . "\n\nWrite 2-4 sentences. Warm and professional. Include the order number. End with 'Merza Bodi Team'. Plain text only, no markdown or asterisks.";
-
-                        $message = $ai->chat(
-                            'You are a customer service representative for Merza Bodi, a premium tropical fruit brand. Write warm, professional WhatsApp order update messages in plain text.',
-                            [['role' => 'user', 'content' => $prompt]],
-                            200
-                        );
-                        return ['wa_message' => $message ?? "Hi {$r->customer_name}! Your order {$r->order_number} {$statusDesc}. Thank you for choosing Merza Bodi!"];
-                    })
+                    ->fillForm(fn (Order $r) => ['wa_message' => app(OrderNotificationService::class)->buildMessage($r)])
                     ->form([
                         Forms\Components\Textarea::make('wa_message')
                             ->label('WhatsApp Message')
@@ -496,30 +421,7 @@ Order total: ₹{$r->total}"
                     ->modalDescription(fn (Order $r) => "Send order update to {$r->customer_name} ({$r->customer_phone})")
                     ->modalSubmitActionLabel('Send via WhatsApp')
                     ->action(function (Order $r, array $data) {
-                        $phone   = preg_replace('/[^0-9+]/', '', $r->customer_phone);
-                        $contact = Contact::where('phone', $phone)
-                                         ->orWhere('phone', ltrim($phone, '+'))
-                                         ->first();
-
-                        if (! $contact) {
-                            $contact = Contact::create([
-                                'name'   => $r->customer_name,
-                                'phone'  => $phone,
-                                'email'  => $r->customer_email,
-                                'source' => 'website',
-                            ]);
-                        }
-
-                        $conversation = Conversation::create([
-                            'contact_id' => $contact->id,
-                            'channel'    => 'whatsapp',
-                            'direction'  => 'outbound',
-                            'message'    => $data['wa_message'],
-                            'is_bot'     => false,
-                            'status'     => 'sent',
-                        ]);
-
-                        SendWhatsAppMessageJob::dispatch($conversation->id);
+                        app(OrderNotificationService::class)->sendStatusUpdate($r, $data['wa_message']);
 
                         Notification::make()
                             ->title('WhatsApp message queued for ' . $r->customer_name)
@@ -557,5 +459,64 @@ Order total: ₹{$r->total}"
             'view'   => Pages\ViewOrder::route('/{record}'),
             'edit'   => Pages\EditOrder::route('/{record}/edit'),
         ];
+    }
+
+    /**
+     * The single "what's next" button, shared by the orders table and
+     * ViewOrder's header actions, driven entirely by Order::nextAction() so
+     * the flow (Confirm → Pack → Payment → Dispatch → Deliver) is defined
+     * in exactly one place.
+     */
+    public static function nextActionButton(): Action
+    {
+        return Action::make('nextAction')
+            ->label(fn (Order $r) => $r->nextAction()['label'] ?? 'Next Action')
+            ->icon(fn (Order $r) => $r->nextAction()['icon'] ?? 'heroicon-o-arrow-right-circle')
+            ->color(fn (Order $r) => $r->nextAction()['color'] ?? 'gray')
+            ->visible(fn (Order $r) => $r->nextAction() !== null)
+            ->requiresConfirmation()
+            ->modalHeading(fn (Order $r) => $r->nextAction()['label'] ?? 'Next Action')
+            ->modalDescription(fn (Order $r) => static::nextActionModalDescription($r))
+            ->modalSubmitActionLabel(fn (Order $r) => $r->nextAction()['label'] ?? 'Confirm')
+            ->form(fn (Order $r) => ($r->nextAction()['trackingForm'] ?? false)
+                ? [
+                    Forms\Components\TextInput::make('tracking_number')
+                        ->label('Tracking Number (optional)')
+                        ->placeholder('e.g. DTDC123456789'),
+                ]
+                : [])
+            ->action(function (Order $r, array $data) {
+                $next = $r->nextAction();
+
+                if (! $next) {
+                    return;
+                }
+
+                $updates = $next['updates'];
+                if (($next['trackingForm'] ?? false) && ! empty($data['tracking_number'])) {
+                    $updates['tracking_number'] = $data['tracking_number'];
+                }
+
+                $r->update($updates);
+
+                Notification::make()
+                    ->title("Order {$r->order_number} updated")
+                    ->success()
+                    ->send();
+            });
+    }
+
+    private static function nextActionModalDescription(Order $r): string
+    {
+        $next = $r->nextAction();
+
+        if (($next['key'] ?? null) === 'markPaid') {
+            $upi = BotSetting::current();
+
+            return "Order total: \u{20B9}{$r->total}. Customer reference: " . ($r->payment_reference ?: '—')
+                . '. Check against your UPI/GPay (' . ($upi->upi_id ?: 'not set') . ') before confirming.';
+        }
+
+        return "Order {$r->order_number} for {$r->customer_name}.";
     }
 }

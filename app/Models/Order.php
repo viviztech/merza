@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\OrderNotificationService;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -34,6 +35,77 @@ class Order extends Model
                 $order->order_number = 'MRZ-' . strtoupper(substr(uniqid(), -6));
             }
         });
+
+        static::updated(function (Order $order) {
+            if (empty($order->customer_phone)) {
+                return;
+            }
+
+            $statusChanged  = $order->wasChanged('status') && $order->status !== 'cancelled';
+            $paymentReceived = $order->wasChanged('payment_status') && $order->payment_status === 'paid';
+
+            if ($statusChanged || $paymentReceived) {
+                app(OrderNotificationService::class)->sendStatusUpdate($order);
+            }
+        });
+    }
+
+    /**
+     * The single "what should staff do next" step for this order, derived
+     * from status + payment_status. Drives the Next Action button (table
+     * row, ViewOrder header) and the ViewOrder "what's next" banner so the
+     * flow is defined in exactly one place.
+     */
+    public function nextAction(): ?array
+    {
+        if ($this->status === 'cancelled' || $this->status === 'delivered') {
+            return null;
+        }
+
+        return match (true) {
+            $this->status === 'pending' => [
+                'key'      => 'confirm',
+                'label'    => 'Confirm Order',
+                'icon'     => 'heroicon-o-check-circle',
+                'color'    => 'info',
+                'confirm'  => true,
+                'updates'  => ['status' => 'confirmed', 'confirmed_at' => now()],
+            ],
+            $this->status === 'confirmed' => [
+                'key'     => 'prepare',
+                'label'   => 'Start Packing',
+                'icon'    => 'heroicon-o-cube',
+                'color'   => 'primary',
+                'confirm' => false,
+                'updates' => ['status' => 'preparing'],
+            ],
+            $this->status === 'preparing' && $this->payment_status === 'unpaid' => [
+                'key'     => 'markPaid',
+                'label'   => 'Mark Payment Received',
+                'icon'    => 'heroicon-o-banknotes',
+                'color'   => 'warning',
+                'confirm' => true,
+                'updates' => ['payment_status' => 'paid'],
+            ],
+            $this->status === 'preparing' && $this->payment_status === 'paid' => [
+                'key'            => 'dispatch',
+                'label'          => 'Dispatch Order',
+                'icon'           => 'heroicon-o-truck',
+                'color'          => 'success',
+                'confirm'        => false,
+                'trackingForm'   => true,
+                'updates'        => ['status' => 'delivering', 'dispatched_at' => now()],
+            ],
+            $this->status === 'delivering' => [
+                'key'     => 'deliver',
+                'label'   => 'Mark Delivered',
+                'icon'    => 'heroicon-o-check-badge',
+                'color'   => 'success',
+                'confirm' => true,
+                'updates' => ['status' => 'delivered', 'delivered_at' => now()],
+            ],
+            default => null,
+        };
     }
 
     public function user(): BelongsTo
