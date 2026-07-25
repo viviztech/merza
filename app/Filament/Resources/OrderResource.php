@@ -265,7 +265,11 @@ class OrderResource extends Resource
 
             SchemaSection::make('Customer Information')->schema([
                 TextEntry::make('customer_name'),
-                TextEntry::make('customer_phone'),
+                TextEntry::make('customer_phone')
+                    ->label('Phone')
+                    ->icon('heroicon-m-phone')
+                    ->url(fn (Order $r) => $r->call_url)
+                    ->color('primary'),
                 TextEntry::make('customer_email')->placeholder('—'),
                 TextEntry::make('delivery_address')->columnSpanFull(),
                 TextEntry::make('city')->label('District / City')->placeholder('—'),
@@ -329,8 +333,14 @@ class OrderResource extends Resource
                     }),
 
                 Tables\Columns\TextColumn::make('customer_name')
+                    ->searchable(),
+
+                Tables\Columns\TextColumn::make('customer_phone')
+                    ->label('Phone')
                     ->searchable()
-                    ->description(fn (Order $r) => $r->customer_phone),
+                    ->icon('heroicon-m-phone')
+                    ->url(fn (Order $r) => $r->call_url)
+                    ->color('primary'),
 
                 Tables\Columns\TextColumn::make('items_count')
                     ->label('Items')

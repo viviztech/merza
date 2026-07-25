@@ -177,4 +177,22 @@ class Order extends Model
         return \Illuminate\Support\Facades\Storage::disk(config('media-library.disk_name', 'r2'))
             ->url($this->payment_screenshot_path);
     }
+
+    public function getCallUrlAttribute(): ?string
+    {
+        if (empty($this->customer_phone)) {
+            return null;
+        }
+
+        $digits = preg_replace('/\D/', '', $this->customer_phone);
+
+        // Bare 10-digit Indian mobile number — add the country code so the
+        // dialer treats it as international (+91…), not a literal 12-digit
+        // number if it already happened to start with "91" some other way.
+        if (strlen($digits) === 10) {
+            $digits = '91' . $digits;
+        }
+
+        return 'tel:+' . $digits;
+    }
 }
