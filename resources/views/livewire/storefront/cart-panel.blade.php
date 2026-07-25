@@ -74,46 +74,72 @@
         <div class="grid lg:grid-cols-5 gap-6 pb-24 lg:pb-0">
 
             {{-- Cart items --}}
-            <div class="lg:col-span-3 space-y-3">
+            {{-- min-w-0: CSS Grid items default to min-width:auto (sized to content), which
+                 forces the whole row — and the page — wider than the viewport on mobile
+                 unless overridden here, regardless of how the content inside wraps. --}}
+            <div class="lg:col-span-3 space-y-3 min-w-0">
                 @foreach($items as $item)
-                    <div class="bg-white rounded-3xl border border-amber-100 p-4 flex gap-4 items-center shadow-sm hover:shadow-md transition-shadow">
+                    <div class="bg-white rounded-3xl border border-amber-100 p-4 shadow-sm hover:shadow-md transition-shadow overflow-hidden">
 
-                        {{-- Thumbnail --}}
-                        <div class="w-18 h-18 rounded-2xl flex-shrink-0 overflow-hidden border border-amber-100 shadow-sm"
-                             style="width:72px; height:72px; background: linear-gradient(145deg, #fef9c3, #fef3c7);">
-                            @if($item->thumbnail_url && !str_contains($item->thumbnail_url, 'placeholder'))
-                                <img src="{{ $item->thumbnail_url }}" alt="{{ $item->product_name }}" class="w-full h-full object-cover">
-                            @else
-                                <div class="w-full h-full flex items-center justify-center text-3xl">🥭</div>
-                            @endif
+                        <div class="flex gap-3 sm:gap-4 sm:items-center">
+
+                            {{-- Thumbnail --}}
+                            <div class="rounded-2xl flex-shrink-0 overflow-hidden border border-amber-100 shadow-sm"
+                                 style="width:64px; height:64px; background: linear-gradient(145deg, #fef9c3, #fef3c7);">
+                                @if($item->thumbnail_url && !str_contains($item->thumbnail_url, 'placeholder'))
+                                    <img src="{{ $item->thumbnail_url }}" alt="{{ $item->product_name }}" class="w-full h-full object-cover">
+                                @else
+                                    <div class="w-full h-full flex items-center justify-center text-3xl">🥭</div>
+                                @endif
+                            </div>
+
+                            {{-- Details --}}
+                            <div class="flex-1 min-w-0">
+                                <h4 class="font-extrabold text-sm text-stone-800 truncate">{{ $item->product_name }}</h4>
+                                <p class="text-xs text-stone-400 mt-0.5">{{ $item->variant_name }}</p>
+                                <p class="text-amber-600 font-extrabold text-sm mt-1">₹{{ number_format($item->price, 2) }} each</p>
+                                @if($item->free_gift_label ?? null)
+                                    <p class="text-xs font-bold text-emerald-700 mt-0.5">🎁 {{ $item->free_gift_label }}</p>
+                                @endif
+                            </div>
+
+                            {{-- Qty stepper + line total (inline on sm+, own row on mobile) --}}
+                            <div class="hidden sm:flex items-center gap-4 flex-shrink-0">
+                                <div class="flex items-center gap-0 bg-stone-100 rounded-xl overflow-hidden border border-stone-200 flex-shrink-0">
+                                    <button wire:click="updateQty({{ $item->variant_id }}, {{ $item->qty - 1 }})"
+                                            class="w-8 h-8 flex items-center justify-center text-stone-500 hover:bg-red-100 hover:text-red-600 transition-colors font-extrabold">−</button>
+                                    <span class="w-7 text-center text-sm font-extrabold text-stone-800">{{ $item->qty }}</span>
+                                    <button wire:click="updateQty({{ $item->variant_id }}, {{ $item->qty + 1 }})"
+                                            class="w-8 h-8 flex items-center justify-center text-stone-500 hover:bg-emerald-100 hover:text-emerald-600 transition-colors font-extrabold">+</button>
+                                </div>
+
+                                <div class="text-right flex-shrink-0">
+                                    <p class="font-extrabold text-sm text-stone-800">₹{{ number_format($item->line_total, 2) }}</p>
+                                    <button wire:click="remove({{ $item->variant_id }})"
+                                            class="text-[10px] text-red-400 hover:text-red-600 mt-1 transition-colors font-medium">
+                                        Remove
+                                    </button>
+                                </div>
+                            </div>
                         </div>
 
-                        {{-- Details --}}
-                        <div class="flex-1 min-w-0">
-                            <h4 class="font-extrabold text-sm text-stone-800 truncate">{{ $item->product_name }}</h4>
-                            <p class="text-xs text-stone-400 mt-0.5">{{ $item->variant_name }}</p>
-                            <p class="text-amber-600 font-extrabold text-sm mt-1">₹{{ number_format($item->price, 2) }} each</p>
-                            @if($item->free_gift_label ?? null)
-                                <p class="text-xs font-bold text-emerald-700 mt-0.5">🎁 {{ $item->free_gift_label }}</p>
-                            @endif
-                        </div>
+                        {{-- Mobile: qty stepper + line total drop to their own row so they never fight the name for width --}}
+                        <div class="flex sm:hidden items-center justify-between gap-3 mt-3 pt-3 border-t border-amber-50">
+                            <div class="flex items-center gap-0 bg-stone-100 rounded-xl overflow-hidden border border-stone-200 flex-shrink-0">
+                                <button wire:click="updateQty({{ $item->variant_id }}, {{ $item->qty - 1 }})"
+                                        class="w-8 h-8 flex items-center justify-center text-stone-500 hover:bg-red-100 hover:text-red-600 transition-colors font-extrabold">−</button>
+                                <span class="w-7 text-center text-sm font-extrabold text-stone-800">{{ $item->qty }}</span>
+                                <button wire:click="updateQty({{ $item->variant_id }}, {{ $item->qty + 1 }})"
+                                        class="w-8 h-8 flex items-center justify-center text-stone-500 hover:bg-emerald-100 hover:text-emerald-600 transition-colors font-extrabold">+</button>
+                            </div>
 
-                        {{-- Qty stepper --}}
-                        <div class="flex items-center gap-0 bg-stone-100 rounded-xl overflow-hidden border border-stone-200 flex-shrink-0">
-                            <button wire:click="updateQty({{ $item->variant_id }}, {{ $item->qty - 1 }})"
-                                    class="w-8 h-8 flex items-center justify-center text-stone-500 hover:bg-red-100 hover:text-red-600 transition-colors font-extrabold">−</button>
-                            <span class="w-7 text-center text-sm font-extrabold text-stone-800">{{ $item->qty }}</span>
-                            <button wire:click="updateQty({{ $item->variant_id }}, {{ $item->qty + 1 }})"
-                                    class="w-8 h-8 flex items-center justify-center text-stone-500 hover:bg-emerald-100 hover:text-emerald-600 transition-colors font-extrabold">+</button>
-                        </div>
-
-                        {{-- Line total + remove --}}
-                        <div class="text-right flex-shrink-0">
-                            <p class="font-extrabold text-sm text-stone-800">₹{{ number_format($item->line_total, 2) }}</p>
-                            <button wire:click="remove({{ $item->variant_id }})"
-                                    class="text-[10px] text-red-400 hover:text-red-600 mt-1 transition-colors font-medium">
-                                Remove
-                            </button>
+                            <div class="text-right flex-shrink-0">
+                                <p class="font-extrabold text-sm text-stone-800">₹{{ number_format($item->line_total, 2) }}</p>
+                                <button wire:click="remove({{ $item->variant_id }})"
+                                        class="text-[10px] text-red-400 hover:text-red-600 mt-1 transition-colors font-medium">
+                                    Remove
+                                </button>
+                            </div>
                         </div>
                     </div>
                 @endforeach
@@ -126,7 +152,7 @@
             </div>
 
             {{-- Order summary --}}
-            <div class="lg:col-span-2">
+            <div class="lg:col-span-2 min-w-0">
                 <div class="bg-white rounded-3xl border border-amber-100 shadow-sm overflow-hidden sticky top-24">
 
                     <div class="bg-gradient-to-r from-amber-50 to-orange-50 border-b border-amber-100 px-5 py-4">
