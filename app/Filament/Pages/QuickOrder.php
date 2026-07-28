@@ -16,7 +16,9 @@ use Filament\Schemas\Components\Actions as ActionsGroup;
 use Filament\Schemas\Components\Form;
 use Filament\Schemas\Components\Section as SchemaSection;
 use Filament\Schemas\Components\Utilities\Set;
+use Filament\Schemas\Components\View as SchemaView;
 use Filament\Schemas\Schema;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\HtmlString;
 
 /**
@@ -69,7 +71,7 @@ class QuickOrder extends Page
     {
         return $schema->components([
             Form::make([
-                SchemaSection::make('Find Customer')
+                SchemaSection::make('1. Find Customer')
                     ->description('Type the phone number first — if they\'ve ordered before, their details and last order appear below.')
                     ->schema([
                         Forms\Components\TextInput::make('customer_phone')
@@ -102,7 +104,7 @@ class QuickOrder extends Page
                         ])->columnSpanFull(),
                     ])->columns(2),
 
-                SchemaSection::make('Customer & Delivery')->schema([
+                SchemaSection::make('2. Customer & Delivery')->schema([
                     Forms\Components\TextInput::make('customer_name')->required(),
                     Forms\Components\TextInput::make('customer_email')->email()->nullable(),
                     Forms\Components\Textarea::make('delivery_address')->required()->columnSpanFull(),
@@ -114,33 +116,51 @@ class QuickOrder extends Page
                     Forms\Components\TextInput::make('landmark'),
                 ])->columns(2),
 
-                SchemaSection::make('Items')->schema([
-                    Forms\Components\Repeater::make('items')
-                        ->schema([
-                            Forms\Components\Select::make('product_variant_id')
-                                ->label('Product')
-                                ->options(fn () => ProductVariant::with('product')
-                                    ->where('is_active', true)
-                                    ->get()
-                                    ->mapWithKeys(fn (ProductVariant $v) => [
-                                        $v->id => "{$v->product->name} – {$v->name} (\u{20B9}{$v->price})",
-                                    ]))
-                                ->searchable()
-                                ->required(),
+                SchemaSection::make('3. Add Items')
+                    ->description('Tap a product to add it to the order. Tap it again to bump the quantity up.')
+                    ->schema([
+                        SchemaView::make('filament.pages.quick-order.product-grid')
+                            ->viewData(fn () => ['variants' => $this->activeVariants()])
+                            ->columnSpanFull(),
 
-                            Forms\Components\TextInput::make('quantity')
-                                ->numeric()
-                                ->default(1)
-                                ->minValue(1)
-                                ->required(),
-                        ])
-                        ->columns(2)
-                        ->defaultItems(1)
-                        ->addActionLabel('Add Item')
-                        ->columnSpanFull(),
-                ]),
+                        Forms\Components\Placeholder::make('order_totals')
+                            ->label('')
+                            ->content(fn () => $this->renderOrderTotals())
+                            ->columnSpanFull(),
 
-                SchemaSection::make('Payment & Delivery')->schema([
+                        Forms\Components\Repeater::make('items')
+                            ->label('Order items')
+                            ->schema([
+                                Forms\Components\Select::make('product_variant_id')
+                                    ->label('Product')
+                                    ->options(fn () => ProductVariant::with('product')
+                                        ->where('is_active', true)
+                                        ->get()
+                                        ->mapWithKeys(fn (ProductVariant $v) => [
+                                            $v->id => "{$v->product->name} – {$v->name} (\u{20B9}{$v->price})",
+                                        ]))
+                                    ->searchable()
+                                    ->live()
+                                    ->afterStateUpdated(fn () => $this->previewReady = false)
+                                    ->required(),
+
+                                Forms\Components\TextInput::make('quantity')
+                                    ->numeric()
+                                    ->default(1)
+                                    ->minValue(1)
+                                    ->required()
+                                    ->live(debounce: 500)
+                                    ->afterStateUpdated(fn () => $this->previewReady = false),
+                            ])
+                            ->columns(2)
+                            ->defaultItems(1)
+                            ->addActionLabel('+ Add a line manually')
+                            ->reorderable(false)
+                            ->deleteAction(fn (\Filament\Actions\Action $action) => $action->after(fn () => $this->previewReady = false))
+                            ->columnSpanFull(),
+                    ]),
+
+                SchemaSection::make('4. Payment & Delivery')->schema([
                     Forms\Components\Select::make('payment_method')
                         ->options([
                             'cod'           => 'Cash on Delivery',
@@ -160,6 +180,18 @@ class QuickOrder extends Page
                         ->default('unpaid')
                         ->required(),
 
+                    Forms\Components\Placeholder::make('delivery_fee_presets')
+                        ->label('Delivery fee — quick pick')
+                        ->content(fn () => new HtmlString(
+                            '<div class="flex flex-wrap gap-2">' . collect([0, 50, 100, 150])
+                                ->map(fn ($amount) => '<button type="button" wire:click="setDeliveryFee(' . $amount . ')" '
+                                    . 'class="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 '
+                                    . 'shadow-sm hover:border-primary-400 hover:text-primary-600 dark:border-white/10 dark:bg-white/5 dark:text-gray-200">'
+                                    . "\u{20B9}{$amount}</button>")
+                                ->implode('') . '</div>'
+                        ))
+                        ->columnSpanFull(),
+
                     Forms\Components\TextInput::make('delivery_fee')
                         ->numeric()
                         ->prefix("\u{20B9}")
@@ -177,10 +209,11 @@ class QuickOrder extends Page
                         ->label(fn () => $this->previewReady ? 'Regenerate Message' : 'Generate Order Message')
                         ->color('gray')
                         ->icon('heroicon-o-chat-bubble-left-right')
+                        ->size('lg')
                         ->action(fn () => $this->generatePreview()),
                 ])->fullWidth(),
 
-                SchemaSection::make('Order Confirmation Message')
+                SchemaSection::make('5. Send & Confirm')
                     ->description('Copy this and send it to the customer on the call/WhatsApp. Edit the items above and click "Regenerate Message" if anything changes.')
                     ->visible(fn () => $this->previewReady)
                     ->schema([
@@ -218,12 +251,25 @@ class QuickOrder extends Page
     }
 
     /**
-     * Builds the copy-paste-ready WhatsApp order confirmation text from the
-     * items/delivery fee currently entered, without touching the database —
-     * this is the "temporary order" preview staff read out / send to the
-     * customer before payment is confirmed.
+     * All active, sellable product variants for the tap-to-add grid.
      */
-    protected function buildConfirmationMessage(): string
+    protected function activeVariants(): Collection
+    {
+        return ProductVariant::with('product')
+            ->where('is_active', true)
+            ->get()
+            ->sortBy(fn (ProductVariant $v) => [$v->product->name, (float) $v->weight_value]);
+    }
+
+    /**
+     * Resolves the current $this->data['items'] rows against their
+     * ProductVariant records, skipping any row that doesn't have a product
+     * picked yet. Shared by the running-total display and the message
+     * builder so they can never disagree on totals.
+     *
+     * @return \Illuminate\Support\Collection<int, array{variant: ProductVariant, quantity: int, lineTotal: float}>
+     */
+    protected function cartLines(): \Illuminate\Support\Collection
     {
         $rows = collect($this->data['items'] ?? [])
             ->filter(fn ($row) => filled($row['product_variant_id'] ?? null));
@@ -233,26 +279,115 @@ class QuickOrder extends Page
             ->get()
             ->keyBy('id');
 
+        return $rows
+            ->map(function ($row) use ($variants) {
+                $variant = $variants->get($row['product_variant_id']);
+
+                if (! $variant) {
+                    return null;
+                }
+
+                $qty = max(1, (int) ($row['quantity'] ?? 1));
+
+                return ['variant' => $variant, 'quantity' => $qty, 'lineTotal' => (float) $variant->price * $qty];
+            })
+            ->filter()
+            ->values();
+    }
+
+    /**
+     * Adds a tapped product to the cart — bumps the quantity if it's
+     * already in there, otherwise fills the first empty row or appends a
+     * new one. Mutating $this->data directly (rather than via a form Set
+     * closure) is safe here since Livewire re-hydrates the schema from this
+     * property on every render.
+     */
+    public function addItemToCart(int $variantId): void
+    {
+        $items = $this->data['items'] ?? [];
+
+        foreach ($items as $key => $row) {
+            if ((int) ($row['product_variant_id'] ?? 0) === $variantId) {
+                $items[$key]['quantity'] = (int) ($row['quantity'] ?? 1) + 1;
+                $this->data['items']     = $items;
+                $this->previewReady      = false;
+
+                return;
+            }
+        }
+
+        foreach ($items as $key => $row) {
+            if (blank($row['product_variant_id'] ?? null)) {
+                $items[$key]         = ['product_variant_id' => $variantId, 'quantity' => 1];
+                $this->data['items'] = $items;
+                $this->previewReady  = false;
+
+                return;
+            }
+        }
+
+        $items[]              = ['product_variant_id' => $variantId, 'quantity' => 1];
+        $this->data['items']  = $items;
+        $this->previewReady   = false;
+    }
+
+    public function setDeliveryFee(int $amount): void
+    {
+        $this->data['delivery_fee'] = $amount;
+        $this->previewReady         = false;
+    }
+
+    /**
+     * The always-visible running total shown above the item list — so
+     * staff can quote a price mid-call without generating the message
+     * first.
+     */
+    protected function renderOrderTotals(): HtmlString
+    {
+        $lines = $this->cartLines();
+
+        if ($lines->isEmpty()) {
+            return new HtmlString('<div class="text-sm text-gray-400">No items added yet — tap a product above.</div>');
+        }
+
+        $count       = $lines->sum('quantity');
+        $subtotal    = $lines->sum('lineTotal');
+        $deliveryFee = (float) ($this->data['delivery_fee'] ?? 0);
+        $total       = $subtotal + $deliveryFee;
+
+        return new HtmlString(
+            '<div class="flex flex-wrap items-center gap-x-6 gap-y-1 rounded-lg bg-primary-50 px-4 py-3 text-sm dark:bg-primary-500/10">'
+            . '<span>' . $count . ' item' . ($count === 1 ? '' : 's') . '</span>'
+            . '<span>Subtotal: <strong>' . "\u{20B9}" . number_format($subtotal, 0) . '</strong></span>'
+            . '<span>Delivery: <strong>' . "\u{20B9}" . number_format($deliveryFee, 0) . '</strong></span>'
+            . '<span class="text-base font-bold text-primary-700 dark:text-primary-300">Total: '
+            . "\u{20B9}" . number_format($total, 0) . '</span>'
+            . '</div>'
+        );
+    }
+
+    /**
+     * Builds the copy-paste-ready WhatsApp order confirmation text from the
+     * items/delivery fee currently entered, without touching the database —
+     * this is the "temporary order" preview staff read out / send to the
+     * customer before payment is confirmed.
+     */
+    protected function buildConfirmationMessage(): string
+    {
         $lines      = [];
         $itemsTotal = 0.0;
 
-        foreach ($rows as $row) {
-            $variant = $variants->get($row['product_variant_id']);
-
-            if (! $variant) {
-                continue;
-            }
-
-            $qty       = max(1, (int) ($row['quantity'] ?? 1));
-            $lineTotal = (float) $variant->price * $qty;
-            $itemsTotal += $lineTotal;
+        foreach ($this->cartLines() as $line) {
+            $variant = $line['variant'];
+            $qty     = $line['quantity'];
+            $itemsTotal += $line['lineTotal'];
 
             $weightValue = rtrim(rtrim(number_format((float) $variant->weight_value, 3, '.', ''), '0'), '.');
             $pack        = trim($weightValue . $variant->weight_unit);
-            $qtyLabel = $qty > 1 ? " x{$qty}" : '';
+            $qtyLabel    = $qty > 1 ? " x{$qty}" : '';
 
             $lines[] = "{$variant->product->name} ({$pack}){$qtyLabel}";
-            $lines[] = 'Item Cost: ' . "\u{20B9}" . number_format($lineTotal, 0);
+            $lines[] = 'Item Cost: ' . "\u{20B9}" . number_format($line['lineTotal'], 0);
         }
 
         $deliveryFee = (float) ($this->data['delivery_fee'] ?? 0);
@@ -286,9 +421,7 @@ class QuickOrder extends Page
         // preview is never generated from an incomplete/invalid form.
         $this->content->getState();
 
-        $items = collect($this->data['items'] ?? [])->filter(fn ($row) => filled($row['product_variant_id'] ?? null));
-
-        if ($items->isEmpty()) {
+        if ($this->cartLines()->isEmpty()) {
             Notification::make()->title('Add at least one item first')->danger()->send();
 
             return;
