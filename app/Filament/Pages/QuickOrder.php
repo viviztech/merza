@@ -3,6 +3,7 @@
 namespace App\Filament\Pages;
 
 use App\Filament\Resources\OrderResource;
+use App\Models\BotSetting;
 use App\Models\Contact;
 use App\Models\Order;
 use App\Models\ProductVariant;
@@ -24,6 +25,13 @@ use Illuminate\Support\HtmlString;
  * immediately, no Lead record required first. See AdminOrderService for
  * the shared stock/duplicate checks this reuses with CreateOrder and the
  * Lead "Convert to Order" wizard.
+ *
+ * Confirmation is two-step: "Generate Order Message" builds a copy-paste
+ * WhatsApp confirmation text from the entered items (a temporary order that
+ * only exists in this page's state, never the database), then staff copy it
+ * to the customer on the call. Only after that does "Confirm Order" appear,
+ * which creates the real Order — already status=confirmed with a real
+ * confirmed_at timestamp, since by then payment has genuinely been agreed.
  */
 class QuickOrder extends Page
 {
@@ -39,6 +47,9 @@ class QuickOrder extends Page
     public ?Order $lastOrder = null;
     public ?string $duplicateWarning = null;
 
+    public ?string $previewMessage = null;
+    public bool $previewReady = false;
+
     public function mount(): void
     {
         $this->data = [
@@ -46,7 +57,7 @@ class QuickOrder extends Page
             'payment_method' => 'cod',
             'payment_status' => 'unpaid',
             'delivery_fee'   => 0,
-            'items'          => [[]],
+            'items'          => [['product_variant_id' => null, 'quantity' => 1]],
         ];
 
         if (filled($this->data['customer_phone'])) {
@@ -153,22 +164,138 @@ class QuickOrder extends Page
                         ->numeric()
                         ->prefix("\u{20B9}")
                         ->default(0)
-                        ->required(),
+                        ->required()
+                        ->live()
+                        ->afterStateUpdated(fn () => $this->previewReady = false),
 
                     Forms\Components\Textarea::make('admin_notes')
                         ->label('Notes')->rows(2)->nullable()->columnSpanFull(),
                 ])->columns(3),
 
                 ActionsGroup::make([
-                    Action::make('createOrder')
-                        ->label('Create Order')
-                        ->color('success')
-                        ->icon('heroicon-o-shopping-bag')
-                        ->size('lg')
-                        ->action(fn () => $this->createOrder()),
+                    Action::make('previewMessage')
+                        ->label(fn () => $this->previewReady ? 'Regenerate Message' : 'Generate Order Message')
+                        ->color('gray')
+                        ->icon('heroicon-o-chat-bubble-left-right')
+                        ->action(fn () => $this->generatePreview()),
                 ])->fullWidth(),
+
+                SchemaSection::make('Order Confirmation Message')
+                    ->description('Copy this and send it to the customer on the call/WhatsApp. Edit the items above and click "Regenerate Message" if anything changes.')
+                    ->visible(fn () => $this->previewReady)
+                    ->schema([
+                        Forms\Components\Placeholder::make('preview_display')
+                            ->label('')
+                            ->content(fn () => new HtmlString(
+                                '<textarea readonly rows="16" id="wa-preview-textarea" '
+                                . 'class="fi-input block w-full rounded-lg border-none bg-white text-sm text-gray-950 '
+                                . 'shadow-sm ring-1 ring-gray-950/10 dark:bg-white/5 dark:text-white dark:ring-white/20 '
+                                . 'focus:ring-2 focus:ring-primary-600">'
+                                . e($this->previewMessage) . '</textarea>'
+                            ))
+                            ->columnSpanFull(),
+
+                        ActionsGroup::make([
+                            Action::make('copyMessage')
+                                ->label('Copy Message')
+                                ->color('gray')
+                                ->icon('heroicon-o-clipboard-document')
+                                ->extraAttributes([
+                                    'x-on:click' => "navigator.clipboard.writeText(document.getElementById('wa-preview-textarea').value)",
+                                ])
+                                ->action(fn () => Notification::make()->title('Copied — paste it into WhatsApp')->success()->send()),
+
+                            Action::make('confirmOrder')
+                                ->label('Confirm Order — Payment Received')
+                                ->color('success')
+                                ->icon('heroicon-o-check-badge')
+                                ->size('lg')
+                                ->action(fn () => $this->createOrder()),
+                        ]),
+                    ]),
             ])->statePath('data'),
         ]);
+    }
+
+    /**
+     * Builds the copy-paste-ready WhatsApp order confirmation text from the
+     * items/delivery fee currently entered, without touching the database —
+     * this is the "temporary order" preview staff read out / send to the
+     * customer before payment is confirmed.
+     */
+    protected function buildConfirmationMessage(): string
+    {
+        $rows = collect($this->data['items'] ?? [])
+            ->filter(fn ($row) => filled($row['product_variant_id'] ?? null));
+
+        $variants = ProductVariant::with('product')
+            ->whereIn('id', $rows->pluck('product_variant_id'))
+            ->get()
+            ->keyBy('id');
+
+        $lines      = [];
+        $itemsTotal = 0.0;
+
+        foreach ($rows as $row) {
+            $variant = $variants->get($row['product_variant_id']);
+
+            if (! $variant) {
+                continue;
+            }
+
+            $qty       = max(1, (int) ($row['quantity'] ?? 1));
+            $lineTotal = (float) $variant->price * $qty;
+            $itemsTotal += $lineTotal;
+
+            $weightValue = rtrim(rtrim(number_format((float) $variant->weight_value, 3, '.', ''), '0'), '.');
+            $pack        = trim($weightValue . $variant->weight_unit);
+            $qtyLabel = $qty > 1 ? " x{$qty}" : '';
+
+            $lines[] = "{$variant->product->name} ({$pack}){$qtyLabel}";
+            $lines[] = 'Item Cost: ' . "\u{20B9}" . number_format($lineTotal, 0);
+        }
+
+        $deliveryFee = (float) ($this->data['delivery_fee'] ?? 0);
+        $total       = $itemsTotal + $deliveryFee;
+        $bot         = BotSetting::current();
+
+        return implode("\n", array_filter([
+            '*MERZA BODI - ORDER CONFIRMATION*',
+            '',
+            'Dear Customer,',
+            'Thank you for your order.',
+            '',
+            '*ORDER DETAILS*',
+            implode("\n", $lines),
+            'Courier Charge: ' . "\u{20B9}" . number_format($deliveryFee, 0),
+            '*Total Amount: ' . "\u{20B9}" . number_format($total, 0) . '*',
+            '',
+            '*PAYMENT DETAILS*',
+            'GPay Number: *' . ($bot->upi_id ?: 'Not set in Settings') . '*',
+            'Account Name: ' . ($bot->upi_payee_name ?: 'Not set in Settings'),
+            '',
+            '*COURIER DISPATCH TIMING*',
+            "Payment before 12:00 PM \u{2192} 12:00 PM Dispatch",
+            "Payment before 8:00 PM \u{2192} 8:00 PM Dispatch",
+        ], fn ($line) => $line !== null));
+    }
+
+    public function generatePreview(): void
+    {
+        // Triggers validation the same way createOrder() does, so a
+        // preview is never generated from an incomplete/invalid form.
+        $this->content->getState();
+
+        $items = collect($this->data['items'] ?? [])->filter(fn ($row) => filled($row['product_variant_id'] ?? null));
+
+        if ($items->isEmpty()) {
+            Notification::make()->title('Add at least one item first')->danger()->send();
+
+            return;
+        }
+
+        $this->previewMessage = $this->buildConfirmationMessage();
+        $this->previewReady   = true;
     }
 
     /**
@@ -267,6 +394,18 @@ class QuickOrder extends Page
 
     public function createOrder(): void
     {
+        // The customer has already confirmed and paid on the call, so this
+        // isn't a "pending" order — it's created already confirmed, with a
+        // real confirmed_at timestamp instead of the null one a fresh
+        // pending order would get. Staff can't reach this action without
+        // generating the message first (button only appears once
+        // previewReady is true), so payment has genuinely been confirmed.
+        if (! $this->previewReady) {
+            Notification::make()->title('Generate the order message first')->danger()->send();
+
+            return;
+        }
+
         // Triggers validation (required(), digits:6 on postcode, etc.) —
         // throws a ValidationException that Filament renders as field
         // errors if anything's invalid. The returned state is discarded;
@@ -275,7 +414,7 @@ class QuickOrder extends Page
 
         $data  = $this->data;
         $items = $data['items'] ?? [];
-        unset($data['items']);
+        unset($data['items'], $data['preview_display']);
 
         $service = new AdminOrderService();
 
@@ -291,23 +430,25 @@ class QuickOrder extends Page
             return;
         }
 
+        $customerFields = ['customer_name', 'customer_phone', 'customer_email', 'delivery_address', 'city', 'state', 'postcode', 'landmark'];
+
         $order = $service->createOrder(
             items: $items,
-            customerData: array_intersect_key($data, array_flip([
-                'customer_name', 'customer_phone', 'customer_email',
-                'delivery_address', 'city', 'state', 'postcode', 'landmark',
-            ])),
-            orderData: array_diff_key($data, array_flip([
-                'customer_name', 'customer_phone', 'customer_email',
-                'delivery_address', 'city', 'state', 'postcode', 'landmark',
-            ])),
+            customerData: array_intersect_key($data, array_flip($customerFields)),
+            orderData: array_diff_key($data, array_flip($customerFields)) + [
+                'status'       => 'confirmed',
+                'confirmed_at' => now(),
+            ],
             contact: $this->foundContact,
         );
 
         Notification::make()
-            ->title("Order {$order->order_number} created")
+            ->title("Order {$order->order_number} confirmed")
             ->success()
             ->send();
+
+        $this->previewReady   = false;
+        $this->previewMessage = null;
 
         $this->redirect(OrderResource::getUrl('view', ['record' => $order]));
     }
