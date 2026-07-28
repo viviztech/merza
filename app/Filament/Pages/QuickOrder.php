@@ -5,6 +5,7 @@ namespace App\Filament\Pages;
 use App\Filament\Resources\OrderResource;
 use App\Models\BotSetting;
 use App\Models\Contact;
+use App\Models\Conversation;
 use App\Models\Order;
 use App\Models\ProductVariant;
 use App\Services\AdminOrderService;
@@ -14,6 +15,7 @@ use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Filament\Schemas\Components\Actions as ActionsGroup;
 use Filament\Schemas\Components\Form;
+use Filament\Schemas\Components\Group as SchemaGroup;
 use Filament\Schemas\Components\Section as SchemaSection;
 use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Components\View as SchemaView;
@@ -52,6 +54,8 @@ class QuickOrder extends Page
     public ?string $previewMessage = null;
     public bool $previewReady = false;
 
+    public bool $editingCustomerDetails = false;
+
     public function mount(): void
     {
         $this->data = [
@@ -87,14 +91,13 @@ class QuickOrder extends Page
                             ->content(fn () => $this->renderLookupResult())
                             ->columnSpanFull(),
 
-                        ActionsGroup::make([
-                            Action::make('usePreviousAddress')
-                                ->label('Use Previous Address')
-                                ->icon('heroicon-o-map-pin')
-                                ->color('gray')
-                                ->visible(fn () => $this->lastOrder !== null)
-                                ->action(fn (Set $set) => $this->applyPreviousAddress($set)),
+                        Forms\Components\Placeholder::make('recent_chat')
+                            ->label('')
+                            ->visible(fn () => $this->foundContact !== null)
+                            ->content(fn () => $this->renderRecentChat())
+                            ->columnSpanFull(),
 
+                        ActionsGroup::make([
                             Action::make('repeatLastOrder')
                                 ->label('Repeat Last Order')
                                 ->icon('heroicon-o-arrow-path')
@@ -105,16 +108,38 @@ class QuickOrder extends Page
                     ])->columns(2),
 
                 SchemaSection::make('2. Customer & Delivery')->schema([
-                    Forms\Components\TextInput::make('customer_name')->required(),
-                    Forms\Components\TextInput::make('customer_email')->email()->nullable(),
-                    Forms\Components\Textarea::make('delivery_address')->required()->columnSpanFull(),
-                    Forms\Components\TextInput::make('city')->label('District / City'),
-                    Forms\Components\TextInput::make('state'),
-                    Forms\Components\TextInput::make('postcode')
-                        ->label('Pincode')
-                        ->rule('digits:6'),
-                    Forms\Components\TextInput::make('landmark'),
-                ])->columns(2),
+                    Forms\Components\Placeholder::make('customer_summary')
+                        ->label('')
+                        ->visible(fn () => $this->hasKnownCustomer() && ! $this->editingCustomerDetails)
+                        ->content(fn () => $this->renderCustomerSummary())
+                        ->columnSpanFull(),
+
+                    ActionsGroup::make([
+                        Action::make('editCustomerDetails')
+                            ->label('Edit name / address')
+                            ->icon('heroicon-o-pencil-square')
+                            ->color('gray')
+                            ->action(fn () => $this->editingCustomerDetails = true),
+                    ])
+                        ->visible(fn () => $this->hasKnownCustomer() && ! $this->editingCustomerDetails)
+                        ->columnSpanFull(),
+
+                    SchemaGroup::make([
+                        Forms\Components\TextInput::make('customer_name')->required(),
+                        Forms\Components\TextInput::make('customer_email')->label('Email (optional)')->email()->nullable(),
+                        Forms\Components\Textarea::make('delivery_address')
+                            ->required()
+                            ->helperText('House/street/area — mention a nearby landmark if it helps the courier.')
+                            ->columnSpanFull(),
+                        Forms\Components\TextInput::make('city')->label('District / City'),
+                        Forms\Components\TextInput::make('state'),
+                        Forms\Components\TextInput::make('postcode')
+                            ->label('Pincode')
+                            ->rule('digits:6'),
+                    ])
+                        ->visible(fn () => ! $this->hasKnownCustomer() || $this->editingCustomerDetails)
+                        ->columns(2),
+                ]),
 
                 SchemaSection::make('3. Add Items')
                     ->description('Tap a product to add it to the order. Tap it again to bump the quantity up.')
@@ -436,9 +461,10 @@ class QuickOrder extends Page
      */
     protected function lookupCustomer(?string $phone, callable $set): void
     {
-        $this->foundContact    = null;
-        $this->lastOrder       = null;
-        $this->duplicateWarning = null;
+        $this->foundContact           = null;
+        $this->lastOrder              = null;
+        $this->duplicateWarning       = null;
+        $this->editingCustomerDetails = false;
 
         $digits = preg_replace('/[^0-9+]/', '', (string) $phone);
 
@@ -460,6 +486,13 @@ class QuickOrder extends Page
             $set('customer_name', $this->lastOrder->customer_name);
         }
 
+        // A known address is filled in straight away — that's the whole
+        // point of the collapsed summary card. Staff only see open fields
+        // when there's genuinely nothing on file yet, or they hit Edit.
+        if ($this->lastOrder) {
+            $this->applyPreviousAddress($set);
+        }
+
         $recentDuplicate = (new AdminOrderService())->findRecentDuplicate($digits);
 
         if ($recentDuplicate) {
@@ -467,6 +500,68 @@ class QuickOrder extends Page
                 . "{$recentDuplicate->order_number} {$recentDuplicate->created_at->diffForHumans()}. "
                 . 'Check before creating another.';
         }
+    }
+
+    protected function hasKnownCustomer(): bool
+    {
+        return $this->foundContact !== null || $this->lastOrder !== null;
+    }
+
+    protected function renderCustomerSummary(): HtmlString
+    {
+        $name    = $this->data['customer_name'] ?? '';
+        $address = trim(implode(', ', array_filter([
+            $this->data['delivery_address'] ?? null,
+            $this->data['city'] ?? null,
+            $this->data['state'] ?? null,
+            $this->data['postcode'] ?? null,
+        ])));
+
+        return new HtmlString(
+            '<div class="rounded-lg bg-emerald-50 px-4 py-3 text-sm dark:bg-emerald-500/10">'
+            . '<div class="font-semibold text-emerald-700 dark:text-emerald-400">✓ ' . e($name) . '</div>'
+            . '<div class="text-gray-600 dark:text-gray-400">' . e($address ?: 'No address on file yet — click Edit to add one.') . '</div>'
+            . '</div>'
+        );
+    }
+
+    /**
+     * The last few WhatsApp messages for this contact — lets staff read
+     * what the customer already said (which may include an address) instead
+     * of asking again. There's no reliable automated address extraction, so
+     * this shows the raw chat rather than guessing.
+     */
+    protected function renderRecentChat(): ?HtmlString
+    {
+        if (! $this->foundContact) {
+            return null;
+        }
+
+        $messages = Conversation::where('contact_id', $this->foundContact->id)
+            ->latest('created_at')
+            ->limit(5)
+            ->get()
+            ->reverse();
+
+        if ($messages->isEmpty()) {
+            return null;
+        }
+
+        $rows = $messages->map(function (Conversation $message) {
+            $from = $message->direction === 'inbound' ? 'Customer' : ($message->is_bot ? 'Bot' : 'Staff');
+
+            return '<div class="border-b border-gray-100 py-1.5 last:border-0 dark:border-white/10">'
+                . '<span class="font-medium text-gray-500 dark:text-gray-400">' . e($from) . ':</span> '
+                . '<span class="text-gray-700 dark:text-gray-300">' . e((string) str($message->message)->limit(140)) . '</span>'
+                . '</div>';
+        })->implode('');
+
+        return new HtmlString(
+            '<details class="rounded-lg border border-gray-200 px-4 py-2 text-sm dark:border-white/10">'
+            . '<summary class="cursor-pointer font-medium text-gray-600 dark:text-gray-300">Recent WhatsApp messages</summary>'
+            . '<div class="mt-2">' . $rows . '</div>'
+            . '</details>'
+        );
     }
 
     protected function renderLookupResult(): ?HtmlString
@@ -498,17 +593,27 @@ class QuickOrder extends Page
         return null;
     }
 
-    protected function applyPreviousAddress(Set $set): void
+    /**
+     * @param  callable(string, mixed): void  $set  Set (or the mount-time closure fallback)
+     */
+    protected function applyPreviousAddress(callable $set): void
     {
         if (! $this->lastOrder) {
             return;
         }
 
-        $set('delivery_address', $this->lastOrder->delivery_address);
+        // Landmark no longer has its own field — fold it into the address
+        // text so the information isn't lost when pulling in a past order.
+        $address = $this->lastOrder->delivery_address;
+
+        if (filled($this->lastOrder->landmark) && ! str_contains((string) $address, $this->lastOrder->landmark)) {
+            $address = trim($address . ' (Near: ' . $this->lastOrder->landmark . ')');
+        }
+
+        $set('delivery_address', $address);
         $set('city', $this->lastOrder->city);
         $set('state', $this->lastOrder->state);
         $set('postcode', $this->lastOrder->postcode);
-        $set('landmark', $this->lastOrder->landmark);
     }
 
     protected function applyRepeatOrder(Set $set): void
@@ -563,7 +668,7 @@ class QuickOrder extends Page
             return;
         }
 
-        $customerFields = ['customer_name', 'customer_phone', 'customer_email', 'delivery_address', 'city', 'state', 'postcode', 'landmark'];
+        $customerFields = ['customer_name', 'customer_phone', 'customer_email', 'delivery_address', 'city', 'state', 'postcode'];
 
         $order = $service->createOrder(
             items: $items,
