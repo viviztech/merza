@@ -215,6 +215,13 @@ class MetaBotSettingsPage extends Page
                         Forms\Components\TextInput::make('upi_payee_name')
                             ->label('UPI Payee Name')
                             ->placeholder('Merza Bodi'),
+
+                        Forms\Components\TextInput::make('whatsapp_group_link')
+                            ->label('WhatsApp Group/Channel Link')
+                            ->url()
+                            ->placeholder('https://chat.whatsapp.com/xxxxxxxx')
+                            ->helperText('Sent to customers in the order confirmation message so they can join for tracking updates and order status.')
+                            ->columnSpanFull(),
                     ])->columns(2),
 
                 SchemaSection::make('Lead Follow-up Prompt')

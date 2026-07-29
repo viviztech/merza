@@ -16,7 +16,7 @@ class BotSetting extends Model
         'follow_up_prompt_template', 'wa_reply_prompt_template',
         'bot_enabled', 'auto_create_contact', 'auto_create_lead',
         'wa_bot_enabled', 'wa_auto_send', 'voice_bot_enabled',
-        'wa_commerce_enabled', 'upi_id', 'upi_payee_name',
+        'wa_commerce_enabled', 'upi_id', 'upi_payee_name', 'whatsapp_group_link',
     ];
 
     protected $casts = [
@@ -39,6 +39,7 @@ class BotSetting extends Model
             'bot_enabled'                 => false,
             'auto_create_contact'         => true,
             'auto_create_lead'            => true,
+            'whatsapp_group_link'         => 'https://chat.whatsapp.com/FtWyjA7FjP2C4j7NpY4Mlz?s=cl&p=a&mlu=4',
         ]);
     }
 

@@ -258,8 +258,24 @@ class QuickOrder extends Page
                                 ->label('Copy Message')
                                 ->color('gray')
                                 ->icon('heroicon-o-clipboard-document')
+                                // Filament always sets an 'x-on:click' key on the button (null for a
+                                // plain action like this), and that null wins over anything passed to
+                                // ->extraAttributes(['x-on:click' => ...]) during Blade's attribute
+                                // merge — silently dropping the clipboard write. A distinctly-named
+                                // event modifier avoids the key collision, and wire:click (which
+                                // mounts the action and fires the notification below) is untouched.
                                 ->extraAttributes([
-                                    'x-on:click' => "navigator.clipboard.writeText(document.getElementById('wa-preview-textarea').value)",
+                                    'x-on:click.capture' => <<<'JS'
+                                        (() => {
+                                            const el = document.getElementById('wa-preview-textarea');
+                                            if (navigator.clipboard && window.isSecureContext) {
+                                                navigator.clipboard.writeText(el.value);
+                                            } else {
+                                                el.select();
+                                                document.execCommand('copy');
+                                            }
+                                        })()
+                                        JS,
                                 ])
                                 ->action(fn () => Notification::make()->title('Copied — paste it into WhatsApp')->success()->send()),
 
@@ -433,10 +449,16 @@ class QuickOrder extends Page
             '*PAYMENT DETAILS*',
             'GPay Number: *' . ($bot->upi_id ?: 'Not set in Settings') . '*',
             'Account Name: ' . ($bot->upi_payee_name ?: 'Not set in Settings'),
+            'Please share a screenshot of the payment after you pay.',
             '',
             '*COURIER DISPATCH TIMING*',
             "Payment before 12:00 PM \u{2192} 12:00 PM Dispatch",
             "Payment before 8:00 PM \u{2192} 8:00 PM Dispatch",
+            $bot->whatsapp_group_link ? '' : null,
+            $bot->whatsapp_group_link ? '*TRACK YOUR ORDER*' : null,
+            $bot->whatsapp_group_link
+                ? "Join our WhatsApp group for your tracking number and order status updates:\n{$bot->whatsapp_group_link}"
+                : null,
         ], fn ($line) => $line !== null));
     }
 
