@@ -440,6 +440,7 @@ class QuickOrder extends Page
             '',
             'Dear Customer,',
             'Thank you for your order.',
+            "\u{1F49A} Trusted by 1000+ Happy Customers",
             '',
             '*ORDER DETAILS*',
             implode("\n", $lines),
@@ -459,6 +460,7 @@ class QuickOrder extends Page
             $bot->whatsapp_group_link
                 ? "Join our WhatsApp group for your tracking number and order status updates:\n{$bot->whatsapp_group_link}"
                 : null,
+            $bot->whatsapp_group_link ? "\u{1F4E6} Tracking ID will be shared after dispatch." : null,
         ], fn ($line) => $line !== null));
     }
 
