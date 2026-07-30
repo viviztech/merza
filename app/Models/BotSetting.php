@@ -17,6 +17,7 @@ class BotSetting extends Model
         'bot_enabled', 'auto_create_contact', 'auto_create_lead',
         'wa_bot_enabled', 'wa_auto_send', 'voice_bot_enabled',
         'wa_commerce_enabled', 'upi_id', 'upi_payee_name', 'whatsapp_group_link',
+        'packaging_charge_amount',
     ];
 
     protected $casts = [
@@ -27,6 +28,7 @@ class BotSetting extends Model
         'wa_auto_send'         => 'boolean',
         'voice_bot_enabled'    => 'boolean',
         'wa_commerce_enabled'  => 'boolean',
+        'packaging_charge_amount' => 'decimal:2',
     ];
 
     public static function current(): self

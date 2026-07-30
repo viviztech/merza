@@ -63,6 +63,7 @@ class QuickOrder extends Page
             'payment_method' => 'cod',
             'payment_status' => 'unpaid',
             'delivery_fee'   => 0,
+            'packaging_charge' => false,
             'items'          => [['product_variant_id' => null, 'quantity' => 1]],
         ];
 
@@ -166,7 +167,10 @@ class QuickOrder extends Page
                                         ]))
                                     ->searchable()
                                     ->live()
-                                    ->afterStateUpdated(fn () => $this->previewReady = false)
+                                    ->afterStateUpdated(function () {
+                                        $this->previewReady = false;
+                                        $this->suggestPackagingCharge();
+                                    })
                                     ->required(),
 
                                 Forms\Components\TextInput::make('quantity')
@@ -175,13 +179,19 @@ class QuickOrder extends Page
                                     ->minValue(1)
                                     ->required()
                                     ->live(debounce: 500)
-                                    ->afterStateUpdated(fn () => $this->previewReady = false),
+                                    ->afterStateUpdated(function () {
+                                        $this->previewReady = false;
+                                        $this->suggestPackagingCharge();
+                                    }),
                             ])
                             ->columns(2)
                             ->defaultItems(1)
                             ->addActionLabel('+ Add a line manually')
                             ->reorderable(false)
-                            ->deleteAction(fn (\Filament\Actions\Action $action) => $action->after(fn () => $this->previewReady = false))
+                            ->deleteAction(fn (\Filament\Actions\Action $action) => $action->after(function () {
+                                $this->previewReady = false;
+                                $this->suggestPackagingCharge();
+                            }))
                             ->columnSpanFull(),
                     ]),
 
@@ -222,6 +232,14 @@ class QuickOrder extends Page
                         ->prefix("\u{20B9}")
                         ->default(0)
                         ->required()
+                        ->live()
+                        ->afterStateUpdated(fn () => $this->previewReady = false),
+
+                    Forms\Components\Toggle::make('packaging_charge')
+                        ->label(fn () => 'Packaging Charge ('
+                            . "\u{20B9}" . number_format((float) BotSetting::current()->packaging_charge_amount, 0)
+                            . ')')
+                        ->helperText('Auto-suggested for orders under 5kg — untick if it doesn\'t apply.')
                         ->live()
                         ->afterStateUpdated(fn () => $this->previewReady = false),
 
@@ -337,6 +355,37 @@ class QuickOrder extends Page
     }
 
     /**
+     * Total cart weight in kg, used to auto-suggest the packaging charge.
+     * Variants sold by count ('pcs'/'box') don't contribute — there's no
+     * meaningful kg figure for them.
+     */
+    protected function cartWeightKg(): float
+    {
+        return (float) $this->cartLines()->sum(function (array $line) {
+            $variant = $line['variant'];
+
+            return match ($variant->weight_unit) {
+                'kg'    => (float) $variant->weight_value * $line['quantity'],
+                'g'     => (float) $variant->weight_value / 1000 * $line['quantity'],
+                default => 0.0,
+            };
+        });
+    }
+
+    /**
+     * Pre-ticks the packaging charge toggle whenever the cart's total
+     * weight is under 5kg — staff can still switch it off before
+     * generating the message. Called after every cart mutation so it stays
+     * in sync as items/quantities change.
+     */
+    protected function suggestPackagingCharge(): void
+    {
+        $weight = $this->cartWeightKg();
+
+        $this->data['packaging_charge'] = $weight > 0 && $weight < 5;
+    }
+
+    /**
      * Adds a tapped product to the cart — bumps the quantity if it's
      * already in there, otherwise fills the first empty row or appends a
      * new one. Mutating $this->data directly (rather than via a form Set
@@ -352,6 +401,7 @@ class QuickOrder extends Page
                 $items[$key]['quantity'] = (int) ($row['quantity'] ?? 1) + 1;
                 $this->data['items']     = $items;
                 $this->previewReady      = false;
+                $this->suggestPackagingCharge();
 
                 return;
             }
@@ -362,6 +412,7 @@ class QuickOrder extends Page
                 $items[$key]         = ['product_variant_id' => $variantId, 'quantity' => 1];
                 $this->data['items'] = $items;
                 $this->previewReady  = false;
+                $this->suggestPackagingCharge();
 
                 return;
             }
@@ -370,12 +421,27 @@ class QuickOrder extends Page
         $items[]              = ['product_variant_id' => $variantId, 'quantity' => 1];
         $this->data['items']  = $items;
         $this->previewReady   = false;
+        $this->suggestPackagingCharge();
     }
 
     public function setDeliveryFee(int $amount): void
     {
         $this->data['delivery_fee'] = $amount;
         $this->previewReady         = false;
+    }
+
+    /**
+     * The packaging charge to apply — the configured Settings amount if the
+     * toggle is on, otherwise 0. Shared by the running total, the message
+     * builder, and order creation so they can never disagree.
+     */
+    protected function packagingFeeAmount(): float
+    {
+        if (! ($this->data['packaging_charge'] ?? false)) {
+            return 0.0;
+        }
+
+        return (float) BotSetting::current()->packaging_charge_amount;
     }
 
     /**
@@ -391,16 +457,20 @@ class QuickOrder extends Page
             return new HtmlString('<div class="text-sm text-gray-400">No items added yet — tap a product above.</div>');
         }
 
-        $count       = $lines->sum('quantity');
-        $subtotal    = $lines->sum('lineTotal');
-        $deliveryFee = (float) ($this->data['delivery_fee'] ?? 0);
-        $total       = $subtotal + $deliveryFee;
+        $count         = $lines->sum('quantity');
+        $subtotal      = $lines->sum('lineTotal');
+        $deliveryFee   = (float) ($this->data['delivery_fee'] ?? 0);
+        $packagingFee  = $this->packagingFeeAmount();
+        $total         = $subtotal + $deliveryFee + $packagingFee;
 
         return new HtmlString(
             '<div class="flex flex-wrap items-center gap-x-6 gap-y-1 rounded-lg bg-primary-50 px-4 py-3 text-sm dark:bg-primary-500/10">'
             . '<span>' . $count . ' item' . ($count === 1 ? '' : 's') . '</span>'
             . '<span>Subtotal: <strong>' . "\u{20B9}" . number_format($subtotal, 0) . '</strong></span>'
             . '<span>Delivery: <strong>' . "\u{20B9}" . number_format($deliveryFee, 0) . '</strong></span>'
+            . ($packagingFee > 0
+                ? '<span>Packaging: <strong>' . "\u{20B9}" . number_format($packagingFee, 0) . '</strong></span>'
+                : '')
             . '<span class="text-base font-bold text-primary-700 dark:text-primary-300">Total: '
             . "\u{20B9}" . number_format($total, 0) . '</span>'
             . '</div>'
@@ -431,9 +501,10 @@ class QuickOrder extends Page
             $lines[] = 'Item Cost: ' . "\u{20B9}" . number_format($line['lineTotal'], 0);
         }
 
-        $deliveryFee = (float) ($this->data['delivery_fee'] ?? 0);
-        $total       = $itemsTotal + $deliveryFee;
-        $bot         = BotSetting::current();
+        $deliveryFee  = (float) ($this->data['delivery_fee'] ?? 0);
+        $packagingFee = $this->packagingFeeAmount();
+        $total        = $itemsTotal + $deliveryFee + $packagingFee;
+        $bot          = BotSetting::current();
 
         return implode("\n", array_filter([
             '*MERZA BODI - ORDER CONFIRMATION*',
@@ -445,6 +516,7 @@ class QuickOrder extends Page
             '*ORDER DETAILS*',
             implode("\n", $lines),
             'Courier Charge: ' . "\u{20B9}" . number_format($deliveryFee, 0),
+            $packagingFee > 0 ? 'Packaging Charge: ' . "\u{20B9}" . number_format($packagingFee, 0) : null,
             '*Total Amount: ' . "\u{20B9}" . number_format($total, 0) . '*',
             '',
             '*PAYMENT DETAILS*',
@@ -694,13 +766,15 @@ class QuickOrder extends Page
         }
 
         $customerFields = ['customer_name', 'customer_phone', 'customer_email', 'delivery_address', 'city', 'state', 'postcode'];
+        $excludedFields = [...$customerFields, 'packaging_charge'];
 
         $order = $service->createOrder(
             items: $items,
             customerData: array_intersect_key($data, array_flip($customerFields)),
-            orderData: array_diff_key($data, array_flip($customerFields)) + [
-                'status'       => 'confirmed',
-                'confirmed_at' => now(),
+            orderData: array_diff_key($data, array_flip($excludedFields)) + [
+                'status'        => 'confirmed',
+                'confirmed_at'  => now(),
+                'packaging_fee' => $this->packagingFeeAmount(),
             ],
             contact: $this->foundContact,
         );

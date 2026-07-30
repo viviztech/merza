@@ -37,7 +37,7 @@ class AdminOrderService
             'contact_id' => $contact?->id,
             'lead_id'    => $lead?->id,
             'subtotal'   => 0,
-            'total'      => (float) ($orderData['delivery_fee'] ?? 0),
+            'total'      => (float) ($orderData['delivery_fee'] ?? 0) + (float) ($orderData['packaging_fee'] ?? 0),
         ]));
 
         foreach ($items as $row) {

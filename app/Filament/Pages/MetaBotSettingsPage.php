@@ -222,6 +222,13 @@ class MetaBotSettingsPage extends Page
                             ->placeholder('https://chat.whatsapp.com/xxxxxxxx')
                             ->helperText('Sent to customers in the order confirmation message so they can join for tracking updates and order status.')
                             ->columnSpanFull(),
+
+                        Forms\Components\TextInput::make('packaging_charge_amount')
+                            ->label('Packaging Charge Amount')
+                            ->numeric()
+                            ->prefix("\u{20B9}")
+                            ->default(50)
+                            ->helperText('Suggested in Quick Order for orders under 5kg. Staff can still override it per order.'),
                     ])->columns(2),
 
                 SchemaSection::make('Lead Follow-up Prompt')

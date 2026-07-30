@@ -13,7 +13,7 @@ class Order extends Model
         'order_number', 'channel', 'user_id', 'contact_id', 'lead_id',
         'customer_name', 'customer_phone', 'customer_email',
         'delivery_address', 'city', 'postcode', 'state', 'landmark',
-        'subtotal', 'delivery_fee', 'total',
+        'subtotal', 'delivery_fee', 'packaging_fee', 'total',
         'status', 'payment_method', 'payment_status', 'payment_reference', 'payment_screenshot_path',
         'payment_verification_status', 'payment_verified_amount', 'payment_verification_notes',
         'notes', 'admin_notes', 'tracking_number',
@@ -23,6 +23,7 @@ class Order extends Model
     protected $casts = [
         'subtotal'                 => 'decimal:2',
         'delivery_fee'             => 'decimal:2',
+        'packaging_fee'            => 'decimal:2',
         'total'                    => 'decimal:2',
         'payment_verified_amount'  => 'decimal:2',
         'confirmed_at'             => 'datetime',
@@ -141,7 +142,7 @@ class Order extends Model
 
         $this->forceFill([
             'subtotal' => $subtotal,
-            'total'    => $subtotal + $this->delivery_fee,
+            'total'    => $subtotal + $this->delivery_fee + $this->packaging_fee,
         ])->saveQuietly();
     }
 
