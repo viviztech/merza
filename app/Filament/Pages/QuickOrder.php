@@ -454,7 +454,8 @@ class QuickOrder extends Page
             '',
             '*COURIER DISPATCH TIMING*',
             "Payment before 12:00 PM \u{2192} 12:00 PM Dispatch",
-            "Payment before 8:00 PM \u{2192} 8:00 PM Dispatch",
+            "Payment before 5:00 PM \u{2192} 5:00 PM Dispatch",
+            "Payment before 7:00 PM \u{2192} 7:00 PM Dispatch",
             $bot->whatsapp_group_link ? '' : null,
             $bot->whatsapp_group_link ? '*TRACK YOUR ORDER*' : null,
             $bot->whatsapp_group_link
