@@ -529,9 +529,8 @@ class QuickOrder extends Page
             '',
             "\u{1F4CD} *Order Tracking*",
             'Tracking ID will be shared after dispatch.',
-            $bot->whatsapp_group_link
-                ? "Track your order & receive updates on WhatsApp:\n{$bot->whatsapp_group_link}"
-                : null,
+            'Track your order & receive updates on WhatsApp:'
+                . "\n" . ($bot->whatsapp_group_link ?: 'https://chat.whatsapp.com/FtWyjA7FjP2C4j7NpY4Mlz?s=cl&p=a&mlu=4'),
             '',
             "\u{1F310} www.merzabodi.com",
             "\u{1F33F} Fresh from Farm. Delivered with Care.",
