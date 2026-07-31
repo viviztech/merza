@@ -523,6 +523,7 @@ class QuickOrder extends Page
             'GPay: ' . ($bot->upi_id ?: 'Not set in Settings'),
             'Account Name: ' . ($bot->upi_payee_name ?: 'Not set in Settings'),
             "\u{1F4F7} Please share your payment screenshot after payment.",
+            'Send full Delivery Address for dispatch.',
             '',
             "\u{1F69A} *Dispatch Schedule*",
             '12:00 PM | 4:00 PM | 7:00 PM',
