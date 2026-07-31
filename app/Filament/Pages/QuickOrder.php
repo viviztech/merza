@@ -507,33 +507,34 @@ class QuickOrder extends Page
         $bot          = BotSetting::current();
 
         return implode("\n", array_filter([
-            '*MERZA BODI - ORDER CONFIRMATION*',
+            "\u{1F34B} *MERZA BODI* | Quick Order Confirmation",
             '',
-            'Dear Customer,',
-            'Thank you for your order.',
             "\u{1F49A} Trusted by 1000+ Happy Customers",
             '',
-            '*ORDER DETAILS*',
+            "\u{1F4E6} *Order Summary*",
+            'Name: ' . ($this->data['customer_name'] ?? ''),
+            'Place: ' . ($this->data['city'] ?? ''),
             implode("\n", $lines),
             'Courier Charge: ' . "\u{20B9}" . number_format($deliveryFee, 0),
             $packagingFee > 0 ? 'Packaging Charge: ' . "\u{20B9}" . number_format($packagingFee, 0) : null,
             '*Total Amount: ' . "\u{20B9}" . number_format($total, 0) . '*',
             '',
-            '*PAYMENT DETAILS*',
-            'GPay Number: *' . ($bot->upi_id ?: 'Not set in Settings') . '*',
+            "\u{1F4B3} *Payment*",
+            'GPay: ' . ($bot->upi_id ?: 'Not set in Settings'),
             'Account Name: ' . ($bot->upi_payee_name ?: 'Not set in Settings'),
-            'Please share a screenshot of the payment after you pay.',
+            "\u{1F4F7} Please share your payment screenshot after payment.",
             '',
-            '*COURIER DISPATCH TIMING*',
-            "Payment before 12:00 PM \u{2192} 12:00 PM Dispatch",
-            "Payment before 5:00 PM \u{2192} 5:00 PM Dispatch",
-            "Payment before 7:00 PM \u{2192} 7:00 PM Dispatch",
-            $bot->whatsapp_group_link ? '' : null,
-            $bot->whatsapp_group_link ? '*TRACK YOUR ORDER*' : null,
+            "\u{1F69A} *Dispatch Schedule*",
+            '12:00 PM | 4:00 PM | 7:00 PM',
+            '',
+            "\u{1F4CD} *Order Tracking*",
+            'Tracking ID will be shared after dispatch.',
             $bot->whatsapp_group_link
-                ? "Join our WhatsApp group for your tracking number and order status updates:\n{$bot->whatsapp_group_link}"
+                ? "Track your order & receive updates on WhatsApp:\n{$bot->whatsapp_group_link}"
                 : null,
-            $bot->whatsapp_group_link ? "\u{1F4E6} Tracking ID will be shared after dispatch." : null,
+            '',
+            "\u{1F310} www.merzabodi.com",
+            "\u{1F33F} Fresh from Farm. Delivered with Care.",
         ], fn ($line) => $line !== null));
     }
 
