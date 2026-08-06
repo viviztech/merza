@@ -96,8 +96,9 @@ class SabPaisaService
 
         $response = Http::timeout(15)
             ->withHeaders([
-                'X-Api-Key'    => config('services.sabpaisa.api_key'),
-                'Content-Type' => 'application/json',
+                'X-Api-Key'     => config('services.sabpaisa.api_key'),
+                'X-Merchant-Id' => config('services.sabpaisa.merchant_id'),
+                'Content-Type'  => 'application/json',
             ])
             ->post($this->baseUrl() . '/api/v2/payments/enquiry', [
                 'clientCode'    => config('services.sabpaisa.merchant_id'),
