@@ -45,9 +45,11 @@ return [
     ],
 
     'sabpaisa' => [
-        'client_code' => env('SABPAISA_CLIENT_CODE'),
-        'auth_key'    => env('SABPAISA_AUTH_KEY'),
-        'auth_iv'     => env('SABPAISA_AUTH_IV'),
+        'api_key'        => env('SABPAISA_API_KEY'),
+        'secret_key'     => env('SABPAISA_SECRET_KEY'),
+        'webhook_secret' => env('SABPAISA_WEBHOOK_SECRET'),
+        'merchant_id'    => env('SABPAISA_MERCHANT_ID'),
+        'base_url'       => env('SABPAISA_BASE_URL', 'https://staging-sb-merchant-api.sabpaisa.in'),
     ],
 
 ];

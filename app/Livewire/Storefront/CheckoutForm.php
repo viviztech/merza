@@ -12,6 +12,7 @@ use App\Services\AnalyticsTracker;
 use App\Services\CartService;
 use App\Services\DeliveryCalculatorService;
 use App\Services\PincodeService;
+use App\Services\SabPaisaService;
 use Illuminate\Support\Facades\Log;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
@@ -26,6 +27,7 @@ class CheckoutForm extends Component
 
     public string $customer_name    = '';
     public string $customer_phone   = '';
+    public string $customer_email   = '';
     public string $delivery_address = '';
     public string $postcode         = '';
     public string $city             = '';
@@ -52,11 +54,23 @@ class CheckoutForm extends Component
         app(AnalyticsTracker::class)->track('checkout_start');
     }
 
+    /**
+     * True once SabPaisa credentials are set and config('payments.gateway')
+     * is flipped to 'sabpaisa' — the only switch between this and the
+     * manual UPI-QR + screenshot flow.
+     */
+    public function gatewayActive(): bool
+    {
+        return config('payments.gateway') === 'sabpaisa'
+            && app(SabPaisaService::class)->isConfigured();
+    }
+
     protected function rules(): array
     {
         return [
             'customer_name'      => 'required|string|max:120',
             'customer_phone'     => 'required|string|max:20',
+            'customer_email'     => $this->gatewayActive() ? 'required|email|max:255' : 'nullable|email|max:255',
             'delivery_address'   => 'required|string|max:500',
             'postcode'           => 'required|digits:6',
             'city'               => 'required|string|max:80',
@@ -70,6 +84,8 @@ class CheckoutForm extends Component
         return [
             'customer_name.required'    => "Please tell us your name so we know who's ordering.",
             'customer_phone.required'   => "We need a phone number to reach you about delivery.",
+            'customer_email.required'   => 'Please enter your email — the payment page needs it for your receipt.',
+            'customer_email.email'      => 'Please enter a valid email address.',
             'delivery_address.required' => 'Please enter the full address where we should deliver.',
             'postcode.required'         => 'Please enter your area pincode.',
             'postcode.digits'           => 'That pincode looks off — it should be exactly 6 digits.',
@@ -209,6 +225,7 @@ class CheckoutForm extends Component
                 'postcode'                 => $this->postcode,
                 'state'                    => $this->state,
                 'landmark'                 => $this->landmark ?: null,
+                'customer_email'           => $this->customer_email ?: null,
                 'subtotal'                 => $subtotal,
                 'delivery_fee'             => $deliveryFee,
                 'total'                    => $total,
@@ -241,6 +258,21 @@ class CheckoutForm extends Component
         app(AnalyticsTracker::class)->track('order_placed', null, $order->id);
 
         $this->sendWhatsAppConfirmation($order);
+
+        if ($this->gatewayActive()) {
+            $session = app(SabPaisaService::class)->createPaymentSession($order, route('payment.return'));
+
+            if ($session && filled($session['checkoutUrl']) && filled($session['clientSecret'])) {
+                $this->redirect($session['checkoutUrl'] . '?clientSecret=' . urlencode($session['clientSecret']));
+                return;
+            }
+
+            // Session creation failed — order still exists as pending/unpaid,
+            // same recoverable state as any other placeOrder() hiccup. Fall
+            // through to the normal confirmation screen so the customer
+            // isn't stuck, and staff can chase payment manually.
+            Log::error('CheckoutForm: SabPaisa session creation failed', ['order_id' => $order->id]);
+        }
 
         $this->orderPlaced       = true;
         $this->orderId           = $order->id;

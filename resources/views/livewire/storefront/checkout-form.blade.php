@@ -126,6 +126,9 @@
                 </a>
             </div>
         @else
+            @if(session('error'))
+                <p class="bg-red-50 border border-red-200 text-red-600 text-sm px-4 py-3 rounded-2xl mb-4">{{ session('error') }}</p>
+            @endif
             @error('cart') <p class="bg-red-50 border border-red-200 text-red-600 text-sm px-4 py-3 rounded-2xl mb-4">{{ $message }}</p> @enderror
 
             <div class="grid lg:grid-cols-3 gap-6">
@@ -247,6 +250,21 @@
                                 </p>
                             </div>
 
+                            <div>
+                                <label class="block text-xs font-extrabold text-stone-600 mb-1.5 uppercase tracking-wide">
+                                    Email {{ $this->gatewayActive() ? '*' : '' }}
+                                    @unless($this->gatewayActive())
+                                        <span class="font-normal text-stone-400 normal-case">(optional)</span>
+                                    @endunless
+                                </label>
+                                <input wire:model="customer_email" type="email" placeholder="you@example.com"
+                                       class="w-full border-2 {{ $errors->has('customer_email') ? 'border-red-300 bg-red-50' : 'border-stone-200 focus:border-amber-400' }} rounded-xl px-4 py-3 text-base focus:outline-none transition-colors bg-white placeholder-stone-300">
+                                @error('customer_email') <p class="text-red-500 text-xs mt-1 font-medium">{{ $message }}</p> @enderror
+                                @if($this->gatewayActive())
+                                    <p class="text-[11px] text-stone-400 mt-1.5">Needed for your payment receipt.</p>
+                                @endif
+                            </div>
+
                             @if($returningCustomerName)
                                 <div class="sm:col-span-2 bg-emerald-50 border border-emerald-200 rounded-2xl p-4 flex items-center justify-between gap-3 flex-wrap">
                                     <div>
@@ -326,55 +344,81 @@
                         </div>
                         <div class="p-5 space-y-5">
 
-                            {{-- Method tiles --}}
-                            <div class="grid sm:grid-cols-2 gap-3">
-                                <div class="text-left p-4 rounded-2xl border-2 border-amber-500 bg-amber-50 shadow-sm">
-                                    <p class="font-extrabold text-sm text-stone-800">GPay Number</p>
-                                    <p class="text-xs text-stone-400 mt-0.5">Pay via GPay, PhonePe, or any UPI app</p>
+                            @if($this->gatewayActive())
+                                {{-- Hosted gateway checkout — customer picks their method on SabPaisa's page --}}
+                                <div class="flex flex-col sm:flex-row items-center gap-5 bg-amber-50 rounded-2xl p-5">
+                                    <div class="text-center sm:text-left flex-1 w-full">
+                                        <p class="text-xs font-extrabold text-stone-500 uppercase tracking-wide mb-1">Amount to pay</p>
+                                        <p class="text-2xl font-extrabold text-amber-600 mb-3">₹{{ number_format($total, 2) }}</p>
+
+                                        <div class="flex items-center justify-center sm:justify-start gap-2 mb-3 flex-wrap">
+                                            <span class="inline-flex items-center gap-1.5 bg-white border border-stone-200 rounded-lg px-3 py-1.5 text-xs font-bold text-stone-700">
+                                                <span class="w-2 h-2 rounded-full bg-emerald-500"></span> UPI
+                                            </span>
+                                            <span class="inline-flex items-center gap-1.5 bg-white border border-stone-200 rounded-lg px-3 py-1.5 text-xs font-bold text-stone-700">
+                                                <span class="w-2 h-2 rounded-full bg-blue-500"></span> Cards
+                                            </span>
+                                            <span class="inline-flex items-center gap-1.5 bg-white border border-stone-200 rounded-lg px-3 py-1.5 text-xs font-bold text-stone-700">
+                                                <span class="w-2 h-2 rounded-full bg-purple-500"></span> Netbanking
+                                            </span>
+                                        </div>
+
+                                        <p class="text-xs text-stone-500 leading-relaxed">
+                                            After you place the order, you'll be taken to our secure payment page to complete payment. You'll be brought right back here once it's done.
+                                        </p>
+                                    </div>
                                 </div>
-
-                                <div class="text-left p-4 rounded-2xl border-2 border-stone-100 bg-stone-50 opacity-60 cursor-not-allowed">
-                                    <p class="font-extrabold text-sm text-stone-500">Card Payment</p>
-                                    <p class="text-xs text-stone-400 mt-0.5">Coming soon</p>
-                                </div>
-                            </div>
-
-                            <div class="flex flex-col sm:flex-row items-center gap-5 bg-amber-50 rounded-2xl p-5">
-                                <div class="text-center sm:text-left flex-1 w-full">
-                                    <p class="text-xs font-extrabold text-stone-500 uppercase tracking-wide mb-1">Pay via any UPI app</p>
-                                    <p class="text-2xl font-extrabold text-amber-600 mb-3">₹{{ number_format($total, 2) }}</p>
-
-                                    {{-- App badges (all pay the same GPay number below — no single app required) --}}
-                                    <div class="flex items-center justify-center sm:justify-start gap-2 mb-3">
-                                        <span class="inline-flex items-center gap-1.5 bg-white border border-stone-200 rounded-lg px-3 py-1.5 text-xs font-bold text-stone-700">
-                                            <span class="w-2 h-2 rounded-full bg-blue-500"></span> GPay
-                                        </span>
-                                        <span class="inline-flex items-center gap-1.5 bg-white border border-stone-200 rounded-lg px-3 py-1.5 text-xs font-bold text-stone-700">
-                                            <span class="w-2 h-2 rounded-full bg-purple-500"></span> PhonePe
-                                        </span>
-                                        <span class="inline-flex items-center gap-1.5 bg-white border border-stone-200 rounded-lg px-3 py-1.5 text-xs font-bold text-stone-700">
-                                            <span class="w-2 h-2 rounded-full bg-emerald-500"></span> UPI
-                                        </span>
+                            @else
+                                {{-- Method tiles --}}
+                                <div class="grid sm:grid-cols-2 gap-3">
+                                    <div class="text-left p-4 rounded-2xl border-2 border-amber-500 bg-amber-50 shadow-sm">
+                                        <p class="font-extrabold text-sm text-stone-800">GPay Number</p>
+                                        <p class="text-xs text-stone-400 mt-0.5">Pay via GPay, PhonePe, or any UPI app</p>
                                     </div>
 
-                                    <p class="text-xs text-stone-500 mb-1.5">Send payment to our GPay number:</p>
-                                    <div x-data="{ copied: false }" class="inline-flex items-center gap-2">
-                                        <button type="button"
-                                                @click="navigator.clipboard.writeText('8667696278'); copied = true; setTimeout(() => copied = false, 2000)"
-                                                class="group inline-flex items-center gap-2 font-mono font-bold text-lg text-stone-800 bg-white rounded-xl px-4 py-2.5 border-2 border-amber-200 hover:border-amber-400 transition-colors">
-                                            <span>86676 96278</span>
-                                            <svg x-show="!copied" class="w-4 h-4 text-stone-400 group-hover:text-amber-600 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
-                                            </svg>
-                                            <svg x-show="copied" x-cloak class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
-                                            </svg>
-                                        </button>
-                                        <span x-show="copied" x-cloak x-transition class="text-xs font-bold text-emerald-600">Copied!</span>
+                                    <div class="text-left p-4 rounded-2xl border-2 border-stone-100 bg-stone-50 opacity-60 cursor-not-allowed">
+                                        <p class="font-extrabold text-sm text-stone-500">Card Payment</p>
+                                        <p class="text-xs text-stone-400 mt-0.5">Coming soon</p>
                                     </div>
-                                    <p class="text-xs text-stone-500 mt-2">Rajalakshmi Senthilkumar</p>
                                 </div>
-                            </div>
+
+                                <div class="flex flex-col sm:flex-row items-center gap-5 bg-amber-50 rounded-2xl p-5">
+                                    <div class="text-center sm:text-left flex-1 w-full">
+                                        <p class="text-xs font-extrabold text-stone-500 uppercase tracking-wide mb-1">Pay via any UPI app</p>
+                                        <p class="text-2xl font-extrabold text-amber-600 mb-3">₹{{ number_format($total, 2) }}</p>
+
+                                        {{-- App badges (all pay the same GPay number below — no single app required) --}}
+                                        <div class="flex items-center justify-center sm:justify-start gap-2 mb-3">
+                                            <span class="inline-flex items-center gap-1.5 bg-white border border-stone-200 rounded-lg px-3 py-1.5 text-xs font-bold text-stone-700">
+                                                <span class="w-2 h-2 rounded-full bg-blue-500"></span> GPay
+                                            </span>
+                                            <span class="inline-flex items-center gap-1.5 bg-white border border-stone-200 rounded-lg px-3 py-1.5 text-xs font-bold text-stone-700">
+                                                <span class="w-2 h-2 rounded-full bg-purple-500"></span> PhonePe
+                                            </span>
+                                            <span class="inline-flex items-center gap-1.5 bg-white border border-stone-200 rounded-lg px-3 py-1.5 text-xs font-bold text-stone-700">
+                                                <span class="w-2 h-2 rounded-full bg-emerald-500"></span> UPI
+                                            </span>
+                                        </div>
+
+                                        <p class="text-xs text-stone-500 mb-1.5">Send payment to our GPay number:</p>
+                                        <div x-data="{ copied: false }" class="inline-flex items-center gap-2">
+                                            <button type="button"
+                                                    @click="navigator.clipboard.writeText('8667696278'); copied = true; setTimeout(() => copied = false, 2000)"
+                                                    class="group inline-flex items-center gap-2 font-mono font-bold text-lg text-stone-800 bg-white rounded-xl px-4 py-2.5 border-2 border-amber-200 hover:border-amber-400 transition-colors">
+                                                <span>86676 96278</span>
+                                                <svg x-show="!copied" class="w-4 h-4 text-stone-400 group-hover:text-amber-600 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+                                                </svg>
+                                                <svg x-show="copied" x-cloak class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
+                                                </svg>
+                                            </button>
+                                            <span x-show="copied" x-cloak x-transition class="text-xs font-bold text-emerald-600">Copied!</span>
+                                        </div>
+                                        <p class="text-xs text-stone-500 mt-2">Rajalakshmi Senthilkumar</p>
+                                    </div>
+                                </div>
+                            @endif
                         </div>
                     </div>
 

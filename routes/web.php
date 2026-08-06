@@ -5,7 +5,9 @@ use App\Http\Controllers\Storefront\AccountController;
 use App\Http\Controllers\Storefront\AuthController;
 use App\Http\Controllers\Storefront\HomeController;
 use App\Http\Controllers\Storefront\PagesController;
+use App\Http\Controllers\Storefront\PaymentReturnController;
 use App\Http\Controllers\Webhook\MetaWebhookController;
+use App\Http\Controllers\Webhook\SabPaisaWebhookController;
 use App\Livewire\Storefront\CartPanel;
 use App\Livewire\Storefront\CheckoutForm;
 use App\Livewire\Storefront\ProductCatalogue;
@@ -87,10 +89,19 @@ Route::middleware('signed')->get('/orders/{order}/invoice', [OrderPdfController:
 
 /*
 |--------------------------------------------------------------------------
+| SabPaisa Payment Gateway Routes
+|--------------------------------------------------------------------------
+*/
+Route::get('/payment/return', [PaymentReturnController::class, 'handleReturn'])->name('payment.return');
+Route::middleware('signed')->get('/checkout/confirmation/{order}', [PaymentReturnController::class, 'confirmation'])->name('checkout.confirmation');
+
+/*
+|--------------------------------------------------------------------------
 | Webhook Routes (Phase 6)
 |--------------------------------------------------------------------------
 */
 Route::prefix('webhook')->name('webhook.')->group(function () {
     Route::get('/meta', [MetaWebhookController::class, 'verify'])->name('meta.verify');
     Route::post('/meta', [MetaWebhookController::class, 'handle'])->name('meta.handle');
+    Route::post('/sabpaisa', [SabPaisaWebhookController::class, 'handle'])->name('sabpaisa.handle');
 });
