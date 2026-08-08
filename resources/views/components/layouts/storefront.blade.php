@@ -56,7 +56,7 @@
     @livewireStyles
 </head>
 <style>[x-cloak]{display:none!important}</style>
-<body class="bg-white font-sans antialiased text-stone-900 pb-20 md:pb-0">
+<body class="bg-white font-sans antialiased text-stone-900">
 
     {{-- Announcement bar --}}
     <div x-data="{ show: !localStorage.getItem('merza_ann_v3') }" x-show="show" x-cloak
@@ -105,10 +105,9 @@
                 {{-- Right side actions --}}
                 <div class="flex items-center gap-2">
 
-                    {{-- Cart (hidden on mobile — the bottom tab bar already has a cart button there) --}}
+                    {{-- Cart --}}
                     <div x-data="{ count: {{ session('cart_count', 0) }} }"
-                         x-on:cart-updated.window="count = $event.detail?.count ?? count"
-                         class="hidden md:block">
+                         x-on:cart-updated.window="count = $event.detail?.count ?? count">
                         <a href="{{ route('cart.index') }}"
                            class="relative flex items-center gap-1.5 px-3 py-2 rounded-xl border-2 border-amber-200 bg-amber-50 hover:bg-amber-100 hover:border-amber-300 text-brand-green-dark font-semibold text-sm transition-all">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -392,74 +391,6 @@
             </div>
         </div>
     </footer>
-
-    {{-- Mobile bottom tab bar --}}
-    <nav class="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-sm border-t border-stone-100 shadow-[0_-1px_12px_rgba(0,0,0,0.06)]"
-         style="padding-bottom: env(safe-area-inset-bottom)">
-        @php
-            $isAuth = auth()->check();
-            $isAccount = request()->routeIs('account.*');
-        @endphp
-        <div class="grid h-16" style="grid-template-columns: repeat(4, 1fr)">
-
-            {{-- Home --}}
-            <a href="{{ route('home') }}"
-               class="flex flex-col items-center justify-center gap-0.5 transition-colors
-                      {{ request()->routeIs('home') ? 'text-brand-green-dark' : 'text-stone-400' }}">
-                <svg class="w-5 h-5" fill="{{ request()->routeIs('home') ? 'currentColor' : 'none' }}" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
-                </svg>
-                <span class="text-[10px] font-semibold">Home</span>
-            </a>
-
-            {{-- Products --}}
-            <a href="{{ route('products.index') }}"
-               class="flex flex-col items-center justify-center gap-0.5 transition-colors
-                      {{ request()->routeIs('products.*') ? 'text-brand-green-dark' : 'text-stone-400' }}">
-                <svg class="w-5 h-5" fill="{{ request()->routeIs('products.*') ? 'currentColor' : 'none' }}" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/>
-                </svg>
-                <span class="text-[10px] font-semibold">Products</span>
-            </a>
-
-            {{-- Cart (elevated center button) --}}
-            <div x-data="{ count: {{ session('cart_count', 0) }} }"
-                 x-on:cart-updated.window="count = $event.detail?.count ?? count"
-                 class="flex flex-col items-center justify-center">
-                <a href="{{ route('cart.index') }}" class="relative -mt-5 flex flex-col items-center gap-0.5">
-                    <span class="flex items-center justify-center w-12 h-12 rounded-2xl bg-gradient-to-br from-amber-500 to-orange-500 text-white shadow-lg shadow-amber-300/50 border-2 border-white">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"/>
-                        </svg>
-                        <span x-show="count > 0" x-text="count"
-                              class="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[9px] font-bold rounded-full w-4 h-4 flex items-center justify-center border border-white">
-                        </span>
-                    </span>
-                    <span class="text-[10px] font-semibold {{ request()->routeIs('cart.*') ? 'text-brand-green-dark' : 'text-stone-400' }}">Cart</span>
-                </a>
-            </div>
-
-            {{-- Account / Sign In --}}
-            @auth
-                <a href="{{ route('account.dashboard') }}"
-                   class="flex flex-col items-center justify-center gap-0.5 transition-colors {{ $isAccount ? 'text-brand-green-dark' : 'text-stone-400' }}">
-                    <span class="w-5 h-5 rounded-full {{ $isAccount ? 'bg-amber-500 text-white' : 'bg-stone-200 text-stone-600' }} flex items-center justify-center text-[10px] font-extrabold">
-                        {{ strtoupper(substr(auth()->user()->name, 0, 1)) }}
-                    </span>
-                    <span class="text-[10px] font-semibold">Account</span>
-                </a>
-            @else
-                <a href="{{ route('login') }}"
-                   class="flex flex-col items-center justify-center gap-0.5 text-stone-400 transition-colors">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
-                    </svg>
-                    <span class="text-[10px] font-semibold">Sign In</span>
-                </a>
-            @endauth
-
-        </div>
-    </nav>
 
     {{-- Floating WhatsApp (desktop only — mobile already has "Contact on WhatsApp" in the menu) --}}
     <a href="https://wa.me/919360064278?text=Hi%2C%20I%20want%20to%20order%20from%20Merza!"
