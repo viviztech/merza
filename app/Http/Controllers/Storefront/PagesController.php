@@ -41,4 +41,9 @@ class PagesController extends Controller
     {
         return view('storefront.pages.faq');
     }
+
+    public function contact(): View
+    {
+        return view('storefront.pages.contact');
+    }
 }

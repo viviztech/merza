@@ -144,17 +144,17 @@
                                 @endif
                             </div>
 
-                            <div class="flex items-center justify-between mt-auto gap-2">
-                                <span class="text-amber-600 font-extrabold text-base">
+                            <div class="mt-auto pt-2">
+                                <span class="block text-amber-600 font-extrabold text-base mb-2">
                                     @if($product->activeVariants->isNotEmpty())
                                         From ₹{{ number_format($product->activeVariants->min('price'), 2) }}
                                     @else
                                         ₹{{ number_format($product->base_price, 2) }}
                                     @endif
                                 </span>
-                                <span class="flex-shrink-0 inline-flex items-center gap-1 bg-amber-500 group-hover:bg-orange-500 text-white text-xs font-bold px-3 py-2 rounded-xl shadow transition-colors">
+                                <span class="w-full inline-flex items-center justify-center gap-1 bg-amber-500 group-hover:bg-orange-500 text-white text-xs font-bold px-3 py-2 rounded-xl shadow transition-colors">
                                     Order Now
-                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M17 8l4 4m0 0l-4 4m4-4H3"/>
                                     </svg>
                                 </span>

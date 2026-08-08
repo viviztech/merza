@@ -40,6 +40,7 @@ Route::get('/careers',   [PagesController::class, 'careers'])   ->name('careers'
 Route::get('/privacy',   [PagesController::class, 'privacy'])   ->name('privacy');
 Route::get('/terms',     [PagesController::class, 'terms'])     ->name('terms');
 Route::get('/faq',       [PagesController::class, 'faq'])       ->name('faq');
+Route::get('/contact',   [PagesController::class, 'contact'])   ->name('contact');
 
 /*
 |--------------------------------------------------------------------------

@@ -74,30 +74,6 @@
                 <p class="text-stone-500 text-sm mb-5 leading-relaxed">{{ $product->short_description }}</p>
             @endif
 
-            {{-- Value proposition badges --}}
-            <div class="flex flex-wrap gap-2 mb-5">
-                <span class="inline-flex items-center gap-1 bg-emerald-50 border border-emerald-100 text-emerald-700 text-xs font-bold px-3 py-1.5 rounded-full">
-                    ✋ Hand Picked
-                </span>
-                <span class="inline-flex items-center gap-1 bg-emerald-50 border border-emerald-100 text-emerald-700 text-xs font-bold px-3 py-1.5 rounded-full">
-                    ⭐ Premium Quality
-                </span>
-                @if($product->farm_location)
-                    <span class="inline-flex items-center gap-1 bg-amber-50 border border-amber-100 text-amber-700 text-xs font-bold px-3 py-1.5 rounded-full">
-                        🌱 Farm Direct — {{ $product->farm_location }}
-                    </span>
-                @endif
-                @if($product->harvest_date)
-                    <span class="inline-flex items-center gap-1 bg-amber-50 border border-amber-100 text-amber-700 text-xs font-bold px-3 py-1.5 rounded-full">
-                        📅 Harvested {{ $product->harvest_date->diffForHumans() }}
-                    </span>
-                @endif
-            </div>
-
-            @if($this->viewedTodayCount > 0)
-                <p class="text-xs text-stone-400 mb-4">👀 {{ $this->viewedTodayCount }} {{ $this->viewedTodayCount === 1 ? 'person has' : 'people have' }} viewed this today</p>
-            @endif
-
             {{-- Price --}}
             <div class="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-100 rounded-2xl p-4 mb-5">
                 @if($selectedVariant)
@@ -136,36 +112,6 @@
                     @endif
                 @endif
             </div>
-
-            {{-- Farm details --}}
-            @if($product->harvest_date || $product->farm_location || $product->sweetness_level || $product->delivery_time)
-                <div class="grid grid-cols-2 gap-2 mb-5">
-                    @if($product->harvest_date)
-                        <div class="bg-stone-50 border border-stone-100 rounded-xl px-3 py-2">
-                            <p class="text-[10px] font-bold text-stone-400 uppercase tracking-wide">🗓️ Harvested</p>
-                            <p class="text-xs font-bold text-stone-700 mt-0.5">{{ $product->harvest_date->format('d M Y') }}</p>
-                        </div>
-                    @endif
-                    @if($product->farm_location)
-                        <div class="bg-stone-50 border border-stone-100 rounded-xl px-3 py-2">
-                            <p class="text-[10px] font-bold text-stone-400 uppercase tracking-wide">📍 Farm Location</p>
-                            <p class="text-xs font-bold text-stone-700 mt-0.5">{{ $product->farm_location }}</p>
-                        </div>
-                    @endif
-                    @if($product->sweetness_level)
-                        <div class="bg-stone-50 border border-stone-100 rounded-xl px-3 py-2">
-                            <p class="text-[10px] font-bold text-stone-400 uppercase tracking-wide">🍯 Sweetness</p>
-                            <p class="text-xs font-bold text-stone-700 mt-0.5">{{ $product->sweetness_level }}</p>
-                        </div>
-                    @endif
-                    @if($product->delivery_time)
-                        <div class="bg-emerald-50 border border-emerald-100 rounded-xl px-3 py-2">
-                            <p class="text-[10px] font-bold text-emerald-600 uppercase tracking-wide">🚚 Delivery</p>
-                            <p class="text-xs font-bold text-emerald-700 mt-0.5">{{ $product->delivery_time }}</p>
-                        </div>
-                    @endif
-                </div>
-            @endif
 
             {{-- Variant selector --}}
             @if($product->activeVariants->isNotEmpty())
@@ -233,8 +179,6 @@
                     Order via WhatsApp
                 </a>
             </div>
-
-            <livewire:storefront.pincode-checker :key="'pincode-'.$product->id" />
 
         </div>
     </div>

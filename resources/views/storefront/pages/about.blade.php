@@ -190,7 +190,7 @@
             <p class="text-amber-100 mb-6 text-sm">Browse our current selection or contact us directly — we reply fast!</p>
             <div class="flex flex-col sm:flex-row gap-3 justify-center">
                 <a href="{{ route('products.index') }}"
-                   class="bg-white text-amber-700 hover:bg-amber-50 font-bold px-6 py-3 rounded-xl text-sm transition-all">
+                   class="border-2 border-white text-white hover:bg-white hover:text-amber-700 font-bold px-6 py-3 rounded-xl text-sm transition-all">
                     Shop Now
                 </a>
                 <a href="https://wa.me/919360064278?text=Hi+Merza%2C+I+want+to+place+an+order!"
