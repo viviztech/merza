@@ -18,7 +18,7 @@ class DeliverySettingsPage extends Page
     protected static string|\UnitEnum|null $navigationGroup = 'Settings';
     protected static ?string $navigationLabel = 'Delivery Settings';
     protected static ?string $title = 'Delivery & Courier Settings';
-    protected static ?int $navigationSort = 1;
+    protected static ?int $navigationSort = 4;
 
     public ?array $data = [];
 

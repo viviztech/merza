@@ -20,7 +20,6 @@ use App\Filament\Widgets\LeadsByStageWidget;
 use App\Filament\Widgets\PaymentPendingOrdersWidget;
 use App\Filament\Widgets\ReadyToPackOrdersWidget;
 use App\Filament\Widgets\RecentLeadsWidget;
-use Filament\Widgets\AccountWidget;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
@@ -55,11 +54,11 @@ class AdminPanelProvider extends PanelProvider
             ->font('Plus Jakarta Sans', provider: \Filament\FontProviders\GoogleFontProvider::class)
             ->darkMode(false)
             ->navigationGroups([
-                NavigationGroup::make('Sales & CRM'),
-                NavigationGroup::make('Catalogue'),
                 NavigationGroup::make('Orders & Delivery'),
-                NavigationGroup::make('Marketing'),
-                NavigationGroup::make('Analytics'),
+                NavigationGroup::make('Catalogue'),
+                NavigationGroup::make('Sales & CRM'),
+                NavigationGroup::make('Marketing')->collapsed(),
+                NavigationGroup::make('Analytics')->collapsed(),
                 NavigationGroup::make('Settings')->collapsed(),
             ])
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\Filament\Resources')
@@ -70,7 +69,6 @@ class AdminPanelProvider extends PanelProvider
             ])
             ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\Filament\Widgets')
             ->widgets([
-                AccountWidget::class,
                 DailySummaryWidget::class,
                 CrmStatsWidget::class,
                 FollowUpQueueWidget::class,

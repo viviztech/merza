@@ -2,6 +2,8 @@
 
 namespace App\Filament\Widgets;
 
+use App\Filament\Resources\LeadResource;
+use App\Filament\Resources\OrderResource;
 use App\Models\Lead;
 use App\Models\Order;
 use Filament\Widgets\StatsOverviewWidget as BaseWidget;
@@ -52,32 +54,38 @@ class DailySummaryWidget extends BaseWidget
             Stat::make('Enquiries Today', $enquiriesToday)
                 ->description('New leads, all sources')
                 ->descriptionIcon('heroicon-m-inbox-arrow-down')
-                ->color('primary'),
+                ->color('primary')
+                ->url(LeadResource::getUrl('index')),
 
             Stat::make('Contacted Today', $contactedToday)
                 ->description('Leads followed up on')
                 ->descriptionIcon('heroicon-m-phone')
-                ->color('info'),
+                ->color('info')
+                ->url(LeadResource::getUrl('index')),
 
             Stat::make('Confirmed Today', $confirmedToday)
                 ->description('Orders placed & confirmed')
                 ->descriptionIcon('heroicon-m-check-circle')
-                ->color('success'),
+                ->color('success')
+                ->url(OrderResource::getUrl('index')),
 
             Stat::make('Payment Pending', $paymentPendingToday)
                 ->description("Today's orders awaiting payment")
                 ->descriptionIcon('heroicon-m-clock')
-                ->color($paymentPendingToday > 0 ? 'danger' : 'success'),
+                ->color($paymentPendingToday > 0 ? 'danger' : 'success')
+                ->url(OrderResource::getUrl('index')),
 
             Stat::make('Packed Today', $packedToday)
                 ->description('Moved to Preparing today')
                 ->descriptionIcon('heroicon-m-archive-box')
-                ->color('warning'),
+                ->color('warning')
+                ->url(OrderResource::getUrl('index', ['activeTab' => 'preparing'])),
 
             Stat::make('Dispatched Today', $dispatchedToday)
                 ->description('Moved to Delivering today')
                 ->descriptionIcon('heroicon-m-truck')
-                ->color('success'),
+                ->color('success')
+                ->url(OrderResource::getUrl('index', ['activeTab' => 'delivering'])),
 
             Stat::make('Conversion Rate', $conversionRate === null ? '—' : "{$conversionRate}%")
                 ->description('Confirmed ÷ enquiries today')

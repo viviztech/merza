@@ -40,7 +40,7 @@ use Illuminate\Support\HtmlString;
 class QuickOrder extends Page
 {
     protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-bolt';
-    protected static string|\UnitEnum|null $navigationGroup = 'Sales & CRM';
+    protected static string|\UnitEnum|null $navigationGroup = 'Orders & Delivery';
     protected static ?string $navigationLabel = 'Quick Order';
     protected static ?string $title = 'Quick Order';
     protected static ?int $navigationSort = 0;

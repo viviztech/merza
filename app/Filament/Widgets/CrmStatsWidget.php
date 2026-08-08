@@ -2,6 +2,9 @@
 
 namespace App\Filament\Widgets;
 
+use App\Filament\Resources\ContactResource;
+use App\Filament\Resources\LeadResource;
+use App\Filament\Resources\OrderResource;
 use App\Models\Contact;
 use App\Models\Lead;
 use App\Models\Order;
@@ -27,32 +30,38 @@ class CrmStatsWidget extends BaseWidget
             Stat::make('New Leads', $newLeads)
                 ->description('Awaiting contact')
                 ->descriptionIcon('heroicon-m-user-plus')
-                ->color('warning'),
+                ->color('warning')
+                ->url(LeadResource::getUrl('index', ['activeTab' => 'new'])),
 
             Stat::make('Active Pipeline', $activeLeads)
                 ->description('Leads in progress')
                 ->descriptionIcon('heroicon-m-funnel')
-                ->color('info'),
+                ->color('info')
+                ->url(LeadResource::getUrl('index')),
 
             Stat::make('Converted This Month', $convertedMonth)
                 ->description('Leads turned customers')
                 ->descriptionIcon('heroicon-m-check-circle')
-                ->color('success'),
+                ->color('success')
+                ->url(LeadResource::getUrl('index', ['activeTab' => 'converted'])),
 
             Stat::make('Revenue This Month', "\u{20B9}" . number_format($revenueMonth, 2))
                 ->description('From confirmed orders')
                 ->descriptionIcon('heroicon-m-banknotes')
-                ->color('success'),
+                ->color('success')
+                ->url(OrderResource::getUrl('index')),
 
             Stat::make('Total Contacts', $totalContacts)
                 ->description('In CRM database')
                 ->descriptionIcon('heroicon-m-users')
-                ->color('primary'),
+                ->color('primary')
+                ->url(ContactResource::getUrl('index')),
 
             Stat::make('Pending Orders', $pendingOrders)
                 ->description('Awaiting confirmation')
                 ->descriptionIcon('heroicon-m-clock')
-                ->color($pendingOrders > 0 ? 'warning' : 'gray'),
+                ->color($pendingOrders > 0 ? 'warning' : 'gray')
+                ->url(OrderResource::getUrl('index', ['activeTab' => 'pending'])),
         ];
     }
 }
