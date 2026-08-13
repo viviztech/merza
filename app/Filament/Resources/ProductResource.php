@@ -231,6 +231,24 @@ class ProductResource extends Resource
                         ->helperText('Toggle on mornings this product is available, off when sold out for the day.')
                         ->default(false),
 
+                    Forms\Components\Toggle::make('is_preorder')
+                        ->label('Enable pre-booking')
+                        ->helperText('Customers can reserve available stock now for a later dispatch date.')
+                        ->live()
+                        ->default(false),
+
+                    Forms\Components\DatePicker::make('available_from')
+                        ->label('Dispatch starts')
+                        ->native(false)
+                        ->required(fn (Get $get): bool => (bool) $get('is_preorder'))
+                        ->visible(fn (Get $get): bool => (bool) $get('is_preorder')),
+
+                    Forms\Components\TextInput::make('preorder_note')
+                        ->label('Pre-booking message')
+                        ->placeholder('Fresh harvest dispatches from next week')
+                        ->maxLength(180)
+                        ->visible(fn (Get $get): bool => (bool) $get('is_preorder')),
+
                     Forms\Components\TextInput::make('base_price')
                         ->label('Starting price (display)')
                         ->numeric()
@@ -300,6 +318,10 @@ class ProductResource extends Resource
                     ->boolean()
                     ->label("Today's Arrival"),
 
+                Tables\Columns\IconColumn::make('is_preorder')
+                    ->boolean()
+                    ->label('Pre-booking'),
+
                 Tables\Columns\IconColumn::make('is_active')
                     ->boolean()
                     ->label('Active'),
@@ -317,6 +339,7 @@ class ProductResource extends Resource
                 Tables\Filters\TernaryFilter::make('is_active')->label('Published'),
                 Tables\Filters\TernaryFilter::make('is_featured')->label('Featured'),
                 Tables\Filters\TernaryFilter::make('is_available_today')->label("Today's Arrival"),
+                Tables\Filters\TernaryFilter::make('is_preorder')->label('Pre-booking'),
             ])
             ->actions([
                 Actions\EditAction::make(),

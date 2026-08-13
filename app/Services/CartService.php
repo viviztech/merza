@@ -17,10 +17,18 @@ class CartService
     public function add(int $variantId, int $qty = 1): void
     {
         $variant = ProductVariant::with('product')->findOrFail($variantId);
+        abort_unless($variant->is_active && $variant->product?->is_active, 404);
+
+        $maximum = max(0, (int) $variant->stock_qty);
+        if ($maximum === 0) {
+            return;
+        }
+
+        $qty = min(max(1, $qty), $maximum);
         $cart    = $this->all();
 
         if (isset($cart[$variantId])) {
-            $cart[$variantId]['qty'] = min($cart[$variantId]['qty'] + $qty, $variant->stock_qty);
+            $cart[$variantId]['qty'] = min($cart[$variantId]['qty'] + $qty, $maximum);
         } else {
             $weightKg = $variant->weight_unit === 'g'
                 ? ($variant->weight_value / 1000)
@@ -38,6 +46,9 @@ class CartService
                 'qty'                  => $qty,
                 'thumbnail_url'        => $variant->product->thumbnail_url,
                 'weight_kg'            => $weightKg,
+                'is_preorder'          => (bool) $variant->product->is_preorder,
+                'available_from'       => $variant->product->available_from?->toDateString(),
+                'preorder_note'        => $variant->product->preorder_note,
             ];
         }
 

@@ -326,6 +326,9 @@
                         {{-- Badges --}}
                         <div class="absolute top-3 left-3 flex flex-col gap-1">
                             <span class="bg-gradient-to-r from-amber-500 to-orange-500 text-white text-[10px] font-bold px-2.5 py-1 rounded-full shadow">⭐ Featured</span>
+                            @if($product->is_preorder)
+                                <span class="bg-emerald-700 text-white text-[10px] font-bold px-2.5 py-1 rounded-full shadow">Pre-booking open</span>
+                            @endif
                             @if($soldOut)
                                 <span class="bg-stone-700 text-white text-[10px] font-bold px-2.5 py-1 rounded-full shadow">Sold Out</span>
                             @elseif($lowStockVariant)
@@ -346,7 +349,11 @@
                                 @php $v = $product->activeVariants->first(); @endphp
                                 <span class="text-[9px] font-bold text-stone-600 bg-stone-100 px-2 py-0.5 rounded-full">⚖️ {{ rtrim(rtrim(number_format($v->weight_value, 2), '0'), '.') }}{{ $v->weight_unit }}</span>
                             @endif
-                            <span class="text-[9px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full">⚡ Fast Delivery</span>
+                            @if($product->is_preorder && $product->available_from)
+                                <span class="text-[9px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full">Dispatches {{ $product->available_from->format('d M') }}</span>
+                            @else
+                                <span class="text-[9px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full">⚡ Fast Delivery</span>
+                            @endif
                             @if($product->activeVariants->contains(fn ($v) => filled($v->free_gift_label)))
                                 <span class="text-[9px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full">🎁 Free Gift</span>
                             @endif
@@ -361,7 +368,7 @@
                                 @endif
                             </span>
                             <span class="w-full inline-flex items-center justify-center gap-1 bg-amber-500 group-hover:bg-orange-500 text-white text-xs font-bold px-3 py-2 rounded-xl shadow transition-colors">
-                                Order Now
+                                {{ $product->is_preorder ? 'Pre-book now' : 'Order Now' }}
                                 <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M17 8l4 4m0 0l-4 4m4-4H3"/>
                                 </svg>

@@ -16,7 +16,8 @@ class Product extends Model implements HasMedia
     protected $fillable = [
         'category_id', 'name', 'slug', 'short_description', 'description',
         'harvest_date', 'farm_location', 'sweetness_level', 'delivery_time',
-        'base_price', 'unit', 'is_active', 'is_featured', 'is_available_today', 'sort_order',
+        'base_price', 'unit', 'is_active', 'is_featured', 'is_available_today',
+        'is_preorder', 'available_from', 'preorder_note', 'sort_order',
     ];
 
     protected $casts = [
@@ -25,6 +26,8 @@ class Product extends Model implements HasMedia
         'is_active'          => 'boolean',
         'is_featured'        => 'boolean',
         'is_available_today' => 'boolean',
+        'is_preorder'        => 'boolean',
+        'available_from'     => 'date',
     ];
 
     public function registerMediaCollections(): void

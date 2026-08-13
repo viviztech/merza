@@ -151,6 +151,9 @@
                                     <div class="flex-1 min-w-0">
                                         <p class="text-xs font-extrabold text-stone-800 truncate">{{ $item->product_name }}</p>
                                         <p class="text-[10px] text-stone-400">{{ $item->variant_name }} × {{ $item->qty }}</p>
+                                        @if($item->is_preorder ?? false)
+                                            <p class="text-[10px] font-bold text-emerald-700">Pre-booking @if($item->available_from) · Dispatches {{ \Carbon\Carbon::parse($item->available_from)->format('d M Y') }} @endif</p>
+                                        @endif
                                         @if($item->free_gift_label ?? null)
                                             <p class="text-[10px] font-bold text-emerald-700">🎁 {{ $item->free_gift_label }}</p>
                                         @endif

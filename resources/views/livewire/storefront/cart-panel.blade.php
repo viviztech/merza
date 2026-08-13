@@ -82,6 +82,9 @@
                             <div class="flex-1 min-w-0">
                                 <h4 class="font-extrabold text-sm text-stone-800 truncate">{{ $item->product_name }}</h4>
                                 <p class="text-xs text-stone-400 mt-0.5">{{ $item->variant_name }}</p>
+                                @if($item->is_preorder ?? false)
+                                    <p class="text-[11px] font-bold text-emerald-700 mt-1">Pre-booking @if($item->available_from) · Dispatches {{ \Carbon\Carbon::parse($item->available_from)->format('d M Y') }} @endif</p>
+                                @endif
                                 <p class="text-amber-600 font-extrabold text-sm mt-1">₹{{ number_format($item->price, 2) }} each</p>
                                 @if($item->free_gift_label ?? null)
                                     <p class="text-xs font-bold text-emerald-700 mt-0.5">🎁 {{ $item->free_gift_label }}</p>

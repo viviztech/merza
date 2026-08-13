@@ -66,12 +66,28 @@
                 @if($product->is_featured)
                     <span class="bg-gradient-to-r from-amber-500 to-orange-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">⭐ Featured</span>
                 @endif
+                @if($product->is_preorder)
+                    <span class="bg-emerald-700 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">Pre-booking open</span>
+                @endif
             </div>
 
             <h1 class="text-2xl md:text-3xl font-extrabold text-brand-green-dark leading-tight mb-2">{{ $product->name }}</h1>
 
             @if($product->short_description)
                 <p class="text-stone-500 text-sm mb-5 leading-relaxed">{{ $product->short_description }}</p>
+            @endif
+
+            @if($product->is_preorder)
+                <div class="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 mb-5 flex gap-3">
+                    <span class="w-9 h-9 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0">✓</span>
+                    <div>
+                        <p class="text-sm font-extrabold text-emerald-800">Reserve from the first harvest</p>
+                        <p class="text-xs text-emerald-700 mt-0.5 leading-relaxed">
+                            {{ $product->preorder_note ?: 'Book today and we will prepare your jackfruit as soon as the new harvest is ready.' }}
+                            @if($product->available_from) Dispatch starts {{ $product->available_from->format('D, d M Y') }}.@endif
+                        </p>
+                    </div>
+                </div>
             @endif
 
             {{-- Price --}}
@@ -107,7 +123,7 @@
                     @else
                         <div class="flex items-center gap-1.5 mt-2">
                             <span class="w-2 h-2 rounded-full bg-emerald-500 pulse-dot"></span>
-                            <span class="text-sm font-semibold text-emerald-600">In stock · Ready to ship</span>
+                            <span class="text-sm font-semibold text-emerald-600">{{ $product->is_preorder ? 'Available to reserve' : 'In stock · Ready to ship' }}</span>
                         </div>
                     @endif
                 @endif
@@ -159,7 +175,7 @@
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"/>
                         </svg>
-                        Order Now
+                        {{ $product->is_preorder ? 'Add pre-booking' : 'Add to cart' }}
                     </span>
                     <span wire:loading wire:target="addToCart" class="flex items-center gap-2">
                         <svg class="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
@@ -168,6 +184,14 @@
                         </svg>
                         Adding…
                     </span>
+                </button>
+
+                <button wire:click="buyNow"
+                        wire:loading.attr="disabled"
+                        @if($selectedVariant?->stock_qty <= 0) disabled @endif
+                        class="w-full bg-white border-2 border-amber-500 hover:bg-amber-50 disabled:opacity-50 disabled:cursor-not-allowed text-amber-700 font-extrabold py-3.5 px-6 rounded-2xl flex items-center justify-center gap-2 transition-all text-base">
+                    <span wire:loading.remove wire:target="buyNow">{{ $product->is_preorder ? 'Pre-book & checkout' : 'Buy now' }}</span>
+                    <span wire:loading wire:target="buyNow">Opening checkout…</span>
                 </button>
 
                 <a href="https://wa.me/919360064278?text=Hi%2C+I+want+to+order+{{ urlencode($product->name . ($selectedVariant ? ' - ' . $selectedVariant->name : '')) }}"

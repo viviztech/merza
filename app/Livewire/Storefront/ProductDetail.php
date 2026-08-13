@@ -63,22 +63,36 @@ class ProductDetail extends Component
 
     public function addToCart(): void
     {
-        $this->validate([
-            'selectedVariantId' => 'required|exists:product_variants,id',
-            'qty'               => 'required|integer|min:1|max:100',
-        ]);
+        $this->validateSelection();
 
         $cart = app(CartService::class);
         $cart->add($this->selectedVariantId, $this->qty);
 
         app(AnalyticsTracker::class)->track('add_to_cart', $this->product->id);
 
-        $this->addedMessage = 'Added to cart!';
+        $this->addedMessage = $this->product->is_preorder ? 'Pre-booking added!' : 'Added to cart!';
         $this->addedCount++;
         $this->dispatch('cart-updated', count: $cart->count());
-
-        // Auto-clear the message after 3s via JS
         $this->dispatch('flash-added');
+    }
+
+    public function buyNow(): void
+    {
+        $this->validateSelection();
+
+        $cart = app(CartService::class);
+        $cart->add($this->selectedVariantId, $this->qty);
+        app(AnalyticsTracker::class)->track('add_to_cart', $this->product->id);
+        $this->dispatch('cart-updated', count: $cart->count());
+        $this->redirectRoute('checkout.index', navigate: true);
+    }
+
+    private function validateSelection(): void
+    {
+        $this->validate([
+            'selectedVariantId' => 'required|exists:product_variants,id,product_id,' . $this->product->id,
+            'qty'               => 'required|integer|min:1|max:100',
+        ]);
     }
 
     public function submitReview(): void

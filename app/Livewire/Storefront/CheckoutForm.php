@@ -241,6 +241,8 @@ class CheckoutForm extends Component
                     'free_gift_label'      => $item->free_gift_label ?? null,
                     'free_gift_weight_kg'  => $item->free_gift_weight_kg ?? null,
                     'sku'                  => $item->sku,
+                    'is_preorder'          => $item->is_preorder ?? false,
+                    'available_from'       => $item->available_from ?? null,
                     'quantity'             => $item->qty,
                     'unit_price'           => $item->price,
                     'subtotal'             => $item->price * $item->qty,
@@ -277,7 +279,9 @@ class CheckoutForm extends Component
         $this->orderPlaced       = true;
         $this->orderId           = $order->id;
         $this->orderNumber       = $order->order_number;
-        $this->expectedDelivery  = now()->addDays($zone->eta_days ?? 2)->format('D, d M Y');
+        $preorderDate = $order->items()->where('is_preorder', true)->max('available_from');
+        $dispatchBase = $preorderDate ? \Carbon\Carbon::parse($preorderDate) : now();
+        $this->expectedDelivery = $dispatchBase->copy()->addDays($zone->eta_days ?? 2)->format('D, d M Y');
     }
 
     /**
