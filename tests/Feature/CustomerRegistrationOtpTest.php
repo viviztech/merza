@@ -54,7 +54,6 @@ class CustomerRegistrationOtpTest extends TestCase
         $code = Cache::get("wa_otp_{$phone}");
 
         $this->assertMatchesRegularExpression('/^\d{6}$/', $code);
-        $this->assertSame(1, Cache::get("wa_otp_sends_{$phone}"));
 
         Http::assertSent(function (Request $request) use ($code, $phone): bool {
             $components = $request->data()['template']['components'];
@@ -97,6 +96,27 @@ class CustomerRegistrationOtpTest extends TestCase
 
         $phone = '919344064631';
         $this->assertNull(Cache::get("wa_otp_{$phone}"));
-        $this->assertSame(0, Cache::get("wa_otp_sends_{$phone}", 0));
+    }
+
+    public function test_customer_can_request_another_otp_without_a_waiting_period(): void
+    {
+        Http::fake([
+            'graph.facebook.com/*' => Http::response([
+                'messages' => [['id' => 'wamid.registration-resend']],
+            ]),
+        ]);
+
+        $component = Livewire::test(RegisterForm::class)
+            ->set($this->validForm());
+
+        foreach (range(1, 4) as $attempt) {
+            $component->call('sendOtp')
+                ->assertHasNoErrors()
+                ->assertSet('step', 'otp')
+                ->call('goBack');
+        }
+
+        Http::assertSentCount(4);
+        $this->assertMatchesRegularExpression('/^\d{6}$/', Cache::get('wa_otp_919344064631'));
     }
 }

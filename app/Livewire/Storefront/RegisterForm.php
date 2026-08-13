@@ -51,17 +51,8 @@ class RegisterForm extends Component
 
         $phone = $this->normalizePhone($this->phone);
 
-        // Rate limit: max 3 OTP sends per phone per 30 minutes
-        $sendCountKey = "wa_otp_sends_{$phone}";
-        $sendCount    = Cache::get($sendCountKey, 0);
-
-        if ($sendCount >= 3) {
-            $this->addError('phone', 'Too many OTP requests. Please wait 30 minutes and try again.');
-            return;
-        }
-
-        // Generate the code first, but only cache it and consume a rate-limit
-        // slot after Meta confirms that the message was accepted.
+        // Generate the code first, but only cache it after Meta confirms that
+        // the message was accepted. A resend simply replaces the prior code.
         $code = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
 
         // Send via WhatsApp using an approved Authentication template.
@@ -87,7 +78,6 @@ class RegisterForm extends Component
         }
 
         Cache::put("wa_otp_{$phone}", $code, now()->addMinutes(10));
-        Cache::put($sendCountKey, $sendCount + 1, now()->addMinutes(30));
 
         $this->step     = 'otp';
         $this->attempts = 0;
