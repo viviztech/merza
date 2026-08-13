@@ -140,6 +140,7 @@ class WhatsAppService
         string $templateName,
         array  $bodyParams    = [],
         string $languageCode  = 'en',
+        ?string $buttonUrlParameter = null,
     ): ?string {
         $phoneNumberId = $this->settings->whatsapp_phone_number_id;
         $token         = $this->settings->whatsapp_access_token;
@@ -159,6 +160,18 @@ class WhatsAppService
                     fn ($v) => ['type' => 'text', 'text' => (string) $v],
                     $bodyParams
                 ),
+            ];
+        }
+
+        if (filled($buttonUrlParameter)) {
+            $components[] = [
+                'type'       => 'button',
+                'sub_type'   => 'url',
+                'index'      => '0',
+                'parameters' => [[
+                    'type' => 'text',
+                    'text' => $buttonUrlParameter,
+                ]],
             ];
         }
 

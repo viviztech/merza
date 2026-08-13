@@ -40,6 +40,11 @@ return [
         'app_secret' => env('META_APP_SECRET'),
     ],
 
+    'whatsapp' => [
+        'otp_template'          => env('WHATSAPP_OTP_TEMPLATE_NAME', 'merza_otp'),
+        'otp_template_language' => env('WHATSAPP_OTP_TEMPLATE_LANGUAGE', 'en'),
+    ],
+
     'anthropic' => [
         'api_key' => env('ANTHROPIC_API_KEY'),
     ],
