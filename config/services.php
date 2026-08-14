@@ -55,6 +55,7 @@ return [
         'webhook_secret' => env('SABPAISA_WEBHOOK_SECRET'),
         'merchant_id'    => env('SABPAISA_MERCHANT_ID'),
         'base_url'       => env('SABPAISA_BASE_URL', 'https://staging-sb-merchant-api.sabpaisa.in'),
+        'fallback_email' => env('SABPAISA_FALLBACK_EMAIL') ?: env('MAIL_FROM_ADDRESS'),
     ],
 
 ];

@@ -39,20 +39,11 @@
                 </div>
             @endif
 
-            {{-- Trust mini-badges --}}
-            <div class="grid grid-cols-3 sm:grid-cols-5 gap-2">
-                @foreach([
-                    ['🌿', 'Freshly Sourced'],
-                    ['📦', 'Carefully Packed'],
-                    ['✅', 'Quality Checked'],
-                    ['🔒', 'Secure Payment'],
-                    ['💬', 'Customer Support'],
-                ] as [$icon, $label])
-                    <div class="bg-emerald-50 border border-emerald-100 rounded-2xl p-2 text-center">
-                        <span class="text-lg">{{ $icon }}</span>
-                        <p class="text-[10px] font-semibold text-emerald-700 mt-0.5">{{ $label }}</p>
-                    </div>
-                @endforeach
+            {{-- Compact trust strip keeps product and price above the fold on mobile. --}}
+            <div class="overflow-x-auto rounded-2xl border border-emerald-100 bg-emerald-50/70 px-3 py-2.5">
+                <div class="flex items-center justify-start sm:justify-center gap-3 whitespace-nowrap text-[11px] font-bold text-emerald-800">
+                    <span>🌿 Farm Fresh</span><span class="text-emerald-300">·</span><span>✓ Quality Checked</span><span class="text-emerald-300">·</span><span>🔒 Secure Payment</span><span class="text-emerald-300">·</span><span>🚚 Fast Dispatch</span>
+                </div>
             </div>
         </div>
 
@@ -167,31 +158,20 @@
 
             {{-- CTA Buttons --}}
             <div class="flex flex-col gap-3 mb-5">
-                <button wire:click="addToCart"
-                        wire:loading.attr="disabled"
-                        @if($selectedVariant?->stock_qty <= 0) disabled @endif
-                        class="w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 disabled:opacity-50 disabled:cursor-not-allowed text-white font-extrabold py-4 px-6 rounded-2xl flex items-center justify-center gap-2 transition-all shadow-lg shadow-amber-200/50 hover:shadow-xl hover:-translate-y-0.5 text-base">
-                    <span wire:loading.remove wire:target="addToCart" class="flex items-center gap-2">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"/>
-                        </svg>
-                        {{ $product->is_preorder ? 'Add pre-booking' : 'Add to cart' }}
-                    </span>
-                    <span wire:loading wire:target="addToCart" class="flex items-center gap-2">
-                        <svg class="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
-                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
-                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
-                        </svg>
-                        Adding…
-                    </span>
-                </button>
-
                 <button wire:click="buyNow"
                         wire:loading.attr="disabled"
                         @if($selectedVariant?->stock_qty <= 0) disabled @endif
-                        class="w-full bg-white border-2 border-amber-500 hover:bg-amber-50 disabled:opacity-50 disabled:cursor-not-allowed text-amber-700 font-extrabold py-3.5 px-6 rounded-2xl flex items-center justify-center gap-2 transition-all text-base">
-                    <span wire:loading.remove wire:target="buyNow">{{ $product->is_preorder ? 'Pre-book & checkout' : 'Buy now' }}</span>
+                        class="w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 disabled:opacity-50 disabled:cursor-not-allowed text-white font-extrabold py-4 px-6 rounded-2xl flex items-center justify-center gap-2 transition-all shadow-lg shadow-amber-200/50 hover:shadow-xl hover:-translate-y-0.5 text-base">
+                    <span wire:loading.remove wire:target="buyNow">{{ $product->is_preorder ? 'Pre-book & checkout' : 'Buy now' }} · ₹{{ number_format(($selectedVariant?->price ?? 0) * $qty, 2) }}</span>
                     <span wire:loading wire:target="buyNow">Opening checkout…</span>
+                </button>
+
+                <button wire:click="addToCart"
+                        wire:loading.attr="disabled"
+                        @if($selectedVariant?->stock_qty <= 0) disabled @endif
+                        class="w-full bg-white border-2 border-amber-500 hover:bg-amber-50 disabled:opacity-50 disabled:cursor-not-allowed text-amber-700 font-extrabold py-3.5 px-6 rounded-2xl flex items-center justify-center gap-2 transition-all text-base">
+                    <span wire:loading.remove wire:target="addToCart">{{ $product->is_preorder ? 'Add pre-booking to cart' : 'Add to cart' }}</span>
+                    <span wire:loading wire:target="addToCart">Adding…</span>
                 </button>
 
                 <a href="https://wa.me/919360064278?text=Hi%2C+I+want+to+order+{{ urlencode($product->name . ($selectedVariant ? ' - ' . $selectedVariant->name : '')) }}"

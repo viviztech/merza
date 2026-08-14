@@ -216,11 +216,6 @@
                                 </div>
                             </div>
 
-                            <a href="{{ route('cart.index') }}"
-                               class="flex items-center justify-center gap-1 text-xs text-stone-400 hover:text-amber-600 transition-colors mt-2 font-medium">
-                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
-                                Edit Cart
-                            </a>
                         </div>
                     </div>
                 </div>
@@ -237,110 +232,98 @@
                         <div class="p-5 grid sm:grid-cols-2 gap-4">
 
                             <div>
-                                <label class="block text-xs font-extrabold text-stone-600 mb-1.5 uppercase tracking-wide">Full Name *</label>
-                                <input wire:model="customer_name" type="text" placeholder="Ahmad bin Ali"
+                                <label for="checkout-mobile" class="block text-xs font-extrabold text-stone-600 mb-1.5 uppercase tracking-wide">Mobile Number *</label>
+                                <input id="checkout-mobile" wire:model.live.debounce.600ms="customer_phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="93600 64278"
+                                       class="w-full border-2 {{ $errors->has('customer_phone') ? 'border-red-300 bg-red-50' : 'border-stone-200 focus:border-amber-400' }} rounded-xl px-4 py-3 text-base focus:outline-none transition-colors bg-white placeholder-stone-300">
+                                @error('customer_phone') <p class="text-red-500 text-xs mt-1 font-medium">{{ $message }}</p> @enderror
+                                <p class="text-[11px] text-stone-400 mt-1.5">Used to find saved addresses and send WhatsApp updates.</p>
+                            </div>
+
+                            <div>
+                                <label for="checkout-name" class="block text-xs font-extrabold text-stone-600 mb-1.5 uppercase tracking-wide">Full Name *</label>
+                                <input id="checkout-name" wire:model="customer_name" type="text" autocomplete="name" placeholder="Your name"
                                        class="w-full border-2 {{ $errors->has('customer_name') ? 'border-red-300 bg-red-50' : 'border-stone-200 focus:border-amber-400' }} rounded-xl px-4 py-3 text-base focus:outline-none transition-colors bg-white placeholder-stone-300">
                                 @error('customer_name') <p class="text-red-500 text-xs mt-1 font-medium">{{ $message }}</p> @enderror
                             </div>
 
-                            <div>
-                                <label class="block text-xs font-extrabold text-stone-600 mb-1.5 uppercase tracking-wide">Phone Number *</label>
-                                <input wire:model.live.debounce.600ms="customer_phone" type="tel" placeholder="93600 64278"
-                                       class="w-full border-2 {{ $errors->has('customer_phone') ? 'border-red-300 bg-red-50' : 'border-stone-200 focus:border-amber-400' }} rounded-xl px-4 py-3 text-base focus:outline-none transition-colors bg-white placeholder-stone-300">
-                                @error('customer_phone') <p class="text-red-500 text-xs mt-1 font-medium">{{ $message }}</p> @enderror
-                                <p class="text-[11px] text-stone-400 mt-1.5 leading-relaxed">
-                                    📱 We'll send order updates to this number via WhatsApp. Reply <strong>STOP</strong> to that message anytime to opt out.
-                                </p>
-                            </div>
-
-                            <div>
-                                <label class="block text-xs font-extrabold text-stone-600 mb-1.5 uppercase tracking-wide">
-                                    Email {{ $this->gatewayActive() ? '*' : '' }}
-                                    @unless($this->gatewayActive())
-                                        <span class="font-normal text-stone-400 normal-case">(optional)</span>
-                                    @endunless
-                                </label>
-                                <input wire:model="customer_email" type="email" placeholder="you@example.com"
-                                       class="w-full border-2 {{ $errors->has('customer_email') ? 'border-red-300 bg-red-50' : 'border-stone-200 focus:border-amber-400' }} rounded-xl px-4 py-3 text-base focus:outline-none transition-colors bg-white placeholder-stone-300">
-                                @error('customer_email') <p class="text-red-500 text-xs mt-1 font-medium">{{ $message }}</p> @enderror
-                                @if($this->gatewayActive())
-                                    <p class="text-[11px] text-stone-400 mt-1.5">Needed for your payment receipt.</p>
-                                @endif
-                            </div>
-
                             @if($returningCustomerName)
-                                <div class="sm:col-span-2 bg-emerald-50 border border-emerald-200 rounded-2xl p-4 flex items-center justify-between gap-3 flex-wrap">
-                                    <div>
-                                        <p class="text-sm font-extrabold text-emerald-800">Welcome back, {{ $returningCustomerName }}! ❤️</p>
-                                        @if($hasPreviousAddress)
-                                            <p class="text-xs text-emerald-600 mt-0.5">
-                                                @if($previousAddressApplied)
-                                                    ✓ Previous address applied below.
-                                                @else
-                                                    We found your previous delivery address.
-                                                @endif
-                                            </p>
-                                        @endif
-                                    </div>
-                                    @if($hasPreviousAddress && ! $previousAddressApplied)
-                                        <button type="button" wire:click="useSameAddress"
-                                                class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-4 py-2.5 rounded-xl transition-colors flex-shrink-0">
-                                            Use Same Address
-                                        </button>
+                                <div class="sm:col-span-2 bg-emerald-50 border border-emerald-200 rounded-2xl p-4">
+                                    <p class="text-sm font-extrabold text-emerald-800">Welcome back, {{ $returningCustomerName }}</p>
+                                    @if($hasPreviousAddress && $previousAddressApplied)
+                                        <p class="text-xs font-bold text-emerald-700 mt-2">Deliver to</p>
+                                        <p class="text-sm text-stone-700 mt-0.5 leading-relaxed">{{ $delivery_address }}, {{ $city }}, {{ $state }} — {{ $postcode }}</p>
+                                        <div class="flex items-center gap-4 mt-3 text-xs font-extrabold">
+                                            <button type="button" wire:click="changeAddress" class="text-emerald-700 underline underline-offset-4">Change</button>
+                                            <a href="#payment" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 rounded-xl transition-colors">Continue</a>
+                                        </div>
+                                    @elseif($hasPreviousAddress)
+                                        <button type="button" wire:click="useSameAddress" class="mt-2 text-xs font-extrabold text-emerald-700 underline underline-offset-4">Use previous address</button>
                                     @endif
                                 </div>
                             @endif
 
-                            <div class="sm:col-span-2">
-                                <label class="block text-xs font-extrabold text-stone-600 mb-1.5 uppercase tracking-wide">Address *</label>
-                                <textarea wire:model="delivery_address" rows="2" placeholder="No. 12, Jalan Makmur, Taman Bahagia…"
-                                          class="w-full border-2 {{ $errors->has('delivery_address') ? 'border-red-300 bg-red-50' : 'border-stone-200 focus:border-amber-400' }} rounded-xl px-4 py-3 text-base focus:outline-none transition-colors bg-white placeholder-stone-300 resize-none"></textarea>
-                                @error('delivery_address') <p class="text-red-500 text-xs mt-1 font-medium">{{ $message }}</p> @enderror
-                            </div>
+                            @unless($previousAddressApplied)
+                                <div class="sm:col-span-2" x-data="{ locating: false, locationError: '' }">
+                                    <button type="button" @click="locationError = ''; if (!navigator.geolocation) { locationError = 'Location autofill is not supported on this device.'; return; } locating = true; navigator.geolocation.getCurrentPosition(position => $wire.autofillFromLocation(position.coords.latitude, position.coords.longitude).then(() => locating = false), () => { locating = false; locationError = 'Allow location access, or enter your address below.'; }, { enableHighAccuracy: true, timeout: 10000 });" :disabled="locating"
+                                            class="w-full flex items-center justify-center gap-2 border-2 border-emerald-200 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-extrabold py-3.5 rounded-2xl transition-colors disabled:opacity-60">
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 21s6-4.35 6-11a6 6 0 10-12 0c0 6.65 6 11 6 11z"/><circle cx="12" cy="10" r="2"/></svg>
+                                        <span x-text="locating ? 'Finding your address…' : 'Use Current Location / Autofill Address'"></span>
+                                    </button>
+                                    <p x-show="locationError" x-text="locationError" class="text-xs text-amber-600 mt-1.5"></p>
+                                    @if($locationLookupFailed)<p class="text-xs text-amber-600 mt-1.5">We couldn't fill the full address. Please enter it below.</p>@endif
+                                </div>
 
-                            <div>
-                                <label class="block text-xs font-extrabold text-stone-600 mb-1.5 uppercase tracking-wide">Pincode *</label>
-                                <input wire:model.live.debounce.500ms="postcode" type="text" inputmode="numeric" maxlength="6" placeholder="625513"
-                                       class="w-full border-2 {{ $errors->has('postcode') || $errors->has('city') ? 'border-red-300 bg-red-50' : 'border-stone-200 focus:border-amber-400' }} rounded-xl px-4 py-3 text-base focus:outline-none transition-colors bg-white placeholder-stone-300">
-                                <div wire:loading wire:target="postcode" class="text-xs text-amber-500 mt-1">Looking up pincode…</div>
-                                @if($pincodeAutoFilled)
-                                    <p class="text-[11px] text-emerald-600 mt-1.5 font-medium">✓ District &amp; state detected automatically</p>
-                                @elseif($pincodeLookupFailed)
-                                    <p class="text-[11px] text-amber-600 mt-1.5">Couldn't auto-detect — please fill district &amp; state below.</p>
-                                @endif
-                                @error('postcode') <p class="text-red-500 text-xs mt-1 font-medium">{{ $message }}</p> @enderror
-                            </div>
+                                <div class="sm:col-span-2">
+                                    <label for="checkout-address" class="block text-xs font-extrabold text-stone-600 mb-1.5 uppercase tracking-wide">Address *</label>
+                                    <textarea id="checkout-address" wire:model="delivery_address" rows="2" autocomplete="street-address" placeholder="House / flat, street, area"
+                                              class="w-full border-2 {{ $errors->has('delivery_address') ? 'border-red-300 bg-red-50' : 'border-stone-200 focus:border-amber-400' }} rounded-xl px-4 py-3 text-base focus:outline-none transition-colors bg-white placeholder-stone-300 resize-none"></textarea>
+                                    @error('delivery_address') <p class="text-red-500 text-xs mt-1 font-medium">{{ $message }}</p> @enderror
+                                </div>
 
-                            <div>
-                                <label class="block text-xs font-extrabold text-stone-600 mb-1.5 uppercase tracking-wide">Landmark <span class="font-normal text-stone-400 normal-case">(optional)</span></label>
-                                <input wire:model="landmark" type="text" placeholder="Near bus stand"
-                                       class="w-full border-2 border-stone-200 focus:border-amber-400 rounded-xl px-4 py-3 text-base focus:outline-none transition-colors bg-white placeholder-stone-300">
-                            </div>
+                                <div>
+                                    <label for="checkout-pincode" class="block text-xs font-extrabold text-stone-600 mb-1.5 uppercase tracking-wide">Pincode *</label>
+                                    <input id="checkout-pincode" wire:model.live.debounce.500ms="postcode" type="text" inputmode="numeric" pattern="[0-9]{6}" maxlength="7" autocomplete="postal-code" placeholder="625513"
+                                           class="w-full border-2 {{ $errors->has('postcode') ? 'border-red-300 bg-red-50' : 'border-stone-200 focus:border-amber-400' }} rounded-xl px-4 py-3 text-base focus:outline-none transition-colors bg-white placeholder-stone-300">
+                                    <div wire:loading wire:target="postcode" class="text-xs text-amber-500 mt-1">Looking up pincode…</div>
+                                    @if($pincodeAutoFilled)<p class="text-[11px] text-emerald-600 mt-1.5 font-medium">✓ District &amp; state filled automatically</p>
+                                    @elseif($pincodeLookupFailed)<p class="text-[11px] text-amber-600 mt-1.5">Couldn't auto-detect. Enter district and state below.</p>@endif
+                                    @error('postcode') <p class="text-red-500 text-xs mt-1 font-medium">{{ $message }}</p> @enderror
+                                </div>
 
-                            <div>
-                                <label class="block text-xs font-extrabold text-stone-600 mb-1.5 uppercase tracking-wide">District *</label>
-                                <input wire:model="city" type="text" placeholder="Bodinayakanur"
-                                       class="w-full border-2 {{ $errors->has('city') ? 'border-red-300 bg-red-50' : 'border-stone-200 focus:border-amber-400' }} rounded-xl px-4 py-3 text-base focus:outline-none transition-colors bg-white placeholder-stone-300">
-                                @error('city') <p class="text-red-500 text-xs mt-1 font-medium">{{ $message }}</p> @enderror
-                            </div>
+                                <div>
+                                    <label for="checkout-landmark" class="block text-xs font-extrabold text-stone-600 mb-1.5 uppercase tracking-wide">Landmark <span class="font-normal text-stone-400 normal-case">(optional)</span></label>
+                                    <input id="checkout-landmark" wire:model="landmark" type="text" placeholder="Near bus stand" class="w-full border-2 border-stone-200 focus:border-amber-400 rounded-xl px-4 py-3 text-base focus:outline-none transition-colors bg-white placeholder-stone-300">
+                                </div>
 
-                            <div>
-                                <label class="block text-xs font-extrabold text-stone-600 mb-1.5 uppercase tracking-wide">State *</label>
-                                <select wire:model.live="state"
-                                        class="w-full border-2 {{ $errors->has('state') ? 'border-red-300 bg-red-50' : 'border-stone-200 focus:border-amber-400' }} rounded-xl px-4 py-3 text-base focus:outline-none transition-colors bg-white text-stone-700">
-                                    <option value="">Select a state…</option>
-                                    @foreach($stateOptions as $s)
-                                        <option value="{{ $s }}">{{ $s }}</option>
-                                    @endforeach
-                                </select>
-                                <p class="text-[11px] text-stone-400 mt-1.5">Only states we currently deliver to are listed.</p>
-                                @error('state') <p class="text-red-500 text-xs mt-1 font-medium">{{ $message }}</p> @enderror
-                            </div>
+                                <div>
+                                    <label for="checkout-district" class="block text-xs font-extrabold text-stone-600 mb-1.5 uppercase tracking-wide">District *</label>
+                                    <input id="checkout-district" wire:model="city" type="text" placeholder="Filled from pincode" class="w-full border-2 {{ $errors->has('city') ? 'border-red-300 bg-red-50' : 'border-stone-200 focus:border-amber-400' }} rounded-xl px-4 py-3 text-base focus:outline-none transition-colors bg-white placeholder-stone-300">
+                                    @error('city') <p class="text-red-500 text-xs mt-1 font-medium">{{ $message }}</p> @enderror
+                                </div>
+
+                                <div>
+                                    <label for="checkout-state" class="block text-xs font-extrabold text-stone-600 mb-1.5 uppercase tracking-wide">State *</label>
+                                    <select id="checkout-state" wire:model.live="state" class="w-full border-2 {{ $errors->has('state') ? 'border-red-300 bg-red-50' : 'border-stone-200 focus:border-amber-400' }} rounded-xl px-4 py-3 text-base focus:outline-none transition-colors bg-white text-stone-700">
+                                        <option value="">Select a state…</option>
+                                        @foreach($stateOptions as $s)<option value="{{ $s }}">{{ $s }}</option>@endforeach
+                                    </select>
+                                    @error('state') <p class="text-red-500 text-xs mt-1 font-medium">{{ $message }}</p> @enderror
+                                </div>
+                            @endunless
+
+                            <details class="sm:col-span-2 group">
+                                <summary class="cursor-pointer text-xs font-bold text-stone-500 hover:text-amber-700 list-none">+ Add email <span class="font-normal">(optional)</span></summary>
+                                <div class="mt-3 max-w-md">
+                                    <label for="checkout-email" class="sr-only">Email (optional)</label>
+                                    <input id="checkout-email" wire:model="customer_email" type="email" autocomplete="email" placeholder="you@example.com" class="w-full border-2 {{ $errors->has('customer_email') ? 'border-red-300 bg-red-50' : 'border-stone-200 focus:border-amber-400' }} rounded-xl px-4 py-3 text-base focus:outline-none transition-colors bg-white placeholder-stone-300">
+                                    @error('customer_email') <p class="text-red-500 text-xs mt-1 font-medium">{{ $message }}</p> @enderror
+                                </div>
+                            </details>
                         </div>
                     </div>
 
                     {{-- Payment --}}
-                    <div class="bg-white rounded-3xl border border-amber-100 shadow-sm overflow-hidden">
+                    <div id="payment" class="bg-white rounded-3xl border border-amber-100 shadow-sm overflow-hidden scroll-mt-24">
                         <div class="bg-gradient-to-r from-amber-50 to-orange-50 border-b border-amber-100 px-5 py-4 flex items-center gap-2">
                             <span class="w-6 h-6 rounded-lg bg-amber-500 text-white flex items-center justify-center text-xs font-bold">2</span>
                             <h2 class="font-extrabold text-stone-800">Payment Method</h2>
@@ -425,19 +408,11 @@
                         </div>
                     </div>
 
-                    {{-- Trust badges --}}
-                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                        @foreach([
-                            ['🔒', 'Secure Payment'],
-                            ['🚚', 'Fast Delivery'],
-                            ['🌱', 'Farm Fresh'],
-                            ['📞', 'Customer Support'],
-                        ] as [$icon, $label])
-                            <div class="bg-white border border-amber-100 rounded-2xl p-3 text-center">
-                                <span class="text-lg">{{ $icon }}</span>
-                                <p class="text-[10px] font-bold text-stone-600 mt-0.5 leading-tight">{{ $label }}</p>
-                            </div>
-                        @endforeach
+                    {{-- Compact trust strip --}}
+                    <div class="overflow-x-auto rounded-2xl border border-emerald-100 bg-emerald-50/70 px-3 py-2.5">
+                        <div class="flex items-center justify-center gap-3 sm:gap-5 whitespace-nowrap text-[11px] font-bold text-emerald-800">
+                            <span>🌿 Farm Fresh</span><span class="text-emerald-300">·</span><span>✓ Quality Checked</span><span class="text-emerald-300">·</span><span>🔒 Secure Payment</span><span class="text-emerald-300">·</span><span>🚚 Fast Dispatch</span>
+                        </div>
                     </div>
 
                     {{-- Submit --}}
@@ -445,7 +420,7 @@
                             wire:loading.attr="disabled"
                             class="w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 disabled:opacity-60 text-white font-extrabold py-5 rounded-2xl transition-all text-base shadow-xl shadow-amber-200/60 hover:shadow-2xl hover:-translate-y-0.5">
                         <span wire:loading.remove wire:target="placeOrder" class="flex items-center justify-center gap-2">
-                            🔒 Pay Securely
+                            🔒 Pay ₹{{ number_format($total, 2) }} Securely
                         </span>
                         <span wire:loading wire:target="placeOrder" class="flex items-center justify-center gap-2">
                             <svg class="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">

@@ -13,6 +13,7 @@ use App\Services\CartService;
 use App\Services\DeliveryCalculatorService;
 use App\Services\PincodeService;
 use App\Services\SabPaisaService;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
@@ -35,6 +36,7 @@ class CheckoutForm extends Component
     public string $landmark         = '';
     public bool   $pincodeAutoFilled = false;
     public bool   $pincodeLookupFailed = false;
+    public bool   $locationLookupFailed = false;
 
     public ?string $returningCustomerName = null;
     public bool     $hasPreviousAddress   = false;
@@ -70,9 +72,9 @@ class CheckoutForm extends Component
         return [
             'customer_name'      => 'required|string|max:120',
             'customer_phone'     => 'required|string|max:20',
-            'customer_email'     => $this->gatewayActive() ? 'required|email|max:255' : 'nullable|email|max:255',
+            'customer_email'     => 'nullable|email|max:255',
             'delivery_address'   => 'required|string|max:500',
-            'postcode'           => 'required|digits:6',
+            'postcode'           => ['required', 'regex:/^\d{6}$/'],
             'city'               => 'required|string|max:80',
             'state'              => 'required|string|max:80',
             'landmark'           => 'nullable|string|max:150',
@@ -84,11 +86,10 @@ class CheckoutForm extends Component
         return [
             'customer_name.required'    => "Please tell us your name so we know who's ordering.",
             'customer_phone.required'   => "We need a phone number to reach you about delivery.",
-            'customer_email.required'   => 'Please enter your email — the payment page needs it for your receipt.',
             'customer_email.email'      => 'Please enter a valid email address.',
             'delivery_address.required' => 'Please enter the full address where we should deliver.',
             'postcode.required'         => 'Please enter your area pincode.',
-            'postcode.digits'           => 'That pincode looks off — it should be exactly 6 digits.',
+            'postcode.regex'            => 'Please enter a valid 6-digit pincode.',
             'city.required'             => 'Please enter your district/city.',
             'state.required'            => 'Please select your state.',
         ];
@@ -101,11 +102,13 @@ class CheckoutForm extends Component
         $this->previousAddressApplied  = false;
         $this->lastOrderForPhone       = null;
 
-        $digits = preg_replace('/[^0-9+]/', '', $this->customer_phone);
+        $digits = preg_replace('/\D/', '', $this->customer_phone) ?? '';
 
         if (strlen($digits) < 10) {
             return;
         }
+
+        $digits = substr($digits, -10);
 
         $contact = Contact::where('phone', $digits)
             ->orWhere('phone', ltrim($digits, '+'))
@@ -122,6 +125,18 @@ class CheckoutForm extends Component
         $this->returningCustomerName = $contact?->name ?: $lastOrder->customer_name;
         $this->hasPreviousAddress    = filled($lastOrder->delivery_address);
         $this->lastOrderForPhone     = $lastOrder;
+
+        if (blank($this->customer_name)) {
+            $this->customer_name = $lastOrder->customer_name;
+        }
+
+        if (blank($this->customer_email) && filled($lastOrder->customer_email)) {
+            $this->customer_email = $lastOrder->customer_email;
+        }
+
+        if ($this->hasPreviousAddress) {
+            $this->useSameAddress();
+        }
     }
 
     public function useSameAddress(): void
@@ -137,12 +152,24 @@ class CheckoutForm extends Component
         $this->landmark         = $this->lastOrderForPhone->landmark ?? '';
 
         $this->previousAddressApplied = true;
+        $this->pincodeAutoFilled       = true;
+        $this->pincodeLookupFailed     = false;
+        $this->resetErrorBag(['delivery_address', 'postcode', 'city', 'state']);
+    }
+
+    public function changeAddress(): void
+    {
+        $this->previousAddressApplied = false;
     }
 
     public function updatedPostcode(): void
     {
         $this->pincodeAutoFilled   = false;
         $this->pincodeLookupFailed = false;
+
+        // Mobile keyboards and browser autofill may insert spaces or dashes.
+        // Validate the canonical digits instead of rejecting formatted input.
+        $this->postcode = preg_replace('/\D/', '', $this->postcode) ?? '';
 
         if (! preg_match('/^\d{6}$/', $this->postcode)) {
             // Surface "must be 6 digits" as soon as the customer pauses on an
@@ -152,6 +179,8 @@ class CheckoutForm extends Component
             }
             return;
         }
+
+        $this->resetErrorBag('postcode');
 
         $result = (new PincodeService())->lookup($this->postcode);
 
@@ -163,6 +192,53 @@ class CheckoutForm extends Component
         $this->city              = $result['district'];
         $this->state             = $result['state'];
         $this->pincodeAutoFilled = true;
+    }
+
+    public function autofillFromLocation(float $latitude, float $longitude): void
+    {
+        $this->locationLookupFailed = false;
+
+        if ($latitude < -90 || $latitude > 90 || $longitude < -180 || $longitude > 180) {
+            $this->locationLookupFailed = true;
+            return;
+        }
+
+        try {
+            $response = Http::timeout(8)
+                ->withHeaders(['User-Agent' => 'MerzaStorefront/1.0 (checkout address autofill)'])
+                ->get('https://nominatim.openstreetmap.org/reverse', [
+                    'format' => 'jsonv2',
+                    'lat' => $latitude,
+                    'lon' => $longitude,
+                    'addressdetails' => 1,
+                    'zoom' => 18,
+                ]);
+
+            if (! $response->successful()) {
+                throw new \RuntimeException('Reverse geocoding request failed.');
+            }
+
+            $address = $response->json('address', []);
+            $postcode = preg_replace('/\D/', '', (string) ($address['postcode'] ?? '')) ?? '';
+            $city = $address['city'] ?? $address['town'] ?? $address['village'] ?? $address['county'] ?? '';
+            $state = $address['state'] ?? '';
+            $line = collect([
+                $address['house_number'] ?? null,
+                $address['road'] ?? null,
+                $address['suburb'] ?? $address['neighbourhood'] ?? null,
+            ])->filter()->implode(', ');
+
+            $this->delivery_address = $line ?: (string) $response->json('display_name', '');
+            $this->city = (string) $city;
+            $this->state = (string) $state;
+            $this->postcode = strlen($postcode) === 6 ? $postcode : '';
+            $this->pincodeAutoFilled = filled($this->postcode) && filled($this->city) && filled($this->state);
+            $this->pincodeLookupFailed = ! $this->pincodeAutoFilled;
+            $this->resetErrorBag(['delivery_address', 'postcode', 'city', 'state']);
+        } catch (\Throwable $e) {
+            Log::warning('Checkout location autofill failed', ['error' => $e->getMessage()]);
+            $this->locationLookupFailed = true;
+        }
     }
 
     private function resolveZone(): ?DeliveryZone
@@ -191,6 +267,7 @@ class CheckoutForm extends Component
 
     public function placeOrder(): void
     {
+        $this->postcode = preg_replace('/\D/', '', $this->postcode) ?? '';
         $this->validate();
 
         $cart = app(CartService::class);

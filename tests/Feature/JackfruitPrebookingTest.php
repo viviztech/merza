@@ -65,6 +65,9 @@ class JackfruitPrebookingTest extends TestCase
 
     public function test_buy_now_adds_the_prebooking_and_opens_checkout(): void
     {
+        // Simulate an item left in the cart from an earlier browsing session.
+        app(CartService::class)->add($this->variant->id, 1);
+
         Livewire::test(ProductDetail::class, ['slug' => $this->product->slug])
             ->set('qty', 3)
             ->call('buyNow')

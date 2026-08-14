@@ -82,8 +82,10 @@ class CartService
 
     public function clear(): void
     {
-        session()->forget(self::SESSION_KEY);
-        session(['cart_count' => 0]);
+        // Persist an explicit empty cart. This also behaves correctly across
+        // Livewire's request/session boundary where a forgotten key can be
+        // merged back from the previous request snapshot.
+        session([self::SESSION_KEY => [], 'cart_count' => 0]);
     }
 
     public function count(): int

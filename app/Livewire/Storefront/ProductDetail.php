@@ -81,6 +81,9 @@ class ProductDetail extends Component
         $this->validateSelection();
 
         $cart = app(CartService::class);
+        // Buy Now is an express purchase and should not carry unrelated items
+        // from an earlier browsing session into checkout.
+        $cart->clear();
         $cart->add($this->selectedVariantId, $this->qty);
         app(AnalyticsTracker::class)->track('add_to_cart', $this->product->id);
         $this->dispatch('cart-updated', count: $cart->count());

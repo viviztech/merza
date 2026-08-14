@@ -51,7 +51,10 @@ class SabPaisaService
             'amount'        => $amountPaise,
             'currency'      => $currency,
             'customerName'  => $order->customer_name,
-            'customerEmail' => $order->customer_email,
+            // Email remains optional for the shopper. Use the merchant inbox
+            // when the hosted gateway requires a receipt address.
+            'customerEmail' => $order->customer_email
+                ?: (config('services.sabpaisa.fallback_email') ?: config('mail.from.address')),
             'customerPhone' => $this->normalisePhone($order->customer_phone),
             'returnUrl'     => $returnUrl,
             'timestamp'     => $timestamp,
@@ -60,12 +63,20 @@ class SabPaisaService
             'metadata'      => ['orderId' => (string) $order->id],
         ];
 
-        $response = Http::timeout(15)
-            ->withHeaders([
-                'X-Api-Key'    => config('services.sabpaisa.api_key'),
-                'Content-Type' => 'application/json',
-            ])
-            ->post($this->baseUrl() . '/api/v2/payments', $payload);
+        try {
+            $response = Http::timeout(15)
+                ->withHeaders([
+                    'X-Api-Key'    => config('services.sabpaisa.api_key'),
+                    'Content-Type' => 'application/json',
+                ])
+                ->post($this->baseUrl() . '/api/v2/payments', $payload);
+        } catch (\Throwable $e) {
+            Log::error('SabPaisaService: createPaymentSession request failed', [
+                'order_id' => $order->id,
+                'error' => $e->getMessage(),
+            ]);
+            return null;
+        }
 
         if ($response->failed() || ! $response->json('success')) {
             Log::error('SabPaisaService: createPaymentSession failed', [
