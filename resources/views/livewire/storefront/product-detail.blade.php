@@ -12,7 +12,7 @@
     <div class="grid md:grid-cols-2 gap-8 md:gap-12">
 
         {{-- ── Left: Image gallery ── --}}
-        <div class="space-y-3">
+        <div class="space-y-3 min-w-0">
             <div class="aspect-square rounded-3xl overflow-hidden border-2 border-amber-100 shadow-lg"
                  style="background: linear-gradient(145deg, #fef9c3, #fef3c7);">
                 @php $cardUrl = $product->getFirstMediaUrl('thumbnail', 'card') ?: $product->getFirstMediaUrl('images', 'card'); @endphp
@@ -48,7 +48,7 @@
         </div>
 
         {{-- ── Right: Product info ── --}}
-        <div>
+        <div class="min-w-0">
             {{-- Category + badges --}}
             <div class="flex items-center gap-2 mb-3">
                 @if($product->category)

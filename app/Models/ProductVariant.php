@@ -35,4 +35,15 @@ class ProductVariant extends Model
             ? "{$this->name} ({$this->weight_value}{$this->weight_unit})"
             : $this->name;
     }
+
+    public function getPricePerKgAttribute(): ?float
+    {
+        if (! $this->weight_value || ! in_array($this->weight_unit, ['kg', 'g'], true)) {
+            return null;
+        }
+
+        $weightInKg = $this->weight_unit === 'g' ? $this->weight_value / 1000 : (float) $this->weight_value;
+
+        return $weightInKg > 0 ? (float) $this->price / $weightInKg : null;
+    }
 }

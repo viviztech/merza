@@ -19,9 +19,14 @@ class PincodeService
         }
 
         try {
-            // The public postal API is occasionally flaky — one quick retry
-            // before giving up and falling back to manual entry.
-            $response = Http::timeout(8)->retry(2, 300)->get("https://api.postalpincode.in/pincode/{$pincode}");
+            // The API resets connections carrying Guzzle's default library
+            // User-Agent (blocked as a bot signature) — an identifying UA is
+            // required. The public postal API is also occasionally flaky —
+            // one quick retry before giving up and falling back to manual entry.
+            $response = Http::timeout(8)
+                ->withHeaders(['User-Agent' => 'MerzaStorefront/1.0 (checkout pincode lookup)'])
+                ->retry(2, 300)
+                ->get("https://api.postalpincode.in/pincode/{$pincode}");
         } catch (\Throwable $e) {
             Log::warning('Pincode lookup failed', ['pincode' => $pincode, 'error' => $e->getMessage()]);
             return null;

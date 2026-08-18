@@ -35,7 +35,8 @@
                 We'll contact you on WhatsApp shortly to confirm your delivery details. Thank you for choosing Merza! 🌿
             </p>
 
-            {{-- Payment screenshot upload --}}
+            {{-- Payment screenshot upload (not shown for pre-bookings — no payment was collected) --}}
+            @unless($orderIsPreorderOnly)
             <div class="bg-white border-2 border-amber-100 rounded-3xl p-5 mb-6 text-left max-w-sm mx-auto">
                 @if($screenshotUploaded)
                     <p class="flex items-center gap-2 text-sm font-bold text-emerald-700">
@@ -57,6 +58,7 @@
                     @endif
                 @endif
             </div>
+            @endunless
 
             <div class="flex flex-col sm:flex-row gap-3 justify-center flex-wrap">
                 <a href="{{ auth()->check() ? route('account.order.detail', $orderId) : route('track.index', ['order' => $orderNumber]) }}"
@@ -91,8 +93,8 @@
         {{-- Progress steps --}}
         <div class="mb-8">
             <div class="flex items-center justify-center gap-2 md:gap-4">
-                @foreach([['1', 'Delivery Details'], ['2', 'Payment']] as $i => [$num, $label])
-                    <div class="flex items-center gap-2 {{ $i < 1 ? 'flex-1' : '' }}">
+                @foreach(($isPreorderOnly ? [['1', 'Booking Details']] : [['1', 'Delivery Details'], ['2', 'Payment']]) as $i => [$num, $label])
+                    <div class="flex items-center gap-2 {{ $i < 1 && ! $isPreorderOnly ? 'flex-1' : '' }}">
                         <div class="flex items-center gap-2 flex-shrink-0">
                             <span class="w-8 h-8 rounded-xl flex items-center justify-center text-sm font-extrabold
                                          {{ $i === 0 ? 'bg-gradient-to-br from-amber-500 to-orange-500 text-white shadow-md' : 'bg-amber-100 text-amber-600' }}">
@@ -100,7 +102,7 @@
                             </span>
                             <span class="hidden sm:block text-sm font-bold {{ $i === 0 ? 'text-amber-700' : 'text-stone-400' }}">{{ $label }}</span>
                         </div>
-                        @if($i < 1)
+                        @if($i < 1 && ! $isPreorderOnly)
                             <div class="flex-1 h-0.5 bg-gradient-to-r from-amber-200 to-stone-100 mx-2"></div>
                         @endif
                     </div>
@@ -134,7 +136,7 @@
             <div class="grid lg:grid-cols-3 gap-6">
 
                 {{-- ── Order summary sidebar (first on mobile, right col on desktop via explicit grid placement) ── --}}
-                <div class="lg:col-start-3 lg:row-start-1">
+                <div class="lg:col-start-3 lg:row-start-1 min-w-0">
                     <div class="bg-white rounded-3xl border border-amber-100 shadow-sm overflow-hidden lg:sticky lg:top-24">
 
                         <div class="bg-gradient-to-r from-amber-50 to-orange-50 border-b border-amber-100 px-5 py-4">
@@ -221,7 +223,7 @@
                 </div>
 
                 {{-- ── Form ── --}}
-                <form wire:submit="placeOrder" class="lg:col-start-1 lg:col-span-2 lg:row-start-1 space-y-4">
+                <form wire:submit="placeOrder" class="lg:col-start-1 lg:col-span-2 lg:row-start-1 space-y-4 min-w-0">
 
                     {{-- Delivery Details --}}
                     <div class="bg-white rounded-3xl border border-amber-100 shadow-sm overflow-hidden">
@@ -322,7 +324,8 @@
                         </div>
                     </div>
 
-                    {{-- Payment --}}
+                    {{-- Payment (skipped for pre-bookings — booking details are all that's required) --}}
+                    @unless($isPreorderOnly)
                     <div id="payment" class="bg-white rounded-3xl border border-amber-100 shadow-sm overflow-hidden scroll-mt-24">
                         <div class="bg-gradient-to-r from-amber-50 to-orange-50 border-b border-amber-100 px-5 py-4 flex items-center gap-2">
                             <span class="w-6 h-6 rounded-lg bg-amber-500 text-white flex items-center justify-center text-xs font-bold">2</span>
@@ -407,11 +410,23 @@
                             @endif
                         </div>
                     </div>
+                    @endunless
+
+                    @if($isPreorderOnly)
+                        <div class="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 text-center">
+                            <p class="text-sm font-bold text-emerald-800">No payment needed to reserve your booking</p>
+                            <p class="text-xs text-emerald-700 mt-1">We'll reach out on WhatsApp with payment details closer to dispatch.</p>
+                        </div>
+                    @endif
 
                     {{-- Compact trust strip --}}
                     <div class="overflow-x-auto rounded-2xl border border-emerald-100 bg-emerald-50/70 px-3 py-2.5">
                         <div class="flex items-center justify-center gap-3 sm:gap-5 whitespace-nowrap text-[11px] font-bold text-emerald-800">
-                            <span>🌿 Farm Fresh</span><span class="text-emerald-300">·</span><span>✓ Quality Checked</span><span class="text-emerald-300">·</span><span>🔒 Secure Payment</span><span class="text-emerald-300">·</span><span>🚚 Fast Dispatch</span>
+                            @if($isPreorderOnly)
+                                <span>🌿 Farm Fresh</span><span class="text-emerald-300">·</span><span>✓ Quality Checked</span><span class="text-emerald-300">·</span><span>💬 WhatsApp Updates</span>
+                            @else
+                                <span>🌿 Farm Fresh</span><span class="text-emerald-300">·</span><span>✓ Quality Checked</span><span class="text-emerald-300">·</span><span>🔒 Secure Payment</span><span class="text-emerald-300">·</span><span>🚚 Fast Dispatch</span>
+                            @endif
                         </div>
                     </div>
 
@@ -420,7 +435,11 @@
                             wire:loading.attr="disabled"
                             class="w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 disabled:opacity-60 text-white font-extrabold py-5 rounded-2xl transition-all text-base shadow-xl shadow-amber-200/60 hover:shadow-2xl hover:-translate-y-0.5">
                         <span wire:loading.remove wire:target="placeOrder" class="flex items-center justify-center gap-2">
-                            🔒 Pay ₹{{ number_format($total, 2) }} Securely
+                            @if($isPreorderOnly)
+                                📅 Confirm Booking
+                            @else
+                                🔒 Pay ₹{{ number_format($total, 2) }} Securely
+                            @endif
                         </span>
                         <span wire:loading wire:target="placeOrder" class="flex items-center justify-center gap-2">
                             <svg class="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
@@ -432,7 +451,11 @@
                     </button>
 
                     <p class="text-center text-xs text-stone-400">
-                        🔒 Secure checkout · By ordering you agree to our <a href="#" class="underline">terms</a>
+                        @if($isPreorderOnly)
+                            🔒 Your details are safe with us · By booking you agree to our <a href="#" class="underline">terms</a>
+                        @else
+                            🔒 Secure checkout · By ordering you agree to our <a href="#" class="underline">terms</a>
+                        @endif
                     </p>
                 </form>
 

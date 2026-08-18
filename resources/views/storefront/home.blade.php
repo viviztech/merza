@@ -341,28 +341,18 @@
                         <p class="text-[10px] text-amber-600 font-bold uppercase tracking-wider mb-1">{{ $product->category?->name }}</p>
                         <h3 class="font-extrabold text-sm text-stone-800 leading-tight line-clamp-2 mb-2">{{ $product->name }}</h3>
 
-                        {{-- Weight & delivery badges --}}
-                        <div class="flex items-center gap-1.5 flex-wrap mb-2">
-                            @if($product->active_variants_count > 1)
-                                <span class="text-[9px] font-bold text-stone-600 bg-stone-100 px-2 py-0.5 rounded-full">⚖️ {{ $product->active_variants_count }} sizes</span>
-                            @elseif($product->activeVariants->isNotEmpty())
-                                @php $v = $product->activeVariants->first(); @endphp
-                                <span class="text-[9px] font-bold text-stone-600 bg-stone-100 px-2 py-0.5 rounded-full">⚖️ {{ rtrim(rtrim(number_format($v->weight_value, 2), '0'), '.') }}{{ $v->weight_unit }}</span>
-                            @endif
-                            @if($product->is_preorder && $product->available_from)
+                        @if($product->is_preorder && $product->available_from)
+                            <div class="mb-2">
                                 <span class="text-[9px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full">Dispatches {{ $product->available_from->format('d M') }}</span>
-                            @else
-                                <span class="text-[9px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full">⚡ Fast Delivery</span>
-                            @endif
-                            @if($product->activeVariants->contains(fn ($v) => filled($v->free_gift_label)))
-                                <span class="text-[9px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full">🎁 Free Gift</span>
-                            @endif
-                        </div>
+                            </div>
+                        @endif
 
                         <div class="mt-auto pt-2">
                             <span class="block text-amber-600 font-extrabold text-base mb-2">
-                                @if($product->activeVariants->isNotEmpty())
-                                    From ₹{{ number_format($product->activeVariants->min('price'), 2) }}
+                                @if($product->min_price_per_kg)
+                                    ₹{{ number_format($product->min_price_per_kg, 2) }}/kg
+                                @elseif($product->activeVariants->isNotEmpty())
+                                    ₹{{ number_format($product->activeVariants->min('price'), 2) }}
                                 @else
                                     ₹{{ number_format($product->base_price, 2) }}
                                 @endif

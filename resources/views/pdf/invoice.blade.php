@@ -183,8 +183,11 @@
 
   {{-- Payment --}}
   <div class="payment-section">
-    <div class="payment-row">Payment Method: <span>{{ match($order->payment_method) { 'cod' => 'Cash on Delivery', 'bank_transfer' => 'Bank Transfer', 'whatsapp' => 'UPI Payment', default => $order->payment_method } }}</span></div>
+    <div class="payment-row">Payment Method: <span>{{ match($order->payment_method) { 'cod' => 'Cash on Delivery', 'upi' => 'UPI Payment', 'bank_transfer' => 'Bank Transfer', 'whatsapp' => 'WhatsApp Order', default => $order->payment_method } }}</span></div>
     <div class="payment-row">Payment Status: <span>{{ ucfirst($order->payment_status) }}</span></div>
+    @if($order->payment_reference)
+      <div class="payment-row">Payment Reference / UTR: <span>{{ $order->payment_reference }}</span></div>
+    @endif
   </div>
 
   {{-- Customer Notes --}}

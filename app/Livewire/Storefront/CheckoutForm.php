@@ -47,6 +47,7 @@ class CheckoutForm extends Component
     public ?int   $orderId            = null;
     public string $orderNumber        = '';
     public ?string $expectedDelivery  = null;
+    public bool   $orderIsPreorderOnly = false;
 
     public $paymentScreenshot        = null;
     public bool $screenshotUploaded  = false;
@@ -109,14 +110,18 @@ class CheckoutForm extends Component
         }
 
         $digits = substr($digits, -10);
+        $contact = $this->findContactByPhone($digits);
 
-        $contact = Contact::where('phone', $digits)
-            ->orWhere('phone', ltrim($digits, '+'))
-            ->first();
-
-        $lastOrder = $contact
-            ? Order::where('contact_id', $contact->id)->latest()->first()
-            : Order::where('customer_phone', $digits)->latest()->first();
+        // Most storefront orders are never linked back to a Contact via
+        // contact_id (it's only set for a minority of orders), so matching
+        // on contact_id alone misses real returning customers. Match by
+        // phone directly and treat contact_id as a secondary signal.
+        $lastOrder = Order::where('customer_phone', 'like', '%' . substr($digits, -4))
+            ->when($contact, fn ($query) => $query->orWhere('contact_id', $contact->id))
+            ->latest()
+            ->get()
+            ->first(fn (Order $order) => ($contact && $order->contact_id === $contact->id)
+                || $this->normalizedPhone($order->customer_phone) === $digits);
 
         if (! $lastOrder) {
             return;
@@ -137,6 +142,26 @@ class CheckoutForm extends Component
         if ($this->hasPreviousAddress) {
             $this->useSameAddress();
         }
+    }
+
+    /**
+     * Stored phone numbers are inconsistently formatted across sources (bare
+     * 10-digit from the storefront, "91"-prefixed from WhatsApp webhooks,
+     * some with a leading +), so an exact string match on the column misses
+     * real matches. LIKE-prefilter on the last 4 digits (portable across
+     * SQLite/Postgres/MySQL, unlike a driver-specific regex function), then
+     * confirm the full last-10-digit match in PHP.
+     */
+    private function findContactByPhone(string $last10Digits): ?Contact
+    {
+        return Contact::where('phone', 'like', '%' . substr($last10Digits, -4))
+            ->get()
+            ->first(fn (Contact $contact) => $this->normalizedPhone($contact->phone) === $last10Digits);
+    }
+
+    private function normalizedPhone(?string $raw): string
+    {
+        return substr(preg_replace('/\D/', '', (string) $raw) ?? '', -10);
     }
 
     public function useSameAddress(): void
@@ -290,6 +315,8 @@ class CheckoutForm extends Component
         $subtotal    = $cart->subtotal();
         $deliveryFee = $breakdown['total_fee'];
         $total       = $subtotal + $deliveryFee;
+        $items       = $cart->items();
+        $isPreorderOnly = $items->isNotEmpty() && $items->every(fn ($item) => $item->is_preorder ?? false);
 
         try {
             $order = Order::create([
@@ -306,7 +333,7 @@ class CheckoutForm extends Component
                 'subtotal'                 => $subtotal,
                 'delivery_fee'             => $deliveryFee,
                 'total'                    => $total,
-                'payment_method'           => 'upi',
+                'payment_method'           => $isPreorderOnly ? 'cod' : 'upi',
             ]);
 
             foreach ($cart->items() as $item) {
@@ -338,7 +365,7 @@ class CheckoutForm extends Component
 
         $this->sendWhatsAppConfirmation($order);
 
-        if ($this->gatewayActive()) {
+        if (! $isPreorderOnly && $this->gatewayActive()) {
             $session = app(SabPaisaService::class)->createPaymentSession($order, route('payment.return'));
 
             if ($session && filled($session['checkoutUrl']) && filled($session['clientSecret'])) {
@@ -356,6 +383,7 @@ class CheckoutForm extends Component
         $this->orderPlaced       = true;
         $this->orderId           = $order->id;
         $this->orderNumber       = $order->order_number;
+        $this->orderIsPreorderOnly = $isPreorderOnly;
         $preorderDate = $order->items()->where('is_preorder', true)->max('available_from');
         $dispatchBase = $preorderDate ? \Carbon\Carbon::parse($preorderDate) : now();
         $this->expectedDelivery = $dispatchBase->copy()->addDays($zone->eta_days ?? 2)->format('D, d M Y');
@@ -371,9 +399,10 @@ class CheckoutForm extends Component
     {
         try {
             $phone   = preg_replace('/[^0-9+]/', '', $order->customer_phone);
-            $contact = Contact::where('phone', $phone)
-                             ->orWhere('phone', ltrim($phone, '+'))
-                             ->first();
+            $digits  = $this->normalizedPhone($phone);
+            $contact = strlen($digits) === 10
+                ? $this->findContactByPhone($digits)
+                : null;
 
             if (! $contact) {
                 $contact = Contact::create([
@@ -442,6 +471,7 @@ class CheckoutForm extends Component
 
         $deliveryFee = $breakdown ? $breakdown['total_fee'] : null;
         $total       = $subtotal + ($deliveryFee ?? 0);
+        $isPreorderOnly = $items->isNotEmpty() && $items->every(fn ($item) => $item->is_preorder ?? false);
 
         // Only states we actually have a delivery zone for — keeps customers
         // from typing a state we don't serve (and from typos that would
@@ -452,6 +482,6 @@ class CheckoutForm extends Component
             ->pluck('name');
 
         return view('livewire.storefront.checkout-form',
-            compact('items', 'subtotal', 'weightKg', 'giftWeightKg', 'breakdown', 'deliveryFee', 'total', 'stateOptions'));
+            compact('items', 'subtotal', 'weightKg', 'giftWeightKg', 'breakdown', 'deliveryFee', 'total', 'stateOptions', 'isPreorderOnly'));
     }
 }

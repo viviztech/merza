@@ -95,4 +95,12 @@ class Product extends Model implements HasMedia
     {
         return $this->variants()->where('stock_qty', '>', 0)->exists();
     }
+
+    public function getMinPricePerKgAttribute(): ?float
+    {
+        return $this->activeVariants
+            ->map(fn (ProductVariant $variant) => $variant->price_per_kg)
+            ->filter()
+            ->min();
+    }
 }
