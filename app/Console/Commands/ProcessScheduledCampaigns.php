@@ -7,6 +7,7 @@ use App\Jobs\ProcessCampaignStepJob;
 use App\Models\Campaign;
 use App\Models\CampaignContact;
 use App\Models\Contact;
+use App\Services\CampaignService;
 use Illuminate\Console\Command;
 
 class ProcessScheduledCampaigns extends Command
@@ -41,10 +42,11 @@ class ProcessScheduledCampaigns extends Command
             ->with('campaign', 'contact')
             ->get();
 
-        foreach ($dripDue as $cc) {
+        foreach ($dripDue as $index => $cc) {
             $this->info("[Drip] Step {$cc->current_step} for contact #{$cc->contact_id} in '{$cc->campaign->name}'");
             if (!$dryRun) {
-                ProcessCampaignStepJob::dispatch($cc->id);
+                ProcessCampaignStepJob::dispatch($cc->id)
+                    ->delay(now()->addSeconds($index * CampaignService::SEND_STAGGER_SECONDS));
             }
         }
 
@@ -59,6 +61,7 @@ class ProcessScheduledCampaigns extends Command
 
             $query = Contact::query()
                 ->where('is_blocked', false)
+                ->where('wa_opted_out', false)
                 ->where(
                     fn ($q) => $q->whereNull('last_contacted_at')
                         ->orWhere('last_contacted_at', '<=', $cutoff)
@@ -84,7 +87,7 @@ class ProcessScheduledCampaigns extends Command
             $this->info("[Follow-up] '{$campaign->name}': {$contacts->count()} contacts eligible");
 
             if (!$dryRun) {
-                foreach ($contacts as $contact) {
+                foreach ($contacts as $index => $contact) {
                     $cc = CampaignContact::create([
                         'campaign_id'  => $campaign->id,
                         'contact_id'   => $contact->id,
@@ -93,7 +96,8 @@ class ProcessScheduledCampaigns extends Command
                         'next_send_at' => now(),
                     ]);
                     $campaign->increment('total_contacts');
-                    ProcessCampaignStepJob::dispatch($cc->id);
+                    ProcessCampaignStepJob::dispatch($cc->id)
+                        ->delay(now()->addSeconds($index * CampaignService::SEND_STAGGER_SECONDS));
                 }
             }
         }

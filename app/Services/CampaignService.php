@@ -11,11 +11,17 @@ use App\Models\Conversation;
 class CampaignService
 {
     /**
+     * Seconds between each contact's send when dispatching a batch, so a large
+     * audience doesn't fire all its WhatsApp sends in the same instant.
+     */
+    public const SEND_STAGGER_SECONDS = 3;
+
+    /**
      * Enroll all contacts matching campaign filters and return enrolled count.
      */
     public function enrollContacts(Campaign $campaign): int
     {
-        $query = Contact::query()->where('is_blocked', false);
+        $query = Contact::query()->where('is_blocked', false)->where('wa_opted_out', false);
 
         if (!empty($campaign->filter_tags)) {
             foreach ($campaign->filter_tags as $tag) {
@@ -87,6 +93,12 @@ class CampaignService
         if (!$contact->phone) {
             $campaignContact->update(['status' => 'failed']);
             $campaign->increment('failed_count');
+            return false;
+        }
+
+        if ($contact->wa_opted_out || $contact->is_blocked) {
+            $campaignContact->update(['status' => 'unsubscribed', 'next_send_at' => null]);
+            $this->checkCampaignCompletion($campaign);
             return false;
         }
 

@@ -28,11 +28,15 @@ class DispatchCampaignJob implements ShouldQueue
         // Enroll contacts matching filters
         $service->enrollContacts($campaign);
 
-        // Dispatch individual step jobs for all pending contacts due now
+        // Dispatch individual step jobs for all pending contacts due now, staggered
+        // so a large audience doesn't fire hundreds of WhatsApp sends in the same
+        // instant (protects the business's messaging quality rating).
         CampaignContact::where('campaign_id', $campaign->id)
             ->where('status', 'pending')
             ->where('next_send_at', '<=', now())
             ->get()
-            ->each(fn ($cc) => ProcessCampaignStepJob::dispatch($cc->id));
+            ->values()
+            ->each(fn ($cc, $index) => ProcessCampaignStepJob::dispatch($cc->id)
+                ->delay(now()->addSeconds($index * CampaignService::SEND_STAGGER_SECONDS)));
     }
 }
