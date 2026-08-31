@@ -208,7 +208,7 @@ class ProductResource extends Resource
                         ->columns(4)
                         ->itemLabel(fn (array $state): ?string => $state['name'] ?? null)
                         ->addActionLabel('Add Variant')
-                        ->reorderable('sort_order')
+                        ->orderColumn('sort_order')
                         ->collapsible()
                         ->defaultItems(1),
                 ]),
