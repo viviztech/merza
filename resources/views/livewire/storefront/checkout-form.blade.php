@@ -133,99 +133,11 @@
             @endif
             @error('cart') <p class="bg-red-50 border border-red-200 text-red-600 text-sm px-4 py-3 rounded-2xl mb-4">{{ $message }}</p> @enderror
 
+            <form wire:submit="placeOrder">
             <div class="grid lg:grid-cols-3 gap-6">
 
-                {{-- ── Order summary sidebar (first on mobile, right col on desktop via explicit grid placement) ── --}}
-                <div class="lg:col-start-3 lg:row-start-1 min-w-0">
-                    <div class="bg-white rounded-3xl border border-amber-100 shadow-sm overflow-hidden lg:sticky lg:top-24">
-
-                        <div class="bg-gradient-to-r from-amber-50 to-orange-50 border-b border-amber-100 px-5 py-4">
-                            <h2 class="font-extrabold text-stone-800">Your Order</h2>
-                        </div>
-
-                        <div class="p-5 space-y-3">
-                            @foreach($items as $item)
-                                <div class="flex gap-3 items-center">
-                                    <div class="w-12 h-12 rounded-xl flex-shrink-0 overflow-hidden border border-amber-100"
-                                         style="background: linear-gradient(145deg, #fef9c3, #fef3c7);">
-                                        <div class="w-full h-full flex items-center justify-center text-xl">🥭</div>
-                                    </div>
-                                    <div class="flex-1 min-w-0">
-                                        <p class="text-xs font-extrabold text-stone-800 truncate">{{ $item->product_name }}</p>
-                                        <p class="text-[10px] text-stone-400">{{ $item->variant_name }} × {{ $item->qty }}</p>
-                                        @if($item->is_preorder ?? false)
-                                            <p class="text-[10px] font-bold text-emerald-700">Pre-booking @if($item->available_from) · Dispatches {{ \Carbon\Carbon::parse($item->available_from)->format('d M Y') }} @endif</p>
-                                        @endif
-                                        @if($item->free_gift_label ?? null)
-                                            <p class="text-[10px] font-bold text-emerald-700">🎁 {{ $item->free_gift_label }}</p>
-                                        @endif
-                                    </div>
-                                    <p class="text-sm font-extrabold text-amber-600 flex-shrink-0">₹{{ number_format($item->line_total, 2) }}</p>
-                                </div>
-                            @endforeach
-
-                            <div class="border-t border-amber-100 pt-3 space-y-1.5 text-sm">
-                                <div class="flex justify-between text-stone-500">
-                                    <span>Subtotal</span>
-                                    <span>₹{{ number_format($subtotal, 2) }}</span>
-                                </div>
-                                <div class="flex justify-between text-stone-500">
-                                    <span>Total weight</span>
-                                    <span>{{ number_format($weightKg, 2) }} kg</span>
-                                </div>
-                                @if($giftWeightKg > 0)
-                                    <p class="text-[11px] text-emerald-600">🎁 Includes {{ number_format($giftWeightKg, 2) }} kg of free gifts — couriers charge for actual package weight.</p>
-                                @endif
-
-                                @if($breakdown)
-                                    {{-- Delivery breakdown --}}
-                                    <div class="bg-amber-50 rounded-lg p-2.5 space-y-1 text-xs text-stone-500">
-                                        <div class="flex justify-between">
-                                            <span>Zone ({{ $breakdown['zone'] }})</span>
-                                            <span>₹{{ number_format($breakdown['rate_per_kg'], 0) }}/kg</span>
-                                        </div>
-                                        @if($breakdown['packing_weight_kg'] > 0)
-                                            <div class="flex justify-between">
-                                                <span>Packing material (+{{ $breakdown['packing_weight_kg'] }} kg)</span>
-                                                <span>included</span>
-                                            </div>
-                                        @endif
-                                        <div class="flex flex-wrap justify-between gap-y-0.5 font-semibold text-stone-600 border-t border-amber-100 pt-1">
-                                            <span>Courier ({{ number_format($breakdown['chargeable_weight'], 2) }} kg × ₹{{ number_format($breakdown['rate_per_kg'], 0) }})</span>
-                                            <span>₹{{ number_format($breakdown['shipping_cost'], 2) }}</span>
-                                        </div>
-                                        @if($breakdown['packing_charge'] > 0)
-                                            <div class="flex justify-between">
-                                                <span>Packing charge</span>
-                                                <span>₹{{ number_format($breakdown['packing_charge'], 2) }}</span>
-                                            </div>
-                                        @endif
-                                    </div>
-                                    <div class="flex justify-between font-semibold text-stone-600">
-                                        <span>Delivery</span>
-                                        <span>₹{{ number_format($breakdown['total_fee'], 2) }}</span>
-                                    </div>
-                                @else
-                                    <div class="flex justify-between text-stone-400 text-xs">
-                                        <span>Delivery</span>
-                                        <span>&nbsp;</span>
-                                    </div>
-                                @endif
-
-                                <div class="flex justify-between font-extrabold text-stone-900 pt-1 border-t border-amber-100">
-                                    <span>Total</span>
-                                    <span class="text-amber-600 text-lg">₹{{ number_format($total, 2) }}</span>
-                                </div>
-                            </div>
-
-                        </div>
-                    </div>
-                </div>
-
-                {{-- ── Form ── --}}
-                <form wire:submit="placeOrder" class="lg:col-start-1 lg:col-span-2 lg:row-start-1 space-y-4 min-w-0">
-
-                    {{-- Delivery Details --}}
+                {{-- ── Delivery Details (first on mobile; left columns on desktop) ── --}}
+                <div class="lg:col-start-1 lg:col-span-2 lg:row-start-1 min-w-0">
                     <div class="bg-white rounded-3xl border border-amber-100 shadow-sm overflow-hidden">
                         <div class="bg-gradient-to-r from-amber-50 to-orange-50 border-b border-amber-100 px-5 py-4 flex items-center gap-2">
                             <span class="w-6 h-6 rounded-lg bg-amber-500 text-white flex items-center justify-center text-xs font-bold">1</span>
@@ -323,6 +235,97 @@
                             </details>
                         </div>
                     </div>
+                </div>
+
+                {{-- ── Order summary (second on mobile; sticky right column on desktop) ── --}}
+                <div class="lg:col-start-3 lg:row-start-1 min-w-0">
+                    <div class="bg-white rounded-3xl border border-amber-100 shadow-sm overflow-hidden lg:sticky lg:top-24">
+
+                        <div class="bg-gradient-to-r from-amber-50 to-orange-50 border-b border-amber-100 px-5 py-4">
+                            <h2 class="font-extrabold text-stone-800">Your Order</h2>
+                        </div>
+
+                        <div class="p-5 space-y-3">
+                            @foreach($items as $item)
+                                <div class="flex gap-3 items-center">
+                                    <div class="w-12 h-12 rounded-xl flex-shrink-0 overflow-hidden border border-amber-100"
+                                         style="background: linear-gradient(145deg, #fef9c3, #fef3c7);">
+                                        <div class="w-full h-full flex items-center justify-center text-xl">🥭</div>
+                                    </div>
+                                    <div class="flex-1 min-w-0">
+                                        <p class="text-xs font-extrabold text-stone-800 truncate">{{ $item->product_name }}</p>
+                                        <p class="text-[10px] text-stone-400">{{ $item->variant_name }} × {{ $item->qty }}</p>
+                                        @if($item->is_preorder ?? false)
+                                            <p class="text-[10px] font-bold text-emerald-700">Pre-booking @if($item->available_from) · Dispatches {{ \Carbon\Carbon::parse($item->available_from)->format('d M Y') }} @endif</p>
+                                        @endif
+                                        @if($item->free_gift_label ?? null)
+                                            <p class="text-[10px] font-bold text-emerald-700">🎁 {{ $item->free_gift_label }}</p>
+                                        @endif
+                                    </div>
+                                    <p class="text-sm font-extrabold text-amber-600 flex-shrink-0">₹{{ number_format($item->line_total, 2) }}</p>
+                                </div>
+                            @endforeach
+
+                            <div class="border-t border-amber-100 pt-3 space-y-1.5 text-sm">
+                                <div class="flex justify-between text-stone-500">
+                                    <span>Subtotal</span>
+                                    <span>₹{{ number_format($subtotal, 2) }}</span>
+                                </div>
+                                <div class="flex justify-between text-stone-500">
+                                    <span>Total weight</span>
+                                    <span>{{ number_format($weightKg, 2) }} kg</span>
+                                </div>
+                                @if($giftWeightKg > 0)
+                                    <p class="text-[11px] text-emerald-600">🎁 Includes {{ number_format($giftWeightKg, 2) }} kg of free gifts — couriers charge for actual package weight.</p>
+                                @endif
+
+                                @if($breakdown)
+                                    {{-- Delivery breakdown --}}
+                                    <div class="bg-amber-50 rounded-lg p-2.5 space-y-1 text-xs text-stone-500">
+                                        <div class="flex justify-between">
+                                            <span>Zone ({{ $breakdown['zone'] }})</span>
+                                            <span>₹{{ number_format($breakdown['rate_per_kg'], 0) }}/kg</span>
+                                        </div>
+                                        @if($breakdown['packing_weight_kg'] > 0)
+                                            <div class="flex justify-between">
+                                                <span>Packing material (+{{ $breakdown['packing_weight_kg'] }} kg)</span>
+                                                <span>included</span>
+                                            </div>
+                                        @endif
+                                        <div class="flex flex-wrap justify-between gap-y-0.5 font-semibold text-stone-600 border-t border-amber-100 pt-1">
+                                            <span>Courier ({{ number_format($breakdown['chargeable_weight'], 2) }} kg × ₹{{ number_format($breakdown['rate_per_kg'], 0) }})</span>
+                                            <span>₹{{ number_format($breakdown['shipping_cost'], 2) }}</span>
+                                        </div>
+                                        @if($breakdown['packing_charge'] > 0)
+                                            <div class="flex justify-between">
+                                                <span>Packing charge</span>
+                                                <span>₹{{ number_format($breakdown['packing_charge'], 2) }}</span>
+                                            </div>
+                                        @endif
+                                    </div>
+                                    <div class="flex justify-between font-semibold text-stone-600">
+                                        <span>Delivery</span>
+                                        <span>₹{{ number_format($breakdown['total_fee'], 2) }}</span>
+                                    </div>
+                                @else
+                                    <div class="flex justify-between text-stone-400 text-xs">
+                                        <span>Delivery</span>
+                                        <span>&nbsp;</span>
+                                    </div>
+                                @endif
+
+                                <div class="flex justify-between font-extrabold text-stone-900 pt-1 border-t border-amber-100">
+                                    <span>Total</span>
+                                    <span class="text-amber-600 text-lg">₹{{ number_format($total, 2) }}</span>
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+                </div>
+
+                {{-- ── Payment method (third on mobile; left columns, below delivery, on desktop) ── --}}
+                <div class="lg:col-start-1 lg:col-span-2 min-w-0 space-y-4">
 
                     {{-- Payment (skipped for pre-bookings — booking details are all that's required) --}}
                     @unless($isPreorderOnly)
@@ -331,82 +334,93 @@
                             <span class="w-6 h-6 rounded-lg bg-amber-500 text-white flex items-center justify-center text-xs font-bold">2</span>
                             <h2 class="font-extrabold text-stone-800">Payment Method</h2>
                         </div>
-                        <div class="p-5 space-y-5">
 
+                        {{-- Amazon-style selectable payment list: each method is a radio row; the
+                             available method is pre-selected and expands inline to show its details. --}}
+                        <div class="divide-y divide-stone-100">
                             @if($this->gatewayActive())
                                 {{-- Hosted gateway checkout — customer picks their method on SabPaisa's page --}}
-                                <div class="flex flex-col sm:flex-row items-center gap-5 bg-amber-50 rounded-2xl p-5">
-                                    <div class="text-center sm:text-left flex-1 w-full">
-                                        <p class="text-xs font-extrabold text-stone-500 uppercase tracking-wide mb-1">Amount to pay</p>
-                                        <p class="text-2xl font-extrabold text-amber-600 mb-3">₹{{ number_format($total, 2) }}</p>
+                                <label class="flex items-start gap-3 p-5 bg-amber-50/50">
+                                    <input type="radio" checked disabled class="mt-1 w-4 h-4 accent-amber-600 flex-shrink-0">
+                                    <div class="flex-1 min-w-0">
+                                        <p class="font-extrabold text-sm text-stone-800">Pay Online — UPI, Cards &amp; Netbanking</p>
+                                        <p class="text-xs text-stone-400 mt-0.5">Secure hosted checkout</p>
 
-                                        <div class="flex items-center justify-center sm:justify-start gap-2 mb-3 flex-wrap">
-                                            <span class="inline-flex items-center gap-1.5 bg-white border border-stone-200 rounded-lg px-3 py-1.5 text-xs font-bold text-stone-700">
-                                                <span class="w-2 h-2 rounded-full bg-emerald-500"></span> UPI
-                                            </span>
-                                            <span class="inline-flex items-center gap-1.5 bg-white border border-stone-200 rounded-lg px-3 py-1.5 text-xs font-bold text-stone-700">
-                                                <span class="w-2 h-2 rounded-full bg-blue-500"></span> Cards
-                                            </span>
-                                            <span class="inline-flex items-center gap-1.5 bg-white border border-stone-200 rounded-lg px-3 py-1.5 text-xs font-bold text-stone-700">
-                                                <span class="w-2 h-2 rounded-full bg-purple-500"></span> Netbanking
-                                            </span>
+                                        <div class="mt-4 bg-white border border-amber-200 rounded-2xl p-4">
+                                            <div class="flex items-center justify-between mb-3">
+                                                <span class="text-xs font-extrabold text-stone-500 uppercase tracking-wide">Amount to pay</span>
+                                                <span class="text-xl font-extrabold text-amber-600">₹{{ number_format($total, 2) }}</span>
+                                            </div>
+                                            <div class="flex items-center gap-2 mb-3 flex-wrap">
+                                                <span class="inline-flex items-center gap-1.5 bg-stone-50 border border-stone-200 rounded-lg px-3 py-1.5 text-xs font-bold text-stone-700">
+                                                    <span class="w-2 h-2 rounded-full bg-emerald-500"></span> UPI
+                                                </span>
+                                                <span class="inline-flex items-center gap-1.5 bg-stone-50 border border-stone-200 rounded-lg px-3 py-1.5 text-xs font-bold text-stone-700">
+                                                    <span class="w-2 h-2 rounded-full bg-blue-500"></span> Cards
+                                                </span>
+                                                <span class="inline-flex items-center gap-1.5 bg-stone-50 border border-stone-200 rounded-lg px-3 py-1.5 text-xs font-bold text-stone-700">
+                                                    <span class="w-2 h-2 rounded-full bg-purple-500"></span> Netbanking
+                                                </span>
+                                            </div>
+                                            <p class="text-xs text-stone-500 leading-relaxed">
+                                                After you place the order, you'll be taken to our secure payment page to complete payment. You'll be brought right back here once it's done.
+                                            </p>
                                         </div>
-
-                                        <p class="text-xs text-stone-500 leading-relaxed">
-                                            After you place the order, you'll be taken to our secure payment page to complete payment. You'll be brought right back here once it's done.
-                                        </p>
                                     </div>
-                                </div>
+                                </label>
                             @else
-                                {{-- Method tiles --}}
-                                <div class="grid sm:grid-cols-2 gap-3">
-                                    <div class="text-left p-4 rounded-2xl border-2 border-amber-500 bg-amber-50 shadow-sm">
-                                        <p class="font-extrabold text-sm text-stone-800">GPay Number</p>
-                                        <p class="text-xs text-stone-400 mt-0.5">Pay via GPay, PhonePe, or any UPI app</p>
-                                    </div>
+                                <label class="flex items-start gap-3 p-5 bg-amber-50/50">
+                                    <input type="radio" name="payment_method" checked disabled class="mt-1 w-4 h-4 accent-amber-600 flex-shrink-0">
+                                    <div class="flex-1 min-w-0">
+                                        <p class="font-extrabold text-sm text-stone-800">UPI — GPay, PhonePe or any UPI app</p>
+                                        <p class="text-xs text-stone-400 mt-0.5">Pay directly to our verified UPI number</p>
 
-                                    <div class="text-left p-4 rounded-2xl border-2 border-stone-100 bg-stone-50 opacity-60 cursor-not-allowed">
-                                        <p class="font-extrabold text-sm text-stone-500">Card Payment</p>
+                                        <div class="mt-4 bg-white border border-amber-200 rounded-2xl p-4">
+                                            <div class="flex items-center justify-between mb-3">
+                                                <span class="text-xs font-extrabold text-stone-500 uppercase tracking-wide">Amount to pay</span>
+                                                <span class="text-xl font-extrabold text-amber-600">₹{{ number_format($total, 2) }}</span>
+                                            </div>
+
+                                            {{-- App badges (all pay the same UPI number below — no single app required) --}}
+                                            <div class="flex items-center gap-2 mb-4 flex-wrap">
+                                                <span class="inline-flex items-center gap-1.5 bg-stone-50 border border-stone-200 rounded-lg px-3 py-1.5 text-xs font-bold text-stone-700">
+                                                    <span class="w-2 h-2 rounded-full bg-blue-500"></span> GPay
+                                                </span>
+                                                <span class="inline-flex items-center gap-1.5 bg-stone-50 border border-stone-200 rounded-lg px-3 py-1.5 text-xs font-bold text-stone-700">
+                                                    <span class="w-2 h-2 rounded-full bg-purple-500"></span> PhonePe
+                                                </span>
+                                                <span class="inline-flex items-center gap-1.5 bg-stone-50 border border-stone-200 rounded-lg px-3 py-1.5 text-xs font-bold text-stone-700">
+                                                    <span class="w-2 h-2 rounded-full bg-emerald-500"></span> UPI
+                                                </span>
+                                            </div>
+
+                                            <p class="text-xs text-stone-500 mb-1.5">Send payment to our UPI number:</p>
+                                            <div x-data="{ copied: false }" class="flex items-center gap-2 flex-wrap">
+                                                <button type="button"
+                                                        @click="navigator.clipboard.writeText('8667696278'); copied = true; setTimeout(() => copied = false, 2000)"
+                                                        class="group inline-flex items-center gap-2 font-mono font-bold text-lg text-stone-800 bg-stone-50 rounded-xl px-4 py-2.5 border-2 border-amber-200 hover:border-amber-400 transition-colors">
+                                                    <span>86676 96278</span>
+                                                    <svg x-show="!copied" class="w-4 h-4 text-stone-400 group-hover:text-amber-600 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+                                                    </svg>
+                                                    <svg x-show="copied" x-cloak class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
+                                                    </svg>
+                                                </button>
+                                                <span x-show="copied" x-cloak x-transition class="text-xs font-bold text-emerald-600">Copied!</span>
+                                            </div>
+                                            <p class="text-xs text-stone-500 mt-2">Payee: Rajalakshmi Senthilkumar</p>
+                                        </div>
+                                    </div>
+                                </label>
+
+                                <label class="flex items-start gap-3 p-5 opacity-60 cursor-not-allowed">
+                                    <input type="radio" name="payment_method" disabled class="mt-1 w-4 h-4 flex-shrink-0">
+                                    <div class="flex-1 min-w-0">
+                                        <p class="font-extrabold text-sm text-stone-500">Credit / Debit Card</p>
                                         <p class="text-xs text-stone-400 mt-0.5">Coming soon</p>
                                     </div>
-                                </div>
-
-                                <div class="flex flex-col sm:flex-row items-center gap-5 bg-amber-50 rounded-2xl p-5">
-                                    <div class="text-center sm:text-left flex-1 w-full">
-                                        <p class="text-xs font-extrabold text-stone-500 uppercase tracking-wide mb-1">Pay via any UPI app</p>
-                                        <p class="text-2xl font-extrabold text-amber-600 mb-3">₹{{ number_format($total, 2) }}</p>
-
-                                        {{-- App badges (all pay the same GPay number below — no single app required) --}}
-                                        <div class="flex items-center justify-center sm:justify-start gap-2 mb-3">
-                                            <span class="inline-flex items-center gap-1.5 bg-white border border-stone-200 rounded-lg px-3 py-1.5 text-xs font-bold text-stone-700">
-                                                <span class="w-2 h-2 rounded-full bg-blue-500"></span> GPay
-                                            </span>
-                                            <span class="inline-flex items-center gap-1.5 bg-white border border-stone-200 rounded-lg px-3 py-1.5 text-xs font-bold text-stone-700">
-                                                <span class="w-2 h-2 rounded-full bg-purple-500"></span> PhonePe
-                                            </span>
-                                            <span class="inline-flex items-center gap-1.5 bg-white border border-stone-200 rounded-lg px-3 py-1.5 text-xs font-bold text-stone-700">
-                                                <span class="w-2 h-2 rounded-full bg-emerald-500"></span> UPI
-                                            </span>
-                                        </div>
-
-                                        <p class="text-xs text-stone-500 mb-1.5">Send payment to our GPay number:</p>
-                                        <div x-data="{ copied: false }" class="inline-flex items-center gap-2">
-                                            <button type="button"
-                                                    @click="navigator.clipboard.writeText('8667696278'); copied = true; setTimeout(() => copied = false, 2000)"
-                                                    class="group inline-flex items-center gap-2 font-mono font-bold text-lg text-stone-800 bg-white rounded-xl px-4 py-2.5 border-2 border-amber-200 hover:border-amber-400 transition-colors">
-                                                <span>86676 96278</span>
-                                                <svg x-show="!copied" class="w-4 h-4 text-stone-400 group-hover:text-amber-600 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
-                                                </svg>
-                                                <svg x-show="copied" x-cloak class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
-                                                </svg>
-                                            </button>
-                                            <span x-show="copied" x-cloak x-transition class="text-xs font-bold text-emerald-600">Copied!</span>
-                                        </div>
-                                        <p class="text-xs text-stone-500 mt-2">Rajalakshmi Senthilkumar</p>
-                                    </div>
-                                </div>
+                                </label>
                             @endif
                         </div>
                     </div>
@@ -457,9 +471,10 @@
                             🔒 Secure checkout · By ordering you agree to our <a href="#" class="underline">terms</a>
                         @endif
                     </p>
-                </form>
+                </div>
 
             </div>
+            </form>
         @endif
     @endif
 </div>

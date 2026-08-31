@@ -8,6 +8,7 @@ use Filament\Actions;
 use Filament\Forms;
 use Filament\Resources\Resource;
 use Filament\Schemas\Components\Section as SchemaSection;
+use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
 use Filament\Tables;
 use Filament\Tables\Table;
@@ -28,7 +29,7 @@ class CategoryResource extends Resource
                     ->required()
                     ->maxLength(100)
                     ->live(onBlur: true)
-                    ->afterStateUpdated(fn ($state, Forms\Set $set) =>
+                    ->afterStateUpdated(fn ($state, Set $set) =>
                         $set('slug', Str::slug($state))),
 
                 Forms\Components\TextInput::make('slug')

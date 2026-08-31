@@ -16,6 +16,7 @@ use Filament\Infolists\Components\TextEntry;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Schemas\Components\Section as SchemaSection;
+use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
 use Filament\Tables;
 use Filament\Tables\Table;
@@ -161,7 +162,7 @@ class CampaignResource extends Resource
         return Action::make('aiDraftMessage')
             ->label('✨ AI Draft')
             ->icon('heroicon-o-sparkles')
-            ->action(function (Forms\Set $set) {
+            ->action(function (Set $set) {
                 $settings = BotSetting::current();
                 $ai       = new AiProviderService($settings);
 
