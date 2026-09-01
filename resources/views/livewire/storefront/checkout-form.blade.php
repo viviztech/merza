@@ -335,30 +335,46 @@
                             <h2 class="font-extrabold text-stone-800">Payment Method</h2>
                         </div>
 
-                        {{-- Amazon-style selectable payment list: each method is a radio row; the
-                             available method is pre-selected and expands inline to show its details. --}}
-                        <div class="divide-y divide-stone-100">
+                        {{-- Premium selectable payment cards: each method is a radio row rendered as
+                             an elevated card; the available method is pre-selected and expands inline
+                             to show its details. --}}
+                        <div class="p-4 space-y-3">
                             @if($this->gatewayActive())
                                 {{-- Hosted gateway checkout — customer picks their method on SabPaisa's page --}}
-                                <label class="flex items-start gap-3 p-5 bg-amber-50/50">
-                                    <input type="radio" checked disabled class="mt-1 w-4 h-4 accent-amber-600 flex-shrink-0">
+                                <label class="relative flex items-start gap-4 p-4 sm:p-5 rounded-2xl border-2 border-amber-400 bg-gradient-to-br from-amber-50 to-orange-50/60 shadow-sm">
+                                    <input type="radio" checked disabled class="sr-only">
+                                    <div class="flex items-center justify-center w-11 h-11 rounded-xl bg-amber-500 text-white flex-shrink-0 shadow-sm shadow-amber-500/30">
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+                                        </svg>
+                                    </div>
                                     <div class="flex-1 min-w-0">
-                                        <p class="font-extrabold text-sm text-stone-800">Pay Online — UPI, Cards &amp; Netbanking</p>
-                                        <p class="text-xs text-stone-400 mt-0.5">Secure hosted checkout</p>
+                                        <div class="flex items-start justify-between gap-2">
+                                            <div>
+                                                <p class="font-extrabold text-sm text-stone-800">Pay Online — UPI, Cards &amp; Netbanking</p>
+                                                <p class="text-xs text-stone-500 mt-0.5">Secure hosted checkout</p>
+                                            </div>
+                                            <span class="inline-flex items-center gap-1 text-[10px] font-extrabold text-white bg-amber-500 rounded-full px-2.5 py-1 flex-shrink-0 shadow-sm">
+                                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="3">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+                                                </svg>
+                                                SELECTED
+                                            </span>
+                                        </div>
 
-                                        <div class="mt-4 bg-white border border-amber-200 rounded-2xl p-4">
+                                        <div class="mt-4 bg-white/90 border border-amber-200 rounded-2xl p-4">
                                             <div class="flex items-center justify-between mb-3">
                                                 <span class="text-xs font-extrabold text-stone-500 uppercase tracking-wide">Amount to pay</span>
                                                 <span class="text-xl font-extrabold text-amber-600">₹{{ number_format($total, 2) }}</span>
                                             </div>
                                             <div class="flex items-center gap-2 mb-3 flex-wrap">
-                                                <span class="inline-flex items-center gap-1.5 bg-stone-50 border border-stone-200 rounded-lg px-3 py-1.5 text-xs font-bold text-stone-700">
+                                                <span class="inline-flex items-center gap-1.5 bg-stone-50 border border-stone-200 rounded-lg px-3 py-1.5 text-xs font-bold text-stone-700 shadow-sm">
                                                     <span class="w-2 h-2 rounded-full bg-emerald-500"></span> UPI
                                                 </span>
-                                                <span class="inline-flex items-center gap-1.5 bg-stone-50 border border-stone-200 rounded-lg px-3 py-1.5 text-xs font-bold text-stone-700">
+                                                <span class="inline-flex items-center gap-1.5 bg-stone-50 border border-stone-200 rounded-lg px-3 py-1.5 text-xs font-bold text-stone-700 shadow-sm">
                                                     <span class="w-2 h-2 rounded-full bg-blue-500"></span> Cards
                                                 </span>
-                                                <span class="inline-flex items-center gap-1.5 bg-stone-50 border border-stone-200 rounded-lg px-3 py-1.5 text-xs font-bold text-stone-700">
+                                                <span class="inline-flex items-center gap-1.5 bg-stone-50 border border-stone-200 rounded-lg px-3 py-1.5 text-xs font-bold text-stone-700 shadow-sm">
                                                     <span class="w-2 h-2 rounded-full bg-purple-500"></span> Netbanking
                                                 </span>
                                             </div>
@@ -369,13 +385,28 @@
                                     </div>
                                 </label>
                             @else
-                                <label class="flex items-start gap-3 p-5 bg-amber-50/50">
-                                    <input type="radio" name="payment_method" checked disabled class="mt-1 w-4 h-4 accent-amber-600 flex-shrink-0">
+                                <label class="relative flex items-start gap-4 p-4 sm:p-5 rounded-2xl border-2 border-amber-400 bg-gradient-to-br from-amber-50 to-orange-50/60 shadow-sm">
+                                    <input type="radio" name="payment_method" checked disabled class="sr-only">
+                                    <div class="flex items-center justify-center w-11 h-11 rounded-xl bg-amber-500 text-white flex-shrink-0 shadow-sm shadow-amber-500/30">
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a4 4 0 00-8 0v2M5 9h14l-1 11a2 2 0 01-2 2H8a2 2 0 01-2-2L5 9z"/>
+                                        </svg>
+                                    </div>
                                     <div class="flex-1 min-w-0">
-                                        <p class="font-extrabold text-sm text-stone-800">UPI — GPay, PhonePe or any UPI app</p>
-                                        <p class="text-xs text-stone-400 mt-0.5">Pay directly to our verified UPI number</p>
+                                        <div class="flex items-start justify-between gap-2">
+                                            <div>
+                                                <p class="font-extrabold text-sm text-stone-800">UPI — GPay, PhonePe or any UPI app</p>
+                                                <p class="text-xs text-stone-500 mt-0.5">Pay directly to our verified UPI number</p>
+                                            </div>
+                                            <span class="inline-flex items-center gap-1 text-[10px] font-extrabold text-white bg-amber-500 rounded-full px-2.5 py-1 flex-shrink-0 shadow-sm">
+                                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="3">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+                                                </svg>
+                                                SELECTED
+                                            </span>
+                                        </div>
 
-                                        <div class="mt-4 bg-white border border-amber-200 rounded-2xl p-4">
+                                        <div class="mt-4 bg-white/90 border border-amber-200 rounded-2xl p-4">
                                             <div class="flex items-center justify-between mb-3">
                                                 <span class="text-xs font-extrabold text-stone-500 uppercase tracking-wide">Amount to pay</span>
                                                 <span class="text-xl font-extrabold text-amber-600">₹{{ number_format($total, 2) }}</span>
@@ -383,13 +414,13 @@
 
                                             {{-- App badges (all pay the same UPI number below — no single app required) --}}
                                             <div class="flex items-center gap-2 mb-4 flex-wrap">
-                                                <span class="inline-flex items-center gap-1.5 bg-stone-50 border border-stone-200 rounded-lg px-3 py-1.5 text-xs font-bold text-stone-700">
+                                                <span class="inline-flex items-center gap-1.5 bg-stone-50 border border-stone-200 rounded-lg px-3 py-1.5 text-xs font-bold text-stone-700 shadow-sm">
                                                     <span class="w-2 h-2 rounded-full bg-blue-500"></span> GPay
                                                 </span>
-                                                <span class="inline-flex items-center gap-1.5 bg-stone-50 border border-stone-200 rounded-lg px-3 py-1.5 text-xs font-bold text-stone-700">
+                                                <span class="inline-flex items-center gap-1.5 bg-stone-50 border border-stone-200 rounded-lg px-3 py-1.5 text-xs font-bold text-stone-700 shadow-sm">
                                                     <span class="w-2 h-2 rounded-full bg-purple-500"></span> PhonePe
                                                 </span>
-                                                <span class="inline-flex items-center gap-1.5 bg-stone-50 border border-stone-200 rounded-lg px-3 py-1.5 text-xs font-bold text-stone-700">
+                                                <span class="inline-flex items-center gap-1.5 bg-stone-50 border border-stone-200 rounded-lg px-3 py-1.5 text-xs font-bold text-stone-700 shadow-sm">
                                                     <span class="w-2 h-2 rounded-full bg-emerald-500"></span> UPI
                                                 </span>
                                             </div>
@@ -414,11 +445,19 @@
                                     </div>
                                 </label>
 
-                                <label class="flex items-start gap-3 p-5 opacity-60 cursor-not-allowed">
-                                    <input type="radio" name="payment_method" disabled class="mt-1 w-4 h-4 flex-shrink-0">
-                                    <div class="flex-1 min-w-0">
-                                        <p class="font-extrabold text-sm text-stone-500">Credit / Debit Card</p>
-                                        <p class="text-xs text-stone-400 mt-0.5">Coming soon</p>
+                                <label class="flex items-start gap-4 p-4 sm:p-5 rounded-2xl border-2 border-dashed border-stone-200 bg-stone-50/60 opacity-70 cursor-not-allowed">
+                                    <input type="radio" name="payment_method" disabled class="sr-only">
+                                    <div class="flex items-center justify-center w-11 h-11 rounded-xl bg-stone-200 text-stone-400 flex-shrink-0">
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-9 4h16a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+                                        </svg>
+                                    </div>
+                                    <div class="flex-1 min-w-0 flex items-center justify-between gap-2">
+                                        <div>
+                                            <p class="font-extrabold text-sm text-stone-500">Credit / Debit Card</p>
+                                            <p class="text-xs text-stone-400 mt-0.5">Not available yet</p>
+                                        </div>
+                                        <span class="text-[10px] font-extrabold text-stone-400 bg-stone-200 rounded-full px-2.5 py-1 flex-shrink-0">SOON</span>
                                     </div>
                                 </label>
                             @endif
