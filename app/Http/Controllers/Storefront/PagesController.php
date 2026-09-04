@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Storefront;
 
 use App\Http\Controllers\Controller;
+use App\Support\FaqData;
+use App\Support\Seo;
 use Illuminate\View\View;
 
 class PagesController extends Controller
@@ -37,8 +39,10 @@ class PagesController extends Controller
         return view('storefront.pages.terms');
     }
 
-    public function faq(): View
+    public function faq(Seo $seo): View
     {
+        $seo->schema(FaqData::schema());
+
         return view('storefront.pages.faq');
     }
 

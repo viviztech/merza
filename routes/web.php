@@ -6,6 +6,7 @@ use App\Http\Controllers\Storefront\AuthController;
 use App\Http\Controllers\Storefront\HomeController;
 use App\Http\Controllers\Storefront\PagesController;
 use App\Http\Controllers\Storefront\PaymentReturnController;
+use App\Http\Controllers\Storefront\SeoController;
 use App\Http\Controllers\Webhook\MetaWebhookController;
 use App\Http\Controllers\Webhook\SabPaisaWebhookController;
 use App\Livewire\Storefront\CartPanel;
@@ -23,12 +24,15 @@ use Illuminate\Support\Facades\Route;
 
 Route::get('/', [HomeController::class, 'index'])->name('home');
 
+Route::get('/sitemap.xml', [SeoController::class, 'sitemap'])->name('sitemap');
+Route::get('/llms.txt', [SeoController::class, 'llmsTxt'])->name('llms-txt');
+
 Route::get('/products', ProductCatalogue::class)->name('products.index');
 Route::get('/products/{slug}', ProductDetail::class)->name('products.show');
 
-Route::get('/cart', CartPanel::class)->name('cart.index');
+Route::get('/cart', CartPanel::class)->name('cart.index')->middleware('noindex');
 Route::get('/cart/count', fn () => response()->json(['count' => session('cart_count', 0)]))->name('cart.count');
-Route::get('/checkout', CheckoutForm::class)->name('checkout.index');
+Route::get('/checkout', CheckoutForm::class)->name('checkout.index')->middleware('noindex');
 
 Route::get('/track', TrackOrder::class)->name('track.index');
 
@@ -49,9 +53,9 @@ Route::get('/contact',   [PagesController::class, 'contact'])   ->name('contact'
 */
 
 // Named 'login' so Laravel's auth middleware redirects here for unauthenticated users
-Route::get('/login',    [AuthController::class, 'showLogin'])    ->name('login');
+Route::get('/login',    [AuthController::class, 'showLogin'])    ->name('login')->middleware('noindex');
 Route::post('/login',   [AuthController::class, 'login'])        ->middleware('guest');
-Route::get('/register', [AuthController::class, 'showRegister'])->name('customer.register')->middleware('guest');
+Route::get('/register', [AuthController::class, 'showRegister'])->name('customer.register')->middleware(['guest', 'noindex']);
 Route::post('/logout',  [AuthController::class, 'logout'])      ->name('customer.logout')->middleware('auth');
 
 /*
@@ -60,7 +64,7 @@ Route::post('/logout',  [AuthController::class, 'logout'])      ->name('customer
 |--------------------------------------------------------------------------
 */
 
-Route::middleware('auth')->prefix('account')->name('account.')->group(function () {
+Route::middleware(['auth', 'noindex'])->prefix('account')->name('account.')->group(function () {
     Route::get('/',               [AccountController::class, 'dashboard'])    ->name('dashboard');
     Route::get('/orders',         [AccountController::class, 'orders'])       ->name('orders');
     Route::get('/orders/{order}', [AccountController::class, 'orderDetail'])  ->name('order.detail');
@@ -93,8 +97,8 @@ Route::middleware('signed')->get('/orders/{order}/invoice', [OrderPdfController:
 | SabPaisa Payment Gateway Routes
 |--------------------------------------------------------------------------
 */
-Route::get('/payment/return', [PaymentReturnController::class, 'handleReturn'])->name('payment.return');
-Route::middleware('signed')->get('/checkout/confirmation/{order}', [PaymentReturnController::class, 'confirmation'])->name('checkout.confirmation');
+Route::get('/payment/return', [PaymentReturnController::class, 'handleReturn'])->name('payment.return')->middleware('noindex');
+Route::middleware(['signed', 'noindex'])->get('/checkout/confirmation/{order}', [PaymentReturnController::class, 'confirmation'])->name('checkout.confirmation');
 
 /*
 |--------------------------------------------------------------------------

@@ -1,2 +1,42 @@
 User-agent: *
-Disallow:
+Disallow: /cart
+Disallow: /checkout
+Disallow: /account/
+Disallow: /login
+Disallow: /register
+Disallow: /payment/
+Allow: /
+
+# AI / answer-engine crawlers — explicitly allowed so Merza can be
+# cited by AI Overviews, ChatGPT, Perplexity, Claude, and Copilot.
+User-agent: GPTBot
+Allow: /
+
+User-agent: ChatGPT-User
+Allow: /
+
+User-agent: OAI-SearchBot
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: anthropic-ai
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: Perplexity-User
+Allow: /
+
+User-agent: Google-Extended
+Allow: /
+
+User-agent: Applebot-Extended
+Allow: /
+
+User-agent: Bytespider
+Allow: /
+
+Sitemap: https://merzabodi.com/sitemap.xml

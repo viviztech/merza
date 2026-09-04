@@ -12,6 +12,9 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->trustProxies(at: '*');
+        $middleware->alias([
+            'noindex' => \App\Http\Middleware\NoindexPage::class,
+        ]);
         $middleware->validateCsrfTokens(except: [
             'webhook/*',
         ]);

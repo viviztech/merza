@@ -1,3 +1,73 @@
+@php
+    $seo = app(\App\Support\Seo::class);
+
+    $pageTitle       = isset($title) ? $title . ' | Merza' : 'Merza — Premium Tropical Fruits';
+    $defaultDesc     = 'Merza — Premium Tropical Fruits delivered fresh to your door. Mangoes, Jackfruit, Banana & more.';
+    $metaDescription = $seo->description ?? ($description ?? $defaultDesc);
+    $metaRobots      = $robots ?? $seo->robots;
+    $canonicalUrl    = url()->current();
+    $ogImageUrl      = $seo->ogImage ?? asset('images/icon-512.png');
+
+    $businessRating = \Illuminate\Support\Facades\Cache::remember('seo:business-rating', 3600, function () {
+        $count = \App\Models\Testimonial::where('is_active', true)->count();
+        if ($count === 0) {
+            return null;
+        }
+        return [
+            'count' => $count,
+            'avg'   => round(\App\Models\Testimonial::where('is_active', true)->avg('rating'), 1),
+        ];
+    });
+
+    $organizationSchema = [
+        '@context'    => 'https://schema.org',
+        '@type'       => 'LocalBusiness',
+        'name'        => 'Merza Natural Squash',
+        'alternateName' => 'Merza',
+        'url'         => route('home'),
+        'logo'        => asset('images/logo.png'),
+        'image'       => asset('images/icon-512.png'),
+        'telephone'   => '+919360064278',
+        'email'       => 'merzabodinayakanur@gmail.com',
+        'priceRange'  => '₹₹',
+        'address'     => [
+            '@type'           => 'PostalAddress',
+            'streetAddress'   => 'HP Petrol Bunk, Pankajam School Opposite, Thevaram Road',
+            'addressLocality' => 'Bodinayakanur',
+            'addressRegion'   => 'Tamil Nadu',
+            'postalCode'      => '625513',
+            'addressCountry'  => 'IN',
+        ],
+        'openingHoursSpecification' => [
+            '@type'     => 'OpeningHoursSpecification',
+            'dayOfWeek' => ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
+            'opens'     => '09:00',
+            'closes'    => '18:00',
+        ],
+        ...($businessRating ? [
+            'aggregateRating' => [
+                '@type'       => 'AggregateRating',
+                'ratingValue' => $businessRating['avg'],
+                'reviewCount' => $businessRating['count'],
+            ],
+        ] : []),
+    ];
+
+    $websiteSchema = [
+        '@context'        => 'https://schema.org',
+        '@type'           => 'WebSite',
+        'name'            => 'Merza',
+        'url'             => route('home'),
+        'potentialAction' => [
+            '@type'       => 'SearchAction',
+            'target'      => [
+                '@type'       => 'EntryPoint',
+                'urlTemplate' => route('products.index') . '?q={search_term_string}',
+            ],
+            'query-input' => 'required name=search_term_string',
+        ],
+    ];
+@endphp
 <!DOCTYPE html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}" class="scroll-smooth">
 <head>
@@ -12,9 +82,11 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <meta name="description" content="{{ $description ?? 'Merza — Premium Tropical Fruits delivered fresh to your door. Mangoes, Jackfruit, Banana & more.' }}">
+    <meta name="robots" content="{{ $metaRobots }}">
+    <meta name="description" content="{{ $metaDescription }}">
+    <link rel="canonical" href="{{ $canonicalUrl }}">
 
-    <title>{{ isset($title) ? $title . ' | Merza' : 'Merza — Premium Tropical Fruits' }}</title>
+    <title>{{ $pageTitle }}</title>
 
     <!-- Favicon -->
     <link rel="icon" type="image/x-icon" href="/favicon.ico">
@@ -50,15 +122,31 @@
     <meta name="msapplication-square310x310logo" content="/images/icon-310.png">
 
     <!-- Open Graph -->
-    <meta property="og:title" content="{{ isset($title) ? $title . ' | Merza' : 'Merza — Premium Tropical Fruits' }}">
-    <meta property="og:description" content="{{ $description ?? 'Merza — Premium Tropical Fruits delivered fresh to your door. Mangoes, Jackfruit, Banana & more.' }}">
-    <meta property="og:image" content="/images/icon-512.png">
-    <meta property="og:type" content="website">
+    <meta property="og:title" content="{{ $pageTitle }}">
+    <meta property="og:description" content="{{ $metaDescription }}">
+    <meta property="og:image" content="{{ $ogImageUrl }}">
+    <meta property="og:url" content="{{ $canonicalUrl }}">
+    <meta property="og:site_name" content="Merza">
+    <meta property="og:locale" content="en_IN">
+    <meta property="og:type" content="{{ $seo->ogType }}">
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="{{ $pageTitle }}">
+    <meta name="twitter:description" content="{{ $metaDescription }}">
+    <meta name="twitter:image" content="{{ $ogImageUrl }}">
 
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <!-- Structured data (schema.org) -->
+    <x-json-ld :data="$organizationSchema" />
+    <x-json-ld :data="$websiteSchema" />
+    @foreach($seo->schemas as $pageSchema)
+        <x-json-ld :data="$pageSchema" />
+    @endforeach
 
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     @livewireStyles
