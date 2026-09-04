@@ -26,7 +26,7 @@
 
                 <div>
                     <label class="block text-xs font-extrabold text-stone-600 mb-1.5 uppercase tracking-wide">Phone Number *</label>
-                    <input wire:model="phone" type="tel" placeholder="93600 64278"
+                    <input wire:model="phone" type="tel" placeholder="86676 96278"
                            class="w-full border-2 {{ $errors->has('phone') ? 'border-red-300 bg-red-50' : 'border-stone-200 focus:border-amber-400' }} rounded-xl px-4 py-2.5 text-sm focus:outline-none transition-colors bg-white placeholder-stone-300">
                     @error('phone') <p class="text-red-500 text-xs mt-1 font-medium">{{ $message }}</p> @enderror
                 </div>

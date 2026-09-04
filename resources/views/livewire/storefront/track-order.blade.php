@@ -37,7 +37,7 @@
                 <p class="text-sm font-bold text-stone-800">Need help with this order?</p>
                 <p class="text-xs text-stone-500 mt-0.5">We're available on WhatsApp</p>
             </div>
-            <a href="https://wa.me/919360064278?text=Hi%2C+I+need+help+with+order+{{ $order->order_number }}"
+            <a href="https://wa.me/918667696278?text=Hi%2C+I+need+help+with+order+{{ $order->order_number }}"
                target="_blank"
                class="flex items-center gap-2 bg-green-500 hover:bg-green-600 text-white text-sm font-bold px-4 py-2.5 rounded-xl transition-all">
                 Chat with us
@@ -62,7 +62,7 @@
             @if($searched && !$order)
                 <div class="bg-red-50 border border-red-100 rounded-xl p-3 text-sm text-red-600">
                     We couldn't find an order matching that number and phone. Double-check both, or
-                    <a href="https://wa.me/919360064278" target="_blank" class="font-bold underline">message us on WhatsApp</a>.
+                    <a href="https://wa.me/918667696278" target="_blank" class="font-bold underline">message us on WhatsApp</a>.
                 </div>
             @endif
 

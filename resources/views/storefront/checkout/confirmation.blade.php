@@ -46,7 +46,7 @@
                class="inline-flex items-center justify-center gap-2 bg-white border-2 border-amber-200 text-amber-700 font-extrabold px-6 py-4 rounded-2xl hover:bg-amber-50 transition-all">
                 Download Invoice
             </a>
-            <a href="https://wa.me/919360064278?text=Hi%2C+my+order+number+is+{{ $order->order_number }}.+Can+you+confirm+delivery+details%3F"
+            <a href="https://wa.me/918667696278?text=Hi%2C+my+order+number+is+{{ $order->order_number }}.+Can+you+confirm+delivery+details%3F"
                target="_blank"
                class="inline-flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold px-6 py-4 rounded-2xl transition-all shadow-lg">
                 <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">

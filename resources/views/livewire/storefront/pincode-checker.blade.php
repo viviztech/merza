@@ -19,7 +19,7 @@
         @else
             <p class="text-sm text-amber-700 font-semibold mt-3">
                 We don't cover this area yet —
-                <a href="https://wa.me/919360064278?text=Hi%2C+do+you+deliver+to+pincode+{{ $pincode }}%3F" target="_blank" class="underline">ask us on WhatsApp</a>.
+                <a href="https://wa.me/918667696278?text=Hi%2C+do+you+deliver+to+pincode+{{ $pincode }}%3F" target="_blank" class="underline">ask us on WhatsApp</a>.
             </p>
         @endif
     @endif

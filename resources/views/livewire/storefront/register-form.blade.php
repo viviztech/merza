@@ -46,7 +46,7 @@
                             <span class="text-xs font-normal text-stone-400 ml-1">— for OTP verification</span>
                         </label>
                         <input wire:model="phone" type="tel" required
-                               placeholder="+91 93600 64278"
+                               placeholder="+91 86676 96278"
                                class="w-full px-4 py-2.5 rounded-xl border {{ $errors->has('phone') ? 'border-red-300 bg-red-50' : 'border-stone-200 focus:border-amber-400' }} focus:ring-2 focus:ring-amber-100 outline-none text-base transition-all">
                         <p class="text-[11px] text-stone-400 mt-1.5 leading-relaxed">
                             📱 We'll send a 6-digit code to this WhatsApp number to verify your account.

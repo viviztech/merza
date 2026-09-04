@@ -45,7 +45,7 @@ class RegisterForm extends Component
             'password_confirmation' => ['required'],
         ], [
             'phone.unique'  => 'This phone number is already registered. Try logging in.',
-            'phone.regex'   => 'Enter a valid phone number (e.g. +91 93600 64278).',
+            'phone.regex'   => 'Enter a valid phone number (e.g. +91 86676 96278).',
             'email.unique'  => 'This email is already registered. Try logging in.',
         ]);
 
