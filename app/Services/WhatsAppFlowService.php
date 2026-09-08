@@ -284,44 +284,68 @@ class WhatsAppFlowService
 
     private function sendWelcome(Contact $contact, WhatsAppSession $session): void
     {
-        $name     = $this->customerName($contact);
-        $greeting = $name ? "Hello {$name}! 👋" : "Hello! 👋";
-
         $this->updateSession($session, 'menu');
 
-        $this->sendInteractive($contact->phone, [
-            'type' => 'button',
-            'body' => [
-                'text' => "{$greeting} Welcome to *Merza Bodi* 🥭\n\nFresh tropical fruits from the hills of Bodinayakanur, Tamil Nadu.\n\nWhat can we help you with today?",
-            ],
-            'action' => [
-                'buttons' => [
-                    ['type' => 'reply', 'reply' => ['id' => 'order_fruits', 'title' => '🛒 Order Fruits']],
-                    ['type' => 'reply', 'reply' => ['id' => 'my_orders',    'title' => '📦 My Orders']],
-                    ['type' => 'reply', 'reply' => ['id' => 'talk_to_us',   'title' => '💬 Merza Team']],
-                ],
-            ],
-        ], $contact);
+        // Website-redirect placeholder — ad clicks (and any other conversation
+        // start) land here instead of the old in-chat commerce menu. Swap this
+        // copy/link out once final messaging is ready.
+        $this->sendTrackedText(
+            $contact,
+            "Hi! 👋 Welcome to *Merza Bodi* 🥭\n\nTo place your order, please visit our website:\nhttps://merzabodi.com\n\nOur team is here if you need any help — just message us here anytime!"
+        );
+
+        // ─── Previous in-chat welcome menu (commerce flow) ─────────────────────
+        // Commented out, not deleted — re-enable by restoring this block and
+        // reverting the sendTextMessage() call above.
+        //
+        // $name     = $this->customerName($contact);
+        // $greeting = $name ? "Hello {$name}! 👋" : "Hello! 👋";
+        //
+        // $this->sendInteractive($contact->phone, [
+        //     'type' => 'button',
+        //     'body' => [
+        //         'text' => "{$greeting} Welcome to *Merza Bodi* 🥭\n\nFresh tropical fruits from the hills of Bodinayakanur, Tamil Nadu.\n\nWhat can we help you with today?",
+        //     ],
+        //     'action' => [
+        //         'buttons' => [
+        //             ['type' => 'reply', 'reply' => ['id' => 'order_fruits', 'title' => '🛒 Order Fruits']],
+        //             ['type' => 'reply', 'reply' => ['id' => 'my_orders',    'title' => '📦 My Orders']],
+        //             ['type' => 'reply', 'reply' => ['id' => 'talk_to_us',   'title' => '💬 Merza Team']],
+        //         ],
+        //     ],
+        // ], $contact);
     }
 
     // ─── Delivery zone (asked first, so courier charges are known up front) ──
 
     private function startOrdering(Contact $contact, WhatsAppSession $session): void
     {
-        // Legacy fallback (commerce flow disabled) doesn't need a zone up front —
-        // it collects everything as free text and a human/AI handles pricing.
-        if (! $this->settings->wa_commerce_enabled) {
-            $this->sendCategories($contact, $session);
-            return;
-        }
+        // Website-redirect placeholder — every "order" entry point (Order Fruits
+        // button, order-intent phrases, empty-cart/orders-list prompts) lands
+        // here instead of the old in-chat catalog/cart/checkout flow.
+        $this->sendTrackedText(
+            $contact,
+            "To place your order, please visit our website:\nhttps://merzabodi.com 🥭\n\nNeed a hand? Just message us here!"
+        );
 
-        // Zone already picked earlier this session — no need to ask again.
-        if (! empty($session->data['zone']) || ! empty($session->data['zone_manual'])) {
-            $this->sendCategories($contact, $session);
-            return;
-        }
-
-        $this->sendZoneSelection($contact, $session);
+        // ─── Previous in-chat ordering entry (commerce flow) ───────────────────
+        // Commented out, not deleted — re-enable by restoring this block and
+        // reverting the sendTextMessage() call above.
+        //
+        // // Legacy fallback (commerce flow disabled) doesn't need a zone up front —
+        // // it collects everything as free text and a human/AI handles pricing.
+        // if (! $this->settings->wa_commerce_enabled) {
+        //     $this->sendCategories($contact, $session);
+        //     return;
+        // }
+        //
+        // // Zone already picked earlier this session — no need to ask again.
+        // if (! empty($session->data['zone']) || ! empty($session->data['zone_manual'])) {
+        //     $this->sendCategories($contact, $session);
+        //     return;
+        // }
+        //
+        // $this->sendZoneSelection($contact, $session);
     }
 
     private function sendZoneSelection(Contact $contact, WhatsAppSession $session): void
@@ -1159,6 +1183,24 @@ class WhatsAppFlowService
                 'channel'       => 'whatsapp',
                 'direction'     => 'outbound',
                 'message'       => $body,
+                'wa_message_id' => $waId,
+                'is_bot'        => true,
+                'sent_at'       => now(),
+                'status'        => 'sent',
+            ]);
+        }
+    }
+
+    private function sendTrackedText(Contact $contact, string $text): void
+    {
+        $waId = $this->waService->sendTextMessage($contact->phone, $text);
+
+        if ($waId) {
+            Conversation::create([
+                'contact_id'    => $contact->id,
+                'channel'       => 'whatsapp',
+                'direction'     => 'outbound',
+                'message'       => $text,
                 'wa_message_id' => $waId,
                 'is_bot'        => true,
                 'sent_at'       => now(),
