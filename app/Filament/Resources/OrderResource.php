@@ -286,6 +286,15 @@ class OrderResource extends Resource
                     TextEntry::make('quantity')->label('Qty'),
                     TextEntry::make('unit_price')->money('INR')->label('Unit Price'),
                     TextEntry::make('subtotal')->money('INR')->label('Subtotal'),
+                    TextEntry::make('is_preorder')
+                        ->label('Pre-booking')
+                        ->badge()
+                        ->formatStateUsing(fn ($state) => $state ? 'Pre-booked' : 'In Stock')
+                        ->color(fn ($state) => $state ? 'warning' : 'gray'),
+                    TextEntry::make('available_from')
+                        ->label('Available From')
+                        ->date('d M Y')
+                        ->placeholder('—'),
                 ])->columns(6),
             ]),
 
@@ -347,6 +356,17 @@ class OrderResource extends Resource
                     ->counts('items')
                     ->badge()->color('gray'),
 
+                Tables\Columns\IconColumn::make('is_preorder')
+                    ->label('Pre-book')
+                    ->tooltip('Contains pre-booked item(s)')
+                    ->state(fn (Order $r) => $r->items->contains(fn ($item) => $item->is_preorder))
+                    ->boolean()
+                    ->trueIcon('heroicon-o-clock')
+                    ->trueColor('warning')
+                    ->falseIcon('heroicon-o-minus')
+                    ->falseColor('gray')
+                    ->toggleable(),
+
                 Tables\Columns\TextColumn::make('total')
                     ->money('INR')->sortable(),
 
@@ -405,8 +425,13 @@ class OrderResource extends Resource
                 Tables\Columns\TextColumn::make('created_at')
                     ->dateTime('d M Y')->sortable()->label('Date'),
             ])
+            ->modifyQueryUsing(fn ($query) => $query->with('items'))
             ->defaultSort('created_at', 'desc')
             ->filters([
+                Tables\Filters\Filter::make('preorder')
+                    ->label('Pre-booking Orders')
+                    ->query(fn ($query) => $query->whereHas('items', fn ($q) => $q->where('is_preorder', true))),
+
                 Tables\Filters\SelectFilter::make('channel')
                     ->options([
                         'website'  => 'Website',

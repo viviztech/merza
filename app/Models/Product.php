@@ -96,9 +96,16 @@ class Product extends Model implements HasMedia
         return $this->variants()->where('stock_qty', '>', 0)->exists();
     }
 
+    /**
+     * Per-kg pricing is only meaningful for products actually sold in bulk
+     * (multi-kg fruit boxes compared across sizes) — gating on weight_in_kg
+     * >= 1 keeps small snack packs (e.g. a 40g freeze-dried pouch) from
+     * being extrapolated into an alarming "₹9,937.50/kg" headline price.
+     */
     public function getMinPricePerKgAttribute(): ?float
     {
         return $this->activeVariants
+            ->filter(fn (ProductVariant $variant) => $variant->weight_in_kg >= 1)
             ->map(fn (ProductVariant $variant) => $variant->price_per_kg)
             ->filter()
             ->min();

@@ -36,13 +36,18 @@ class ProductVariant extends Model
             : $this->name;
     }
 
-    public function getPricePerKgAttribute(): ?float
+    public function getWeightInKgAttribute(): ?float
     {
         if (! $this->weight_value || ! in_array($this->weight_unit, ['kg', 'g'], true)) {
             return null;
         }
 
-        $weightInKg = $this->weight_unit === 'g' ? $this->weight_value / 1000 : (float) $this->weight_value;
+        return $this->weight_unit === 'g' ? (float) $this->weight_value / 1000 : (float) $this->weight_value;
+    }
+
+    public function getPricePerKgAttribute(): ?float
+    {
+        $weightInKg = $this->weight_in_kg;
 
         return $weightInKg > 0 ? (float) $this->price / $weightInKg : null;
     }
