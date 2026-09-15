@@ -3,12 +3,15 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\ContactResource\Pages;
+use App\Filament\Exports\ContactExporter;
 use App\Filament\Filters\CreatedAtRangeFilter;
 use App\Filament\Pages\QuickOrder;
 use App\Models\Contact;
 use App\Models\User;
 use Filament\Actions;
 use Filament\Actions\Action;
+use Filament\Actions\ExportAction;
+use Filament\Actions\ExportBulkAction;
 use Filament\Forms;
 use Filament\Infolists;
 use Filament\Notifications\Notification;
@@ -42,15 +45,14 @@ class ContactResource extends Resource
                         ->email()->unique(ignoreRecord: true)->nullable(),
 
                     Forms\Components\Select::make('source')
-                        ->options([
-                            'meta_ads'  => 'Meta Ads',
-                            'whatsapp'  => 'WhatsApp',
-                            'referral'  => 'Referral',
-                            'walk_in'   => 'Walk-in',
-                            'website'   => 'Website',
-                            'other'     => 'Other',
-                        ])
+                        ->options(Contact::SOURCE_LABELS)
                         ->default('other'),
+
+                    Forms\Components\Select::make('customer_category')
+                        ->label('Customer Category')
+                        ->options(Contact::CATEGORY_LABELS)
+                        ->default('new_lead')
+                        ->required(),
 
                     Forms\Components\TextInput::make('city')->nullable(),
                     Forms\Components\TextInput::make('state')->nullable(),
@@ -102,7 +104,13 @@ class ContactResource extends Resource
                                 ->url(fn (Contact $r) => $r->call_url)
                         ),
                     Infolists\Components\TextEntry::make('email')->icon('heroicon-m-envelope'),
-                    Infolists\Components\TextEntry::make('source')->badge(),
+                    Infolists\Components\TextEntry::make('source')
+                        ->badge()
+                        ->formatStateUsing(fn (?string $state) => $state ? Contact::SOURCE_LABELS[$state] ?? $state : null),
+                    Infolists\Components\TextEntry::make('customer_category')
+                        ->label('Customer Category')
+                        ->badge()
+                        ->formatStateUsing(fn (?string $state) => $state ? Contact::CATEGORY_LABELS[$state] ?? $state : null),
                     Infolists\Components\TextEntry::make('city'),
                     Infolists\Components\TextEntry::make('state'),
                     Infolists\Components\TextEntry::make('tags')
@@ -173,12 +181,26 @@ class ContactResource extends Resource
 
                 Tables\Columns\TextColumn::make('source')
                     ->badge()
+                    ->formatStateUsing(fn (?string $state) => $state ? Contact::SOURCE_LABELS[$state] ?? $state : null)
                     ->color(fn ($state) => match ($state) {
-                        'meta_ads' => 'warning',
-                        'whatsapp' => 'success',
-                        'referral' => 'info',
-                        default    => 'gray',
+                        'meta_ads', 'instagram', 'facebook' => 'warning',
+                        'whatsapp'          => 'success',
+                        'referral'          => 'info',
+                        'old_excel_import'  => 'gray',
+                        default             => 'gray',
                     }),
+
+                Tables\Columns\TextColumn::make('customer_category')
+                    ->label('Category')
+                    ->badge()
+                    ->formatStateUsing(fn (?string $state) => $state ? Contact::CATEGORY_LABELS[$state] ?? $state : null)
+                    ->color(fn ($state) => match ($state) {
+                        'purchased_customer' => 'success',
+                        'repeat_customer'    => 'info',
+                        'enquiry_only'       => 'warning',
+                        default              => 'gray',
+                    })
+                    ->sortable(),
 
                 Tables\Columns\TextColumn::make('city')
                     ->searchable()->toggleable(),
@@ -204,14 +226,17 @@ class ContactResource extends Resource
                     ->toggleable(),
             ])
             ->defaultSort('created_at', 'desc')
+            ->headerActions([
+                ExportAction::make()
+                    ->exporter(ContactExporter::class),
+            ])
             ->filters([
                 CreatedAtRangeFilter::make(),
                 Tables\Filters\SelectFilter::make('source')
-                    ->options([
-                        'meta_ads' => 'Meta Ads', 'whatsapp' => 'WhatsApp',
-                        'referral' => 'Referral', 'walk_in' => 'Walk-in',
-                        'website' => 'Website', 'other' => 'Other',
-                    ]),
+                    ->options(Contact::SOURCE_LABELS),
+                Tables\Filters\SelectFilter::make('customer_category')
+                    ->label('Category')
+                    ->options(Contact::CATEGORY_LABELS),
                 Tables\Filters\TernaryFilter::make('is_customer')->label('Customer'),
                 Tables\Filters\TernaryFilter::make('is_blocked')->label('Blocked'),
                 Tables\Filters\SelectFilter::make('assigned_to')
@@ -273,6 +298,45 @@ class ContactResource extends Resource
                         ])
                         ->action(fn ($records, array $data) =>
                             $records->each->update(['assigned_to' => $data['assigned_to']])),
+                    Actions\BulkAction::make('updateCategoryAndSource')
+                        ->label('Update Category / Source…')
+                        ->icon('heroicon-o-tag')
+                        ->form([
+                            Forms\Components\Select::make('customer_category')
+                                ->label('Customer Category')
+                                ->options(Contact::CATEGORY_LABELS)
+                                ->helperText('Leave blank to keep each contact\'s current category.'),
+                            Forms\Components\Select::make('source')
+                                ->label('Source')
+                                ->options(Contact::SOURCE_LABELS)
+                                ->helperText('Leave blank to keep each contact\'s current source.'),
+                            Forms\Components\Toggle::make('mark_as_customer')
+                                ->label('Also mark as customer'),
+                        ])
+                        ->action(function ($records, array $data) {
+                            $update = array_filter([
+                                'customer_category' => $data['customer_category'] ?? null,
+                                'source'             => $data['source'] ?? null,
+                            ]);
+
+                            if (! empty($data['mark_as_customer'])) {
+                                $update['is_customer'] = true;
+                            }
+
+                            if (empty($update)) {
+                                return;
+                            }
+
+                            $records->each->update($update);
+
+                            Notification::make()
+                                ->title(count($records) . ' contact(s) updated')
+                                ->success()
+                                ->send();
+                        })
+                        ->deselectRecordsAfterCompletion(),
+                    ExportBulkAction::make()
+                        ->exporter(ContactExporter::class),
                 ]),
             ]);
     }

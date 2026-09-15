@@ -33,7 +33,7 @@ class ContactsBySourceWidget extends ChartWidget
                     'hoverOffset'     => 6,
                 ],
             ],
-            'labels' => $rows->pluck('source')->map(fn ($s) => ucfirst($s))->toArray(),
+            'labels' => $rows->pluck('source')->map(fn ($s) => Contact::SOURCE_LABELS[$s] ?? ucfirst($s))->toArray(),
         ];
     }
 

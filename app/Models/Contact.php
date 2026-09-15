@@ -8,8 +8,27 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Contact extends Model
 {
+    public const SOURCE_LABELS = [
+        'meta_ads'          => 'Meta Ads',
+        'whatsapp'          => 'WhatsApp',
+        'referral'          => 'Referral',
+        'walk_in'           => 'Walk-in',
+        'website'           => 'Website',
+        'instagram'         => 'Instagram',
+        'facebook'          => 'Facebook',
+        'old_excel_import'  => 'Old Excel Import',
+        'other'             => 'Other',
+    ];
+
+    public const CATEGORY_LABELS = [
+        'new_lead'            => 'New Lead',
+        'enquiry_only'        => 'Enquiry Only',
+        'purchased_customer'  => 'Purchased Customer',
+        'repeat_customer'     => 'Repeat Customer',
+    ];
+
     protected $fillable = [
-        'assigned_to', 'name', 'phone', 'email', 'source',
+        'assigned_to', 'name', 'phone', 'email', 'source', 'customer_category',
         'tags', 'notes', 'city', 'state',
         'is_customer', 'is_blocked', 'last_contacted_at',
         'wa_opted_out', 'wa_opted_out_at',

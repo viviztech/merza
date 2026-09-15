@@ -53,6 +53,7 @@ class AdminPanelProvider extends PanelProvider
             ])
             ->font('Plus Jakarta Sans', provider: \Filament\FontProviders\GoogleFontProvider::class)
             ->darkMode(false)
+            ->databaseNotifications()
             ->navigationGroups([
                 NavigationGroup::make('Orders & Delivery'),
                 NavigationGroup::make('Catalogue'),
