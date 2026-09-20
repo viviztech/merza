@@ -2,8 +2,8 @@
 
 namespace App\Filament\Resources;
 
-use App\Filament\Resources\ConversationResource\Pages;
 use App\Filament\Filters\CreatedAtRangeFilter;
+use App\Filament\Resources\ConversationResource\Pages;
 use App\Jobs\SendWhatsAppMessageJob;
 use App\Models\BotSetting;
 use App\Models\Conversation;
@@ -25,9 +25,14 @@ use Filament\Tables\Table;
 class ConversationResource extends Resource
 {
     protected static ?string $model = Conversation::class;
+
     protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-chat-bubble-left-right';
+
     protected static string|\UnitEnum|null $navigationGroup = 'Sales & CRM';
-    protected static ?int $navigationSort = 3;
+
+    protected static ?string $navigationLabel = 'Message Log';
+
+    protected static ?int $navigationSort = 4;
 
     public static function form(Schema $schema): Schema
     {
@@ -40,12 +45,12 @@ class ConversationResource extends Resource
 
                 Forms\Components\Select::make('channel')
                     ->options([
-                        'whatsapp'  => 'WhatsApp',
-                        'facebook'  => 'Facebook',
+                        'whatsapp' => 'WhatsApp',
+                        'facebook' => 'Facebook',
                         'instagram' => 'Instagram',
-                        'phone'     => 'Phone',
-                        'email'     => 'Email',
-                        'other'     => 'Other',
+                        'phone' => 'Phone',
+                        'email' => 'Email',
+                        'other' => 'Other',
                     ])
                     ->default('whatsapp')->required(),
 
@@ -134,10 +139,10 @@ class ConversationResource extends Resource
 
                 Tables\Columns\TextColumn::make('channel')->badge()
                     ->color(fn ($state) => match ($state) {
-                        'whatsapp'  => 'success',
-                        'facebook'  => 'info',
+                        'whatsapp' => 'success',
+                        'facebook' => 'info',
                         'instagram' => 'warning',
-                        default     => 'gray',
+                        default => 'gray',
                     }),
 
                 Tables\Columns\TextColumn::make('direction')->badge()
@@ -150,10 +155,10 @@ class ConversationResource extends Resource
 
                 Tables\Columns\TextColumn::make('status')->badge()
                     ->color(fn ($state) => match ($state) {
-                        'read'      => 'success',
+                        'read' => 'success',
                         'delivered' => 'info',
-                        'failed'    => 'danger',
-                        default     => 'gray',
+                        'failed' => 'danger',
+                        default => 'gray',
                     }),
 
                 Tables\Columns\TextColumn::make('sent_at')
@@ -190,15 +195,16 @@ class ConversationResource extends Resource
                     ->visible(fn (Conversation $r) => $r->direction === 'inbound' && $r->channel === 'whatsapp')
                     ->fillForm(function (Conversation $r): array {
                         $settings = BotSetting::current();
-                        $ai       = new AiProviderService($settings);
+                        $ai = new AiProviderService($settings);
                         if (! $ai->isConfigured()) {
                             return ['reply_text' => "No {$ai->providerLabel()} API key configured. Go to Bot Settings to add one.", 'send_now' => false];
                         }
                         $service = new BotReplyService($settings);
-                        $reply   = $service->generateReply($r->contact, $r->message, $r);
+                        $reply = $service->generateReply($r->contact, $r->message, $r);
+
                         return [
                             'reply_text' => $reply ?? 'Could not generate a reply. Please write manually.',
-                            'send_now'   => false,
+                            'send_now' => false,
                         ];
                     })
                     ->form([
@@ -217,13 +223,13 @@ class ConversationResource extends Resource
                     ->modalSubmitActionLabel('Save Draft')
                     ->action(function (Conversation $r, array $data) {
                         $draft = Conversation::create([
-                            'contact_id'    => $r->contact_id,
-                            'channel'       => $r->channel,
-                            'direction'     => 'outbound',
-                            'message'       => $data['reply_text'],
-                            'is_bot'        => true,
+                            'contact_id' => $r->contact_id,
+                            'channel' => $r->channel,
+                            'direction' => 'outbound',
+                            'message' => $data['reply_text'],
+                            'is_bot' => true,
                             'replied_to_id' => $r->id,
-                            'status'        => 'sent',
+                            'status' => 'sent',
                         ]);
 
                         if ($data['send_now'] ?? false) {
@@ -271,10 +277,10 @@ class ConversationResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index'  => Pages\ListConversations::route('/'),
+            'index' => Pages\ListConversations::route('/'),
             'create' => Pages\CreateConversation::route('/create'),
-            'view'   => Pages\ViewConversation::route('/{record}'),
-            'edit'   => Pages\EditConversation::route('/{record}/edit'),
+            'view' => Pages\ViewConversation::route('/{record}'),
+            'edit' => Pages\EditConversation::route('/{record}/edit'),
         ];
     }
 }

@@ -19,10 +19,11 @@ class WhatsAppService
     public function sendTextMessage(string $toPhone, string $body): ?string
     {
         $phoneNumberId = $this->settings->whatsapp_phone_number_id;
-        $token         = $this->settings->whatsapp_access_token;
+        $token = $this->settings->whatsapp_access_token;
 
         if (empty($phoneNumberId) || empty($token)) {
             Log::warning('WhatsAppService: Missing phone_number_id or access_token');
+
             return null;
         }
 
@@ -31,19 +32,20 @@ class WhatsAppService
 
         $response = Http::timeout(15)
             ->withToken($token)
-            ->post(self::GRAPH_URL . "/{$phoneNumberId}/messages", [
+            ->post(self::GRAPH_URL."/{$phoneNumberId}/messages", [
                 'messaging_product' => 'whatsapp',
-                'to'                => $to,
-                'type'              => 'text',
-                'text'              => ['body' => $body],
+                'to' => $to,
+                'type' => 'text',
+                'text' => ['body' => $body],
             ]);
 
         if ($response->failed()) {
             Log::error('WhatsAppService: Send failed', [
-                'to'     => $to,
+                'to' => $to,
                 'status' => $response->status(),
-                'body'   => $response->body(),
+                'body' => $response->body(),
             ]);
+
             return null;
         }
 
@@ -57,10 +59,11 @@ class WhatsAppService
     public function sendImageMessage(string $toPhone, string $imageUrl, string $caption = ''): ?string
     {
         $phoneNumberId = $this->settings->whatsapp_phone_number_id;
-        $token         = $this->settings->whatsapp_access_token;
+        $token = $this->settings->whatsapp_access_token;
 
         if (empty($phoneNumberId) || empty($token)) {
             Log::warning('WhatsAppService: Missing phone_number_id or access_token');
+
             return null;
         }
 
@@ -68,19 +71,20 @@ class WhatsAppService
 
         $response = Http::timeout(15)
             ->withToken($token)
-            ->post(self::GRAPH_URL . "/{$phoneNumberId}/messages", [
+            ->post(self::GRAPH_URL."/{$phoneNumberId}/messages", [
                 'messaging_product' => 'whatsapp',
-                'to'                => $to,
-                'type'              => 'image',
-                'image'             => ['link' => $imageUrl, 'caption' => $caption],
+                'to' => $to,
+                'type' => 'image',
+                'image' => ['link' => $imageUrl, 'caption' => $caption],
             ]);
 
         if ($response->failed()) {
             Log::error('WhatsAppService: Image send failed', [
-                'to'     => $to,
+                'to' => $to,
                 'status' => $response->status(),
-                'body'   => $response->body(),
+                'body' => $response->body(),
             ]);
+
             return null;
         }
 
@@ -94,10 +98,11 @@ class WhatsAppService
     public function sendDocumentMessage(string $toPhone, string $documentUrl, string $filename, string $caption = ''): ?string
     {
         $phoneNumberId = $this->settings->whatsapp_phone_number_id;
-        $token         = $this->settings->whatsapp_access_token;
+        $token = $this->settings->whatsapp_access_token;
 
         if (empty($phoneNumberId) || empty($token)) {
             Log::warning('WhatsAppService: Missing phone_number_id or access_token');
+
             return null;
         }
 
@@ -105,19 +110,20 @@ class WhatsAppService
 
         $response = Http::timeout(15)
             ->withToken($token)
-            ->post(self::GRAPH_URL . "/{$phoneNumberId}/messages", [
+            ->post(self::GRAPH_URL."/{$phoneNumberId}/messages", [
                 'messaging_product' => 'whatsapp',
-                'to'                => $to,
-                'type'              => 'document',
-                'document'          => ['link' => $documentUrl, 'filename' => $filename, 'caption' => $caption],
+                'to' => $to,
+                'type' => 'document',
+                'document' => ['link' => $documentUrl, 'filename' => $filename, 'caption' => $caption],
             ]);
 
         if ($response->failed()) {
             Log::error('WhatsAppService: Document send failed', [
-                'to'     => $to,
+                'to' => $to,
                 'status' => $response->status(),
-                'body'   => $response->body(),
+                'body' => $response->body(),
             ]);
+
             return null;
         }
 
@@ -131,22 +137,23 @@ class WhatsAppService
      * Send a WhatsApp Authentication template message (required for OTP to new users).
      * Template must be pre-approved in Meta Business Manager → WhatsApp → Message Templates.
      *
-     * @param string $templateName  The approved template name (e.g. "merza_otp")
-     * @param string $languageCode  Template language (e.g. "en", "ta")
-     * @param array  $bodyParams    Text parameters for {{1}}, {{2}}, … body placeholders
+     * @param  string  $templateName  The approved template name (e.g. "merza_otp")
+     * @param  string  $languageCode  Template language (e.g. "en", "ta")
+     * @param  array  $bodyParams  Text parameters for {{1}}, {{2}}, … body placeholders
      */
     public function sendTemplateMessage(
         string $toPhone,
         string $templateName,
-        array  $bodyParams    = [],
-        string $languageCode  = 'en',
+        array $bodyParams = [],
+        string $languageCode = 'en',
         ?string $buttonUrlParameter = null,
     ): ?string {
         $phoneNumberId = $this->settings->whatsapp_phone_number_id;
-        $token         = $this->settings->whatsapp_access_token;
+        $token = $this->settings->whatsapp_access_token;
 
         if (empty($phoneNumberId) || empty($token)) {
             Log::warning('WhatsAppService: Missing phone_number_id or access_token');
+
             return null;
         }
 
@@ -155,7 +162,7 @@ class WhatsAppService
         $components = [];
         if (! empty($bodyParams)) {
             $components[] = [
-                'type'       => 'body',
+                'type' => 'body',
                 'parameters' => array_map(
                     fn ($v) => ['type' => 'text', 'text' => (string) $v],
                     $bodyParams
@@ -165,9 +172,9 @@ class WhatsAppService
 
         if (filled($buttonUrlParameter)) {
             $components[] = [
-                'type'       => 'button',
-                'sub_type'   => 'url',
-                'index'      => '0',
+                'type' => 'button',
+                'sub_type' => 'url',
+                'index' => '0',
                 'parameters' => [[
                     'type' => 'text',
                     'text' => $buttonUrlParameter,
@@ -177,24 +184,25 @@ class WhatsAppService
 
         $response = Http::timeout(15)
             ->withToken($token)
-            ->post(self::GRAPH_URL . "/{$phoneNumberId}/messages", [
+            ->post(self::GRAPH_URL."/{$phoneNumberId}/messages", [
                 'messaging_product' => 'whatsapp',
-                'to'                => $to,
-                'type'              => 'template',
-                'template'          => [
-                    'name'       => $templateName,
-                    'language'   => ['code' => $languageCode],
+                'to' => $to,
+                'type' => 'template',
+                'template' => [
+                    'name' => $templateName,
+                    'language' => ['code' => $languageCode],
                     'components' => $components,
                 ],
             ]);
 
         if ($response->failed()) {
             Log::error('WhatsAppService: Template send failed', [
-                'to'       => $to,
+                'to' => $to,
                 'template' => $templateName,
-                'status'   => $response->status(),
-                'body'     => $response->body(),
+                'status' => $response->status(),
+                'body' => $response->body(),
             ]);
+
             return null;
         }
 
@@ -204,10 +212,11 @@ class WhatsAppService
     public function sendInteractiveMessage(string $toPhone, array $interactive): ?string
     {
         $phoneNumberId = $this->settings->whatsapp_phone_number_id;
-        $token         = $this->settings->whatsapp_access_token;
+        $token = $this->settings->whatsapp_access_token;
 
         if (empty($phoneNumberId) || empty($token)) {
             Log::warning('WhatsAppService: Missing phone_number_id or access_token');
+
             return null;
         }
 
@@ -215,19 +224,20 @@ class WhatsAppService
 
         $response = Http::timeout(15)
             ->withToken($token)
-            ->post(self::GRAPH_URL . "/{$phoneNumberId}/messages", [
+            ->post(self::GRAPH_URL."/{$phoneNumberId}/messages", [
                 'messaging_product' => 'whatsapp',
-                'to'                => $to,
-                'type'              => 'interactive',
-                'interactive'       => $interactive,
+                'to' => $to,
+                'type' => 'interactive',
+                'interactive' => $interactive,
             ]);
 
         if ($response->failed()) {
             Log::error('WhatsAppService: Interactive send failed', [
-                'to'     => $to,
+                'to' => $to,
                 'status' => $response->status(),
-                'body'   => $response->body(),
+                'body' => $response->body(),
             ]);
+
             return null;
         }
 
@@ -240,7 +250,7 @@ class WhatsAppService
     public function markRead(string $waMessageId): void
     {
         $phoneNumberId = $this->settings->whatsapp_phone_number_id;
-        $token         = $this->settings->whatsapp_access_token;
+        $token = $this->settings->whatsapp_access_token;
 
         if (empty($phoneNumberId) || empty($token)) {
             return;
@@ -248,10 +258,10 @@ class WhatsAppService
 
         Http::timeout(10)
             ->withToken($token)
-            ->post(self::GRAPH_URL . "/{$phoneNumberId}/messages", [
+            ->post(self::GRAPH_URL."/{$phoneNumberId}/messages", [
                 'messaging_product' => 'whatsapp',
-                'status'            => 'read',
-                'message_id'        => $waMessageId,
+                'status' => 'read',
+                'message_id' => $waMessageId,
             ]);
     }
 
@@ -277,53 +287,53 @@ class WhatsAppService
                     $type = $msg['type'] ?? '';
 
                     $referral = isset($msg['referral']) ? [
-                        'source_url'  => $msg['referral']['source_url'] ?? null,
-                        'source_id'   => $msg['referral']['source_id'] ?? null,
+                        'source_url' => $msg['referral']['source_url'] ?? null,
+                        'source_id' => $msg['referral']['source_id'] ?? null,
                         'source_type' => $msg['referral']['source_type'] ?? null,
-                        'headline'    => $msg['referral']['headline'] ?? null,
-                        'body'        => $msg['referral']['body'] ?? null,
-                        'media_type'  => $msg['referral']['media_type'] ?? null,
-                        'ctwa_clid'   => $msg['referral']['ctwa_clid'] ?? null,
+                        'headline' => $msg['referral']['headline'] ?? null,
+                        'body' => $msg['referral']['body'] ?? null,
+                        'media_type' => $msg['referral']['media_type'] ?? null,
+                        'ctwa_clid' => $msg['referral']['ctwa_clid'] ?? null,
                     ] : null;
 
                     if ($type === 'text') {
                         $messages[] = [
-                            'from'            => $msg['from'] ?? '',
-                            'wa_message_id'   => $msg['id'] ?? '',
-                            'body'            => $msg['text']['body'] ?? '',
-                            'timestamp'       => $msg['timestamp'] ?? now()->timestamp,
-                            'type'            => 'text',
-                            'media_id'        => null,
-                            'interactive_id'  => null,
+                            'from' => $msg['from'] ?? '',
+                            'wa_message_id' => $msg['id'] ?? '',
+                            'body' => $msg['text']['body'] ?? '',
+                            'timestamp' => $msg['timestamp'] ?? now()->timestamp,
+                            'type' => 'text',
+                            'media_id' => null,
+                            'interactive_id' => null,
                             'phone_number_id' => $value['metadata']['phone_number_id'] ?? '',
-                            'referral'        => $referral,
+                            'referral' => $referral,
                         ];
                     } elseif ($type === 'audio') {
                         $messages[] = [
-                            'from'            => $msg['from'] ?? '',
-                            'wa_message_id'   => $msg['id'] ?? '',
-                            'body'            => '',
-                            'timestamp'       => $msg['timestamp'] ?? now()->timestamp,
-                            'type'            => 'audio',
-                            'media_id'        => $msg['audio']['id'] ?? null,
-                            'interactive_id'  => null,
+                            'from' => $msg['from'] ?? '',
+                            'wa_message_id' => $msg['id'] ?? '',
+                            'body' => '',
+                            'timestamp' => $msg['timestamp'] ?? now()->timestamp,
+                            'type' => 'audio',
+                            'media_id' => $msg['audio']['id'] ?? null,
+                            'interactive_id' => null,
                             'phone_number_id' => $value['metadata']['phone_number_id'] ?? '',
-                            'referral'        => $referral,
+                            'referral' => $referral,
                         ];
                     } elseif ($type === 'image') {
                         $messages[] = [
-                            'from'            => $msg['from'] ?? '',
-                            'wa_message_id'   => $msg['id'] ?? '',
-                            'body'            => $msg['image']['caption'] ?? '',
-                            'timestamp'       => $msg['timestamp'] ?? now()->timestamp,
-                            'type'            => 'image',
-                            'media_id'        => $msg['image']['id'] ?? null,
-                            'interactive_id'  => null,
+                            'from' => $msg['from'] ?? '',
+                            'wa_message_id' => $msg['id'] ?? '',
+                            'body' => $msg['image']['caption'] ?? '',
+                            'timestamp' => $msg['timestamp'] ?? now()->timestamp,
+                            'type' => 'image',
+                            'media_id' => $msg['image']['id'] ?? null,
+                            'interactive_id' => null,
                             'phone_number_id' => $value['metadata']['phone_number_id'] ?? '',
-                            'referral'        => $referral,
+                            'referral' => $referral,
                         ];
                     } elseif ($type === 'interactive') {
-                        $iType   = $msg['interactive']['type'] ?? '';
+                        $iType = $msg['interactive']['type'] ?? '';
                         $replyId = $iType === 'button_reply'
                             ? ($msg['interactive']['button_reply']['id'] ?? '')
                             : ($msg['interactive']['list_reply']['id'] ?? '');
@@ -332,15 +342,15 @@ class WhatsAppService
                             : ($msg['interactive']['list_reply']['title'] ?? '');
 
                         $messages[] = [
-                            'from'            => $msg['from'] ?? '',
-                            'wa_message_id'   => $msg['id'] ?? '',
-                            'body'            => $replyTitle,
-                            'timestamp'       => $msg['timestamp'] ?? now()->timestamp,
-                            'type'            => 'interactive',
-                            'media_id'        => null,
-                            'interactive_id'  => $replyId,
+                            'from' => $msg['from'] ?? '',
+                            'wa_message_id' => $msg['id'] ?? '',
+                            'body' => $replyTitle,
+                            'timestamp' => $msg['timestamp'] ?? now()->timestamp,
+                            'type' => 'interactive',
+                            'media_id' => null,
+                            'interactive_id' => $replyId,
                             'phone_number_id' => $value['metadata']['phone_number_id'] ?? '',
-                            'referral'        => $referral,
+                            'referral' => $referral,
                         ];
                     }
                 }
@@ -348,6 +358,38 @@ class WhatsAppService
         }
 
         return $messages;
+    }
+
+    /**
+     * Parse delivery lifecycle events sent by Meta for outbound messages.
+     *
+     * @return array<array{wa_message_id: string, status: string, timestamp: string}>
+     */
+    public function parseMessageStatuses(array $payload): array
+    {
+        $statuses = [];
+
+        foreach ($payload['entry'] ?? [] as $entry) {
+            foreach ($entry['changes'] ?? [] as $change) {
+                if (($change['field'] ?? '') !== 'messages') {
+                    continue;
+                }
+
+                foreach (($change['value']['statuses'] ?? []) as $status) {
+                    if (empty($status['id']) || ! in_array($status['status'] ?? '', ['sent', 'delivered', 'read', 'failed'], true)) {
+                        continue;
+                    }
+
+                    $statuses[] = [
+                        'wa_message_id' => $status['id'],
+                        'status' => $status['status'],
+                        'timestamp' => $status['timestamp'] ?? (string) now()->timestamp,
+                    ];
+                }
+            }
+        }
+
+        return $statuses;
     }
 
     /**
@@ -364,14 +406,15 @@ class WhatsAppService
         // Step 1: resolve the media URL
         $meta = Http::timeout(15)
             ->withToken($token)
-            ->get(self::GRAPH_URL . "/{$mediaId}");
+            ->get(self::GRAPH_URL."/{$mediaId}");
 
         if ($meta->failed()) {
             Log::error('WhatsAppService: failed to resolve media URL', ['media_id' => $mediaId]);
+
             return null;
         }
 
-        $url      = $meta->json('url');
+        $url = $meta->json('url');
         $mimeType = $meta->json('mime_type', 'audio/ogg');
 
         if (empty($url)) {
@@ -385,11 +428,12 @@ class WhatsAppService
 
         if ($file->failed()) {
             Log::error('WhatsAppService: failed to download media', ['url' => $url]);
+
             return null;
         }
 
         return [
-            'content'   => $file->body(),
+            'content' => $file->body(),
             'mime_type' => $mimeType,
         ];
     }

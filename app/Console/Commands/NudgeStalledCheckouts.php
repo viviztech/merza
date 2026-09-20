@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use App\Models\BotActivityLog;
 use App\Models\BotSetting;
 use App\Models\Contact;
+use App\Models\Conversation;
 use App\Models\Order;
 use App\Models\WhatsAppSession;
 use App\Services\WhatsAppService;
@@ -23,7 +24,8 @@ class NudgeStalledCheckouts extends Command
     private const GIVE_UP_HOURS = 6;
 
     private const UNPAID_FOLLOWUP_HOURS = 2;
-    private const UNPAID_GIVE_UP_DAYS   = 2;
+
+    private const UNPAID_GIVE_UP_DAYS = 2;
 
     public function handle(): int
     {
@@ -31,12 +33,13 @@ class NudgeStalledCheckouts extends Command
 
         if (! $settings->wa_bot_enabled) {
             $this->info('WhatsApp bot is disabled — skipping.');
+
             return self::SUCCESS;
         }
 
         $waService = new WhatsAppService($settings);
 
-        $nudged   = $this->nudgeStalledCarts($waService);
+        $nudged = $this->nudgeStalledCarts($waService);
         $followed = $this->followUpUnpaidOrders($waService);
 
         $this->info("Nudged {$nudged} stalled cart(s), followed up on {$followed} unpaid order(s).");
@@ -71,20 +74,25 @@ class NudgeStalledCheckouts extends Command
             $count = array_sum(array_column($cart, 'qty'));
             $itemsLabel = $count === 1 ? 'item' : 'items';
 
-            $waService->sendTextMessage(
+            $message = "Still there? 🥭 You have {$count} {$itemsLabel} waiting — reply *checkout* to finish your order, or *menu* to start over.\n\n— Merza Team";
+            $waMessageId = $waService->sendTextMessage(
                 $contact->phone,
-                "Still there? 🥭 You have {$count} {$itemsLabel} waiting — reply *checkout* to finish your order, or *menu* to start over.\n\n— Merza Team"
+                $message
             );
+
+            if ($waMessageId) {
+                $this->recordOutbound($contact, $message, $waMessageId);
+            }
 
             // Stored on the session itself (not a DB column) so this stays a
             // one-time nudge without needing a migration for a single flag.
             $session->update(['data' => array_merge($session->data, ['nudge_sent' => true])]);
 
             BotActivityLog::create([
-                'event_type'  => 'cart_nudge_sent',
-                'contact_id'  => $contact->id,
+                'event_type' => 'cart_nudge_sent',
+                'contact_id' => $contact->id,
                 'raw_payload' => ['state' => $session->state, 'cart_items' => $count],
-                'status'      => 'success',
+                'status' => 'success',
             ]);
 
             $sent++;
@@ -115,25 +123,45 @@ class NudgeStalledCheckouts extends Command
             }
 
             $contact = $order->contact_id ? Contact::find($order->contact_id) : null;
+            $contact ??= Contact::where('phone', $order->customer_phone)->first();
             if ($contact && $contact->wa_opted_out) {
                 continue;
             }
 
-            $waService->sendTextMessage(
+            $message = "Hi! Just checking in — did you complete payment for order *{$order->order_number}*?\n\nReply with your UPI reference number, or send a screenshot of the payment and we'll confirm it right away. 🥭\n\n— Merza Team";
+            $waMessageId = $waService->sendTextMessage(
                 $order->customer_phone,
-                "Hi! Just checking in — did you complete payment for order *{$order->order_number}*?\n\nReply with your UPI reference number, or send a screenshot of the payment and we'll confirm it right away. 🥭\n\n— Merza Team"
+                $message
             );
 
+            if ($waMessageId && $contact) {
+                $this->recordOutbound($contact, $message, $waMessageId);
+            }
+
             BotActivityLog::create([
-                'event_type'  => 'payment_followup_sent',
-                'contact_id'  => $order->contact_id,
+                'event_type' => 'payment_followup_sent',
+                'contact_id' => $order->contact_id,
                 'raw_payload' => ['order_id' => $order->id, 'order_number' => $order->order_number],
-                'status'      => 'success',
+                'status' => 'success',
             ]);
 
             $sent++;
         }
 
         return $sent;
+    }
+
+    private function recordOutbound(Contact $contact, string $message, string $waMessageId): void
+    {
+        Conversation::create([
+            'contact_id' => $contact->id,
+            'channel' => 'whatsapp',
+            'direction' => 'outbound',
+            'message' => $message,
+            'wa_message_id' => $waMessageId,
+            'status' => 'sent',
+            'is_bot' => true,
+            'sent_at' => now(),
+        ]);
     }
 }

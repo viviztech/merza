@@ -61,9 +61,9 @@ class WhatsAppFlowService
      */
     public function handle(
         Contact $contact,
-        string  $messageType,
-        string  $body,
-        string  $interactiveId = '',
+        string $messageType,
+        string $body,
+        string $interactiveId = '',
         ?string $mediaPath = null,
     ): bool {
         $session = WhatsAppSession::getOrCreate($contact->phone);
@@ -73,6 +73,7 @@ class WhatsAppFlowService
             if (! $contact->wa_opted_out) {
                 $this->handleButton($contact, $session, $interactiveId);
             }
+
             return true;
         }
 
@@ -82,6 +83,7 @@ class WhatsAppFlowService
         // than silently proceeding as if nothing had happened.
         if ($session->state === 'resume_prompt') {
             $this->sendResumePrompt($contact, $session);
+
             return true;
         }
 
@@ -91,6 +93,7 @@ class WhatsAppFlowService
         // Opt-out keywords — Meta policy requires immediate honouring
         if (in_array($lower, self::OPT_OUT_KEYWORDS, true)) {
             $this->handleOptOut($contact, $session);
+
             return true;
         }
 
@@ -98,16 +101,18 @@ class WhatsAppFlowService
         if ($contact->wa_opted_out && in_array($lower, ['start', 'hi', 'hello', 'yes', 'ஆம்'], true)) {
             $contact->update(['wa_opted_out' => false, 'wa_opted_out_at' => null]);
             $session->setState('start');
-            $this->waService->sendTextMessage(
+            $this->sendTrackedText(
                 $contact->phone,
                 "Welcome back! 🎉 You've been re-subscribed to Merza messages.\n\nReply *menu* to see what we have for you today. 🥭"
             );
+
             return true;
         }
 
         // If opted out, silently drop — do not send any automated message
         if ($contact->wa_opted_out) {
             Log::info('WhatsApp message from opted-out contact ignored', ['phone' => $contact->phone]);
+
             return true;
         }
 
@@ -115,24 +120,28 @@ class WhatsAppFlowService
         // ahead of the general checkout-text branch below.
         if ($session->state === 'awaiting_payment_ref' && $messageType === 'image' && $mediaPath) {
             $this->capturePaymentScreenshot($contact, $session, $mediaPath);
+
             return true;
         }
 
         // Structured checkout steps — capture the reply, do not hand off to AI
         if (in_array($session->state, self::CHECKOUT_TEXT_STATES, true)) {
             $this->handleCheckoutText($contact, $session, trim($body));
+
             return true;
         }
 
         // Menu keyword → always show welcome
         if (in_array($lower, self::MENU_KEYWORDS, true)) {
             $this->sendWelcome($contact, $session);
+
             return true;
         }
 
         // First contact / expired session → welcome
         if ($session->state === 'start') {
             $this->sendWelcome($contact, $session);
+
             return true;
         }
 
@@ -141,6 +150,7 @@ class WhatsAppFlowService
         if ($this->looksLikeOrderIntent($lower)) {
             $this->logDistraction($contact, $session, 'resumed_ordering');
             $this->resumeOrdering($contact, $session);
+
             return true;
         }
 
@@ -155,11 +165,13 @@ class WhatsAppFlowService
         // fallback keeps working for deployments with no AI key set.
         if ((new AiProviderService($this->settings))->isConfigured()) {
             $this->logDistraction($contact, $session, 'ai_handoff');
+
             return false;
         }
 
         $this->logDistraction($contact, $session, 'welcome_reset');
         $this->sendWelcome($contact, $session);
+
         return true;
     }
 
@@ -170,11 +182,11 @@ class WhatsAppFlowService
     private function logDistraction(Contact $contact, WhatsAppSession $session, string $action): void
     {
         BotActivityLog::create([
-            'event_type'  => 'flow_distraction',
-            'contact_id'  => $contact->id,
+            'event_type' => 'flow_distraction',
+            'contact_id' => $contact->id,
             'raw_payload' => [
-                'state'      => $session->state,
-                'action'     => $action, // 'resumed_ordering' | 'ai_handoff' | 'welcome_reset'
+                'state' => $session->state,
+                'action' => $action, // 'resumed_ordering' | 'ai_handoff' | 'welcome_reset'
                 'cart_items' => count($session->data['cart'] ?? []),
             ],
             'status' => 'success',
@@ -202,6 +214,7 @@ class WhatsAppFlowService
 
         if (! empty($cart)) {
             $this->sendCart($contact, $session);
+
             return;
         }
 
@@ -212,7 +225,7 @@ class WhatsAppFlowService
 
     private function sendResumePrompt(Contact $contact, WhatsAppSession $session): void
     {
-        $cart  = $session->data['cart'] ?? [];
+        $cart = $session->data['cart'] ?? [];
         $count = array_sum(array_column($cart, 'qty'));
         $itemsLabel = $count === 1 ? '1 item' : "{$count} items";
 
@@ -257,26 +270,26 @@ class WhatsAppFlowService
     private function handleButton(Contact $contact, WhatsAppSession $session, string $id): void
     {
         match (true) {
-            $id === 'resume_cart'           => $this->resumeStashedSession($contact, $session),
-            $id === 'fresh_start'           => $this->startFresh($contact, $session),
-            $id === 'order_fruits'          => $this->startOrdering($contact, $session),
-            $id === 'my_orders'             => $this->sendOrders($contact, $session),
-            $id === 'talk_to_us'            => $this->sendTalkToUs($contact, $session),
-            $id === 'back_menu'             => $this->sendWelcome($contact, $session),
-            $id === 'back_cats'             => $this->sendCategories($contact, $session),
-            $id === 'cart_view'             => $this->sendCart($contact, $session),
-            $id === 'cart_checkout'         => $this->startCheckout($contact, $session),
-            $id === 'cart_add_more'         => $this->sendCategories($contact, $session),
-            $id === 'cart_clear'            => $this->clearCart($contact, $session),
-            $id === 'checkout_continue'     => $this->askCheckoutName($contact, $session),
-            $id === 'pay_upi'               => $this->completeOrder($contact, $session),
-            $id === 'zone_other'            => $this->promptManualZone($contact, $session),
-            str_starts_with($id, 'zone_')     => $this->selectZone($contact, $session, (int) substr($id, 5)),
-            str_starts_with($id, 'cat_')     => $this->sendProducts($contact, $session, substr($id, 4)),
-            str_starts_with($id, 'prod_')    => $this->sendProductDetail($contact, $session, (int) substr($id, 5)),
+            $id === 'resume_cart' => $this->resumeStashedSession($contact, $session),
+            $id === 'fresh_start' => $this->startFresh($contact, $session),
+            $id === 'order_fruits' => $this->startOrdering($contact, $session),
+            $id === 'my_orders' => $this->sendOrders($contact, $session),
+            $id === 'talk_to_us' => $this->sendTalkToUs($contact, $session),
+            $id === 'back_menu' => $this->sendWelcome($contact, $session),
+            $id === 'back_cats' => $this->sendCategories($contact, $session),
+            $id === 'cart_view' => $this->sendCart($contact, $session),
+            $id === 'cart_checkout' => $this->startCheckout($contact, $session),
+            $id === 'cart_add_more' => $this->sendCategories($contact, $session),
+            $id === 'cart_clear' => $this->clearCart($contact, $session),
+            $id === 'checkout_continue' => $this->askCheckoutName($contact, $session),
+            $id === 'pay_upi' => $this->completeOrder($contact, $session),
+            $id === 'zone_other' => $this->promptManualZone($contact, $session),
+            str_starts_with($id, 'zone_') => $this->selectZone($contact, $session, (int) substr($id, 5)),
+            str_starts_with($id, 'cat_') => $this->sendProducts($contact, $session, substr($id, 4)),
+            str_starts_with($id, 'prod_') => $this->sendProductDetail($contact, $session, (int) substr($id, 5)),
             str_starts_with($id, 'addcart_') => $this->addToCart($contact, $session, substr($id, 8)),
-            str_starts_with($id, 'order_')   => $this->sendLegacyOrderPrompt($contact, $session, $id),
-            default                          => $this->sendWelcome($contact, $session),
+            str_starts_with($id, 'order_') => $this->sendLegacyOrderPrompt($contact, $session, $id),
+            default => $this->sendWelcome($contact, $session),
         };
     }
 
@@ -355,14 +368,14 @@ class WhatsAppFlowService
         $zones = DeliveryZone::active()->get();
 
         $rows = $zones->map(fn (DeliveryZone $z) => [
-            'id'          => "zone_{$z->id}",
-            'title'       => $this->truncate($z->name, 24),
+            'id' => "zone_{$z->id}",
+            'title' => $this->truncate($z->name, 24),
             'description' => "\u{20B9}{$z->rate_per_kg}/kg courier charge",
         ])->toArray();
 
         $rows[] = [
-            'id'          => 'zone_other',
-            'title'       => 'Other Location',
+            'id' => 'zone_other',
+            'title' => 'Other Location',
             'description' => 'Not listed above',
         ];
 
@@ -370,7 +383,7 @@ class WhatsAppFlowService
             'type' => 'list',
             'body' => ['text' => "🚚 *Where are we delivering?*\n\nSelect your location so we can show accurate courier charges:"],
             'action' => [
-                'button'   => 'Choose Location',
+                'button' => 'Choose Location',
                 'sections' => [['title' => 'Delivery Zones', 'rows' => $rows]],
             ],
         ], $contact);
@@ -382,11 +395,12 @@ class WhatsAppFlowService
 
         if (! $zone) {
             $this->sendZoneSelection($contact, $session);
+
             return;
         }
 
         $this->updateSession($session, 'categories', [
-            'zone'        => ['id' => $zone->id, 'name' => $zone->name, 'rate_per_kg' => (float) $zone->rate_per_kg],
+            'zone' => ['id' => $zone->id, 'name' => $zone->name, 'rate_per_kg' => (float) $zone->rate_per_kg],
             'zone_manual' => null,
         ]);
 
@@ -397,7 +411,7 @@ class WhatsAppFlowService
     {
         $this->updateSession($session, 'zone_manual_entry');
 
-        $this->waService->sendTextMessage(
+        $this->sendTrackedText(
             $contact->phone,
             "No problem! Please reply with your *city and state*, like this:\n_Salem, Tamil Nadu_"
         );
@@ -408,18 +422,20 @@ class WhatsAppFlowService
         $parts = array_values(array_filter(array_map('trim', explode(',', $body)), fn ($p) => $p !== ''));
 
         if (count($parts) < 2) {
-            $this->waService->sendTextMessage($contact->phone, "Please include both city and state, like this:\n_Salem, Tamil Nadu_");
+            $this->sendTrackedText($contact->phone, "Please include both city and state, like this:\n_Salem, Tamil Nadu_");
+
             return;
         }
 
         [$city, $state] = [$parts[0], $parts[1]];
-        $zone = (new DeliveryCalculatorService())->findZone($city, $state);
+        $zone = (new DeliveryCalculatorService)->findZone($city, $state);
 
         if (! $zone) {
-            $this->waService->sendTextMessage(
+            $this->sendTrackedText(
                 $contact->phone,
                 "😔 Sorry, we don't currently deliver to *{$city}, {$state}*.\n\nMessage us at +91 86676 96278 for help, or try a different location.\n\nType *menu* to go back."
             );
+
             return;
         }
 
@@ -437,14 +453,14 @@ class WhatsAppFlowService
         $categories = Category::where('is_active', true)->orderBy('sort_order')->get();
 
         $rows = $categories->map(fn ($c) => [
-            'id'          => 'cat_' . $c->slug,
-            'title'       => $this->truncate($c->name, 24),
+            'id' => 'cat_'.$c->slug,
+            'title' => $this->truncate($c->name, 24),
             'description' => $this->truncate("Browse {$c->name} products", 72),
         ])->toArray();
 
         $rows[] = [
-            'id'          => 'cat_all',
-            'title'       => 'All Products',
+            'id' => 'cat_all',
+            'title' => 'All Products',
             'description' => 'Browse our full range',
         ];
 
@@ -452,7 +468,7 @@ class WhatsAppFlowService
             'type' => 'list',
             'body' => ['text' => "🥭 *Choose a Category*\n\nSelect what you'd like to browse:"],
             'action' => [
-                'button'   => 'View Categories',
+                'button' => 'View Categories',
                 'sections' => [['title' => 'Categories', 'rows' => $rows]],
             ],
         ], $contact);
@@ -481,21 +497,22 @@ class WhatsAppFlowService
         }
 
         if ($products->isEmpty()) {
-            $this->waService->sendTextMessage(
+            $this->sendTrackedText(
                 $contact->phone,
-                "Sorry, no products available right now. Type *menu* to go back. 🥭"
+                'Sorry, no products available right now. Type *menu* to go back. 🥭'
             );
+
             return;
         }
 
         $rows = $products->map(function ($p) {
             $minPrice = $p->activeVariants->min('price') ?? $p->base_price;
-            $price    = $minPrice ? 'From ₹' . number_format((float) $minPrice, 0) : '';
-            $desc     = trim(($price ? $price . ' ' : '') . ($p->short_description ?? ''));
+            $price = $minPrice ? 'From ₹'.number_format((float) $minPrice, 0) : '';
+            $desc = trim(($price ? $price.' ' : '').($p->short_description ?? ''));
 
             return [
-                'id'          => 'prod_' . $p->id,
-                'title'       => $this->truncate($p->name, 24),
+                'id' => 'prod_'.$p->id,
+                'title' => $this->truncate($p->name, 24),
                 'description' => $this->truncate($desc, 72),
             ];
         })->toArray();
@@ -504,7 +521,7 @@ class WhatsAppFlowService
             'type' => 'list',
             'body' => ['text' => "*{$heading}* 🥭\n\nTap a product to see details and pricing:"],
             'action' => [
-                'button'   => 'View Products',
+                'button' => 'View Products',
                 'sections' => [['title' => $heading, 'rows' => $rows]],
             ],
         ], $contact);
@@ -516,6 +533,7 @@ class WhatsAppFlowService
 
         if (! $product) {
             $this->sendWelcome($contact, $session);
+
             return;
         }
 
@@ -542,7 +560,7 @@ class WhatsAppFlowService
             $variant = $product->activeVariants->where('stock_qty', '>', 0)->sortBy('price')->first()
                 ?? $product->activeVariants->sortBy('price')->first();
 
-            $orderId    = $variant ? "{$product->id}_{$variant->id}" : (string) $product->id;
+            $orderId = $variant ? "{$product->id}_{$variant->id}" : (string) $product->id;
             $orderLabel = $variant ? $this->truncate("Order {$variant->name}", 20) : 'Order Now';
 
             $buttons = [
@@ -554,10 +572,11 @@ class WhatsAppFlowService
             $buttons[] = ['type' => 'reply', 'reply' => ['id' => 'back_menu', 'title' => '🏠 Main Menu']];
 
             $this->sendInteractive($contact->phone, [
-                'type'   => 'button',
-                'body'   => ['text' => $text],
+                'type' => 'button',
+                'body' => ['text' => $text],
                 'action' => ['buttons' => $buttons],
             ], $contact);
+
             return;
         }
 
@@ -567,41 +586,43 @@ class WhatsAppFlowService
         if ($inStock->isEmpty()) {
             $text .= "\nSorry, all sizes are currently out of stock.";
             $this->sendInteractive($contact->phone, [
-                'type'   => 'button',
-                'body'   => ['text' => $text],
+                'type' => 'button',
+                'body' => ['text' => $text],
                 'action' => ['buttons' => [
                     ['type' => 'reply', 'reply' => ['id' => 'back_cats', 'title' => '🔙 More Products']],
                     ['type' => 'reply', 'reply' => ['id' => 'back_menu', 'title' => '🏠 Main Menu']],
                 ]],
             ], $contact);
+
             return;
         }
 
         if ($inStock->count() === 1) {
             $variant = $inStock->first();
             $this->sendInteractive($contact->phone, [
-                'type'   => 'button',
-                'body'   => ['text' => $text],
+                'type' => 'button',
+                'body' => ['text' => $text],
                 'action' => ['buttons' => [
                     ['type' => 'reply', 'reply' => ['id' => "addcart_{$product->id}_{$variant->id}", 'title' => $this->truncate("Add {$variant->name}", 20)]],
                     ['type' => 'reply', 'reply' => ['id' => 'back_cats', 'title' => '🔙 More Products']],
                     ['type' => 'reply', 'reply' => ['id' => 'back_menu', 'title' => '🏠 Main Menu']],
                 ]],
             ], $contact);
+
             return;
         }
 
         $rows = $inStock->map(fn ($v) => [
-            'id'          => "addcart_{$product->id}_{$v->id}",
-            'title'       => $this->truncate($v->name, 24),
+            'id' => "addcart_{$product->id}_{$v->id}",
+            'title' => $this->truncate($v->name, 24),
             'description' => "\u{20B9}{$v->price}",
         ])->values()->toArray();
 
         $this->sendInteractive($contact->phone, [
             'type' => 'list',
-            'body' => ['text' => $text . "\nSelect a size to add it to your cart:"],
+            'body' => ['text' => $text."\nSelect a size to add it to your cart:"],
             'action' => [
-                'button'   => 'Choose Size',
+                'button' => 'Choose Size',
                 'sections' => [['title' => $product->name, 'rows' => $rows]],
             ],
         ], $contact);
@@ -610,7 +631,7 @@ class WhatsAppFlowService
     private function sendLegacyOrderPrompt(Contact $contact, WhatsAppSession $session, string $buttonId): void
     {
         // buttonId: "order_{productId}_{variantId}" or "order_{productId}"
-        $parts     = explode('_', $buttonId); // ['order', productId, variantId?]
+        $parts = explode('_', $buttonId); // ['order', productId, variantId?]
         $productId = (int) ($parts[1] ?? 0);
         $variantId = isset($parts[2]) ? (int) $parts[2] : null;
 
@@ -619,6 +640,7 @@ class WhatsAppFlowService
 
         if (! $product) {
             $this->sendWelcome($contact, $session);
+
             return;
         }
 
@@ -628,7 +650,7 @@ class WhatsAppFlowService
             ? "{$product->name} – {$variant->name} (\u{20B9}{$variant->price})"
             : "{$product->name}";
 
-        $this->waService->sendTextMessage(
+        $this->sendTrackedText(
             $contact->phone,
             "✅ Great choice!\n\n*Your order:* {$item}\n\nTo complete your order, please reply with:\n1️⃣ Your full name\n2️⃣ Delivery address (with PIN code)\n3️⃣ Preferred delivery date\n\nWe'll confirm and collect payment. 🥭\n\n— Merza Team"
         );
@@ -655,13 +677,14 @@ class WhatsAppFlowService
                     ],
                 ],
             ], $contact);
+
             return;
         }
 
         $text = "*Your Recent Orders* 📦\n\n";
         foreach ($orders as $order) {
             $text .= "• *#{$order->order_number}* — {$order->status}\n";
-            $text .= "  \u{20B9}{$order->total} · " . $order->created_at->format('d M Y') . "\n";
+            $text .= "  \u{20B9}{$order->total} · ".$order->created_at->format('d M Y')."\n";
         }
         $text .= "\nType *menu* anytime to go back.";
 
@@ -682,7 +705,7 @@ class WhatsAppFlowService
     {
         $this->updateSession($session, 'ai', ['expires_at' => now()->addHour()->toDateTimeString()]);
 
-        $this->waService->sendTextMessage(
+        $this->sendTrackedText(
             $contact->phone,
             "Sure! 😊 You're now chatting with our *automated assistant*.\n\nAsk me anything about products, delivery, pricing, or orders and I'll help right away!\n\n📞 *Need a real person?*\nCall us: +91 86676 96278\nEmail: merzabodinayakanur@gmail.com\nHours: Mon–Sat, 9 AM – 6 PM\n\nType *menu* anytime to go back.\n\n— Merza Automated Assistant 🥭"
         );
@@ -697,7 +720,7 @@ class WhatsAppFlowService
 
         Log::info('WhatsApp opt-out received', ['phone' => $contact->phone]);
 
-        $this->waService->sendTextMessage(
+        $this->sendTrackedText(
             $contact->phone,
             "You have been unsubscribed from Merza automated messages. ✅\n\nYou will no longer receive automated WhatsApp messages from us.\n\nIf you ever want to reconnect, simply send *START* and we'll be happy to help!\n\n— Merza Team 🥭"
         );
@@ -712,13 +735,14 @@ class WhatsAppFlowService
         $variant = ProductVariant::with('product')->find((int) $variantId);
 
         if (! $variant || $variant->stock_qty <= 0) {
-            $this->waService->sendTextMessage($contact->phone, "Sorry, that size is no longer available. Type *menu* to browse other options. 🥭");
+            $this->sendTrackedText($contact->phone, 'Sorry, that size is no longer available. Type *menu* to browse other options. 🥭');
             $this->sendWelcome($contact, $session);
+
             return;
         }
 
         $cart = $session->data['cart'] ?? [];
-        $key  = (string) $variant->id;
+        $key = (string) $variant->id;
 
         if (isset($cart[$key])) {
             $cart[$key]['qty'] = min($cart[$key]['qty'] + 1, $variant->stock_qty);
@@ -728,15 +752,15 @@ class WhatsAppFlowService
                 : (float) $variant->weight_value;
 
             $cart[$key] = [
-                'variant_id'   => $variant->id,
-                'product_id'   => $variant->product_id,
+                'variant_id' => $variant->id,
+                'product_id' => $variant->product_id,
                 'product_name' => $variant->product->name,
                 'variant_name' => $variant->name,
-                'sku'          => $variant->sku,
-                'price'        => (float) $variant->price,
-                'gst_rate'     => (float) $variant->product->gst_rate,
-                'qty'          => 1,
-                'weight_kg'    => $weightKg,
+                'sku' => $variant->sku,
+                'price' => (float) $variant->price,
+                'gst_rate' => (float) $variant->product->gst_rate,
+                'qty' => 1,
+                'weight_kg' => $weightKg,
             ];
         }
 
@@ -770,6 +794,7 @@ class WhatsAppFlowService
                     ['type' => 'reply', 'reply' => ['id' => 'back_menu',    'title' => '🏠 Main Menu']],
                 ]],
             ], $contact);
+
             return;
         }
 
@@ -778,9 +803,9 @@ class WhatsAppFlowService
         foreach ($cart as $item) {
             $lineTotal = $item['price'] * $item['qty'];
             $subtotal += $lineTotal;
-            $text .= "• {$item['product_name']} – {$item['variant_name']} × {$item['qty']} = \u{20B9}" . number_format($lineTotal, 2) . "\n";
+            $text .= "• {$item['product_name']} – {$item['variant_name']} × {$item['qty']} = \u{20B9}".number_format($lineTotal, 2)."\n";
         }
-        $text .= "\n*Subtotal: \u{20B9}" . number_format($subtotal, 2) . "*";
+        $text .= "\n*Subtotal: \u{20B9}".number_format($subtotal, 2).'*';
 
         $zone = $session->data['zone'] ?? null;
         if ($zone) {
@@ -804,7 +829,7 @@ class WhatsAppFlowService
     {
         $this->updateSession($session, 'menu', ['cart' => []]);
 
-        $this->waService->sendTextMessage($contact->phone, "🗑 Your cart has been cleared. Type *menu* anytime to start again. 🥭");
+        $this->sendTrackedText($contact->phone, '🗑 Your cart has been cleared. Type *menu* anytime to start again. 🥭');
         $this->sendWelcome($contact, $session);
     }
 
@@ -816,6 +841,7 @@ class WhatsAppFlowService
 
         if (empty($cart)) {
             $this->sendCart($contact, $session);
+
             return;
         }
 
@@ -823,6 +849,7 @@ class WhatsAppFlowService
         // against a stale/older session reaching checkout with no zone at all.
         if (empty($session->data['zone']) && empty($session->data['zone_manual'])) {
             $this->sendZoneSelection($contact, $session);
+
             return;
         }
 
@@ -832,43 +859,44 @@ class WhatsAppFlowService
     private function sendCheckoutPricePreview(Contact $contact, WhatsAppSession $session): void
     {
         $zoneInfo = $session->data['zone'] ?? null;
-        $zone     = $zoneInfo ? DeliveryZone::find($zoneInfo['id']) : null;
+        $zone = $zoneInfo ? DeliveryZone::find($zoneInfo['id']) : null;
 
         if (! $zone) {
             // Session lost its zone somehow — send them back through zone selection.
-            $this->waService->sendTextMessage($contact->phone, "Sorry, something went wrong with your delivery location. Let's pick it again.");
+            $this->sendTrackedText($contact->phone, "Sorry, something went wrong with your delivery location. Let's pick it again.");
             $this->sendZoneSelection($contact, $session);
+
             return;
         }
 
-        $cart     = $session->data['cart'] ?? [];
+        $cart = $session->data['cart'] ?? [];
         $weightKg = array_sum(array_map(fn ($i) => ($i['weight_kg'] ?? 0) * $i['qty'], $cart));
 
-        $breakdown = (new DeliveryCalculatorService())->calculateForZone($zone, $weightKg);
+        $breakdown = (new DeliveryCalculatorService)->calculateForZone($zone, $weightKg);
 
         $draft = [
             'delivery_fee' => $breakdown['total_fee'],
-            'zone_name'    => $zone->name,
+            'zone_name' => $zone->name,
         ];
 
         $this->updateSession($session, 'checkout_price_confirm', ['draft' => $draft]);
 
         $subtotal = array_sum(array_map(fn ($i) => $i['price'] * $i['qty'], $cart));
         $delivery = $breakdown['total_fee'];
-        $total    = $subtotal + $delivery;
+        $total = $subtotal + $delivery;
 
         $text = "*Order Total* 📋\n\n";
         foreach ($cart as $item) {
             $text .= "• {$item['product_name']} – {$item['variant_name']} × {$item['qty']}\n";
         }
-        $text .= "\nSubtotal: \u{20B9}" . number_format($subtotal, 2);
-        $text .= "\nCourier Charges ({$zone->name}): \u{20B9}" . number_format($delivery, 2);
-        $text .= "\n*Total: \u{20B9}" . number_format($total, 2) . "*";
+        $text .= "\nSubtotal: \u{20B9}".number_format($subtotal, 2);
+        $text .= "\nCourier Charges ({$zone->name}): \u{20B9}".number_format($delivery, 2);
+        $text .= "\n*Total: \u{20B9}".number_format($total, 2).'*';
         $text .= "\n\nShall we go ahead?";
 
         $this->sendInteractive($contact->phone, [
-            'type'   => 'button',
-            'body'   => ['text' => $text],
+            'type' => 'button',
+            'body' => ['text' => $text],
             'action' => ['buttons' => [
                 ['type' => 'reply', 'reply' => ['id' => 'checkout_continue', 'title' => '✅ Continue']],
             ]],
@@ -879,7 +907,7 @@ class WhatsAppFlowService
     {
         $this->updateSession($session, 'checkout_name');
 
-        $this->waService->sendTextMessage(
+        $this->sendTrackedText(
             $contact->phone,
             "Great! 📝\n\nWhat's your *name*?"
         );
@@ -888,11 +916,11 @@ class WhatsAppFlowService
     private function handleCheckoutText(Contact $contact, WhatsAppSession $session, string $body): void
     {
         match ($session->state) {
-            'zone_manual_entry'    => $this->captureManualZone($contact, $session, $body),
-            'checkout_name'        => $this->captureCheckoutName($contact, $session, $body),
-            'checkout_address'     => $this->captureCheckoutAddress($contact, $session, $body),
+            'zone_manual_entry' => $this->captureManualZone($contact, $session, $body),
+            'checkout_name' => $this->captureCheckoutName($contact, $session, $body),
+            'checkout_address' => $this->captureCheckoutAddress($contact, $session, $body),
             'awaiting_payment_ref' => $this->capturePaymentReference($contact, $session, $body),
-            default                => $this->sendWelcome($contact, $session),
+            default => $this->sendWelcome($contact, $session),
         };
     }
 
@@ -901,16 +929,17 @@ class WhatsAppFlowService
         $name = trim($body);
 
         if ($name === '') {
-            $this->waService->sendTextMessage($contact->phone, "Please reply with your name.");
+            $this->sendTrackedText($contact->phone, 'Please reply with your name.');
+
             return;
         }
 
-        $draft         = $session->data['draft'] ?? [];
+        $draft = $session->data['draft'] ?? [];
         $draft['name'] = $name;
 
         $this->updateSession($session, 'checkout_address', ['draft' => $draft]);
 
-        $this->waService->sendTextMessage(
+        $this->sendTrackedText(
             $contact->phone,
             "Thanks, {$name}! 🙏\n\nWhat's your *delivery address*? (any format is fine — just make sure it's complete)"
         );
@@ -921,11 +950,12 @@ class WhatsAppFlowService
         $address = trim($body);
 
         if ($address === '') {
-            $this->waService->sendTextMessage($contact->phone, "Please reply with your delivery address.");
+            $this->sendTrackedText($contact->phone, 'Please reply with your delivery address.');
+
             return;
         }
 
-        $draft            = $session->data['draft'] ?? [];
+        $draft = $session->data['draft'] ?? [];
         $draft['address'] = $address;
 
         $this->updateSession($session, 'checkout_confirm', ['draft' => $draft]);
@@ -935,25 +965,25 @@ class WhatsAppFlowService
 
     private function sendOrderSummary(Contact $contact, WhatsAppSession $session): void
     {
-        $cart     = $session->data['cart'] ?? [];
-        $draft    = $session->data['draft'] ?? [];
+        $cart = $session->data['cart'] ?? [];
+        $draft = $session->data['draft'] ?? [];
         $subtotal = array_sum(array_map(fn ($i) => $i['price'] * $i['qty'], $cart));
         $delivery = $draft['delivery_fee'] ?? 0;
-        $total    = $subtotal + $delivery;
+        $total = $subtotal + $delivery;
 
         $text = "*Order Summary* 📋\n\n";
         foreach ($cart as $item) {
             $text .= "• {$item['product_name']} – {$item['variant_name']} × {$item['qty']}\n";
         }
-        $text .= "\nSubtotal: \u{20B9}" . number_format($subtotal, 2);
-        $text .= "\nCourier Charges ({$draft['zone_name']}): \u{20B9}" . number_format($delivery, 2);
-        $text .= "\n*Total: \u{20B9}" . number_format($total, 2) . "*";
+        $text .= "\nSubtotal: \u{20B9}".number_format($subtotal, 2);
+        $text .= "\nCourier Charges ({$draft['zone_name']}): \u{20B9}".number_format($delivery, 2);
+        $text .= "\n*Total: \u{20B9}".number_format($total, 2).'*';
         $text .= "\n\n📍 {$draft['name']}\n{$draft['address']}";
         $text .= "\n\nTap below to confirm and pay via UPI.";
 
         $this->sendInteractive($contact->phone, [
-            'type'   => 'button',
-            'body'   => ['text' => $text],
+            'type' => 'button',
+            'body' => ['text' => $text],
             'action' => ['buttons' => [
                 ['type' => 'reply', 'reply' => ['id' => 'pay_upi', 'title' => '📱 Confirm & Pay']],
             ]],
@@ -962,43 +992,44 @@ class WhatsAppFlowService
 
     private function completeOrder(Contact $contact, WhatsAppSession $session): void
     {
-        $cart  = $session->data['cart'] ?? [];
+        $cart = $session->data['cart'] ?? [];
         $draft = $session->data['draft'] ?? [];
 
         if (empty($cart) || empty($draft['name']) || empty($draft['address']) || ! isset($draft['delivery_fee'])) {
             $this->sendWelcome($contact, $session);
+
             return;
         }
 
         $subtotal = array_sum(array_map(fn ($i) => $i['price'] * $i['qty'], $cart));
         $delivery = $draft['delivery_fee'];
-        $total    = $subtotal + $delivery;
+        $total = $subtotal + $delivery;
 
         $order = Order::create([
-            'channel'          => 'whatsapp',
-            'contact_id'       => $contact->id,
-            'customer_name'    => $draft['name'],
-            'customer_phone'   => $contact->phone,
+            'channel' => 'whatsapp',
+            'contact_id' => $contact->id,
+            'customer_name' => $draft['name'],
+            'customer_phone' => $contact->phone,
             'delivery_address' => $draft['address'],
-            'state'            => $draft['zone_name'] ?? null,
-            'subtotal'         => $subtotal,
-            'delivery_fee'     => $delivery,
-            'total'            => $total,
-            'payment_method'   => 'whatsapp',
+            'state' => $draft['zone_name'] ?? null,
+            'subtotal' => $subtotal,
+            'delivery_fee' => $delivery,
+            'total' => $total,
+            'payment_method' => 'whatsapp',
         ]);
 
         foreach ($cart as $item) {
             OrderItem::create([
-                'order_id'           => $order->id,
+                'order_id' => $order->id,
                 'product_variant_id' => $item['variant_id'],
-                'product_name'       => $item['product_name'],
-                'variant_name'       => $item['variant_name'],
-                'sku'                => $item['sku'],
-                'quantity'           => $item['qty'],
-                'unit_price'         => $item['price'],
-                'subtotal'           => $item['price'] * $item['qty'],
-                'gst_rate'           => $item['gst_rate'] ?? 0,
-                'gst_amount'         => OrderItem::gstIncludedIn(
+                'product_name' => $item['product_name'],
+                'variant_name' => $item['variant_name'],
+                'sku' => $item['sku'],
+                'quantity' => $item['qty'],
+                'unit_price' => $item['price'],
+                'subtotal' => $item['price'] * $item['qty'],
+                'gst_rate' => $item['gst_rate'] ?? 0,
+                'gst_amount' => OrderItem::gstIncludedIn(
                     $item['price'] * $item['qty'],
                     $item['gst_rate'] ?? 0,
                 ),
@@ -1029,14 +1060,14 @@ class WhatsAppFlowService
 
         if ($waId) {
             Conversation::create([
-                'contact_id'    => $contact->id,
-                'channel'       => 'whatsapp',
-                'direction'     => 'outbound',
-                'message'       => "[Invoice PDF sent] {$caption}",
+                'contact_id' => $contact->id,
+                'channel' => 'whatsapp',
+                'direction' => 'outbound',
+                'message' => "[Invoice PDF sent] {$caption}",
                 'wa_message_id' => $waId,
-                'is_bot'        => true,
-                'sent_at'       => now(),
-                'status'        => 'sent',
+                'is_bot' => true,
+                'sent_at' => now(),
+                'status' => 'sent',
             ]);
         }
     }
@@ -1047,14 +1078,15 @@ class WhatsAppFlowService
         if (empty($this->settings->upi_id)) {
             $this->updateSession($session, 'menu', ['cart' => [], 'draft' => []]);
 
-            $this->waService->sendTextMessage(
+            $this->sendTrackedText(
                 $contact->phone,
-                "✅ *Order Received!*\n\nOrder number: *{$order->order_number}*\nTotal: \u{20B9}" . number_format((float) $order->total, 2) . "\n\nOur team will contact you shortly on WhatsApp to arrange payment. Type *menu* anytime.\n\n— Merza Team 🥭"
+                "✅ *Order Received!*\n\nOrder number: *{$order->order_number}*\nTotal: \u{20B9}".number_format((float) $order->total, 2)."\n\nOur team will contact you shortly on WhatsApp to arrange payment. Type *menu* anytime.\n\n— Merza Team 🥭"
             );
+
             return;
         }
 
-        $qrService = new UpiQrService();
+        $qrService = new UpiQrService;
         $uri = $qrService->buildUpiUri(
             $this->settings->upi_id,
             $this->settings->upi_payee_name ?: 'Merza',
@@ -1067,20 +1099,20 @@ class WhatsAppFlowService
         $disk->put($path, $qrService->generatePng($uri));
         $imageUrl = $disk->url($path);
 
-        $caption = "Scan to pay \u{20B9}" . number_format((float) $order->total, 2) . " for order *{$order->order_number}*.\n\nOr pay manually to UPI ID: {$this->settings->upi_id}\n\nOnce paid, *send a screenshot of the payment* (or reply with your UTR/reference number) and we'll confirm it right away. 🥭";
+        $caption = "Scan to pay \u{20B9}".number_format((float) $order->total, 2)." for order *{$order->order_number}*.\n\nOr pay manually to UPI ID: {$this->settings->upi_id}\n\nOnce paid, *send a screenshot of the payment* (or reply with your UTR/reference number) and we'll confirm it right away. 🥭";
 
         $waId = $this->waService->sendImageMessage($contact->phone, $imageUrl, $caption);
 
         if ($waId) {
             Conversation::create([
-                'contact_id'    => $contact->id,
-                'channel'       => 'whatsapp',
-                'direction'     => 'outbound',
-                'message'       => "[UPI QR code sent] {$caption}",
+                'contact_id' => $contact->id,
+                'channel' => 'whatsapp',
+                'direction' => 'outbound',
+                'message' => "[UPI QR code sent] {$caption}",
                 'wa_message_id' => $waId,
-                'is_bot'        => true,
-                'sent_at'       => now(),
-                'status'        => 'sent',
+                'is_bot' => true,
+                'sent_at' => now(),
+                'status' => 'sent',
             ]);
         }
 
@@ -1092,10 +1124,11 @@ class WhatsAppFlowService
     private function capturePaymentReference(Contact $contact, WhatsAppSession $session, string $body): void
     {
         $orderId = $session->data['pending_order_id'] ?? null;
-        $order   = $orderId ? Order::find($orderId) : null;
+        $order = $orderId ? Order::find($orderId) : null;
 
         if (! $order) {
             $this->sendWelcome($contact, $session);
+
             return;
         }
 
@@ -1103,7 +1136,7 @@ class WhatsAppFlowService
 
         $this->updateSession($session, 'menu', ['cart' => [], 'draft' => [], 'pending_order_id' => null]);
 
-        $this->waService->sendTextMessage(
+        $this->sendTrackedText(
             $contact->phone,
             "Thank you! ✅ We've noted your payment reference for order *{$order->order_number}*.\n\nOur team will verify and confirm your order shortly. Type *menu* anytime.\n\n— Merza Team 🥭"
         );
@@ -1112,42 +1145,43 @@ class WhatsAppFlowService
     private function capturePaymentScreenshot(Contact $contact, WhatsAppSession $session, string $mediaPath): void
     {
         $orderId = $session->data['pending_order_id'] ?? null;
-        $order   = $orderId ? Order::find($orderId) : null;
+        $order = $orderId ? Order::find($orderId) : null;
 
         if (! $order) {
             $this->sendWelcome($contact, $session);
+
             return;
         }
 
         $imageUrl = Storage::disk(config('media-library.disk_name', 'r2'))->url($mediaPath);
 
         $order->update([
-            'payment_screenshot_path'     => $mediaPath,
+            'payment_screenshot_path' => $mediaPath,
             'payment_verification_status' => 'pending',
         ]);
 
         // Acknowledge immediately — the vision call below can take a few seconds
         // and the customer shouldn't be left wondering if it went through.
-        $this->waService->sendTextMessage($contact->phone, "Got your screenshot! ✅ Verifying now, one moment... 🥭");
+        $this->sendTrackedText($contact->phone, 'Got your screenshot! ✅ Verifying now, one moment... 🥭');
 
         $verification = (new PaymentScreenshotVerificationService($this->settings))->verify($order, $imageUrl);
 
         $order->update([
             'payment_verification_status' => $verification['status'],
-            'payment_verified_amount'     => $verification['extracted_amount'],
-            'payment_verification_notes'  => $verification['extracted_reference']
+            'payment_verified_amount' => $verification['extracted_amount'],
+            'payment_verification_notes' => $verification['extracted_reference']
                 ? "Reference read from screenshot: {$verification['extracted_reference']}"
                 : null,
         ]);
 
         BotActivityLog::create([
-            'event_type'  => 'payment_screenshot_verified',
-            'contact_id'  => $contact->id,
+            'event_type' => 'payment_screenshot_verified',
+            'contact_id' => $contact->id,
             'raw_payload' => [
                 'order_id' => $order->id,
-                'verdict'  => $verification['status'],
-                'amount'   => $verification['extracted_amount'],
-                'raw'      => $verification['raw'],
+                'verdict' => $verification['status'],
+                'amount' => $verification['extracted_amount'],
+                'raw' => $verification['raw'],
             ],
             'status' => 'success',
         ]);
@@ -1157,14 +1191,15 @@ class WhatsAppFlowService
         if ($verification['status'] === 'ai_matched') {
             $order->update(['payment_status' => 'paid']);
 
-            $this->waService->sendTextMessage(
+            $this->sendTrackedText(
                 $contact->phone,
                 "Payment confirmed! ✅\n\nOrder *{$order->order_number}* is now being prepared. We'll keep you posted. Type *menu* anytime.\n\n— Merza Team 🥭"
             );
+
             return;
         }
 
-        $this->waService->sendTextMessage(
+        $this->sendTrackedText(
             $contact->phone,
             "Thanks! We couldn't automatically confirm this from the screenshot, so our team will verify it manually and get back to you shortly on order *{$order->order_number}*. Type *menu* anytime.\n\n— Merza Team 🥭"
         );
@@ -1185,32 +1220,36 @@ class WhatsAppFlowService
         if ($waId) {
             $body = $interactive['body']['text'] ?? '';
             Conversation::create([
-                'contact_id'    => $contact->id,
-                'channel'       => 'whatsapp',
-                'direction'     => 'outbound',
-                'message'       => $body,
+                'contact_id' => $contact->id,
+                'channel' => 'whatsapp',
+                'direction' => 'outbound',
+                'message' => $body,
                 'wa_message_id' => $waId,
-                'is_bot'        => true,
-                'sent_at'       => now(),
-                'status'        => 'sent',
+                'is_bot' => true,
+                'sent_at' => now(),
+                'status' => 'sent',
             ]);
         }
     }
 
-    private function sendTrackedText(Contact $contact, string $text): void
+    private function sendTrackedText(Contact|string $contact, string $text): void
     {
+        if (is_string($contact)) {
+            $contact = Contact::where('phone', $contact)->firstOrFail();
+        }
+
         $waId = $this->waService->sendTextMessage($contact->phone, $text);
 
         if ($waId) {
             Conversation::create([
-                'contact_id'    => $contact->id,
-                'channel'       => 'whatsapp',
-                'direction'     => 'outbound',
-                'message'       => $text,
+                'contact_id' => $contact->id,
+                'channel' => 'whatsapp',
+                'direction' => 'outbound',
+                'message' => $text,
                 'wa_message_id' => $waId,
-                'is_bot'        => true,
-                'sent_at'       => now(),
-                'status'        => 'sent',
+                'is_bot' => true,
+                'sent_at' => now(),
+                'status' => 'sent',
             ]);
         }
     }
@@ -1224,6 +1263,6 @@ class WhatsAppFlowService
 
     private function truncate(string $str, int $max): string
     {
-        return mb_strlen($str) > $max ? mb_substr($str, 0, $max - 1) . '…' : $str;
+        return mb_strlen($str) > $max ? mb_substr($str, 0, $max - 1).'…' : $str;
     }
 }

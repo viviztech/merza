@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Jobs\ProcessInboundWhatsAppJob;
 use App\Jobs\ProcessMetaLeadJob;
 use App\Models\BotSetting;
+use App\Models\Conversation;
 use App\Services\MetaLeadsService;
 use App\Services\WhatsAppService;
 use Illuminate\Http\Request;
@@ -21,12 +22,13 @@ class MetaWebhookController extends Controller
     public function verify(Request $request): Response
     {
         $settings = BotSetting::current();
-        $service  = new MetaLeadsService($settings);
+        $service = new MetaLeadsService($settings);
 
         $challenge = $service->verifyWebhook($request->query());
 
         if ($challenge === false) {
             Log::warning('Meta webhook verification failed', $request->query());
+
             return response('Forbidden', 403);
         }
 
@@ -40,7 +42,7 @@ class MetaWebhookController extends Controller
     public function handle(Request $request): Response
     {
         $payload = $request->all();
-        $object  = $payload['object'] ?? '';
+        $object = $payload['object'] ?? '';
 
         Log::info('Meta webhook received', ['object' => $object]);
 
@@ -83,7 +85,24 @@ class MetaWebhookController extends Controller
     private function handleWhatsApp(array $payload, BotSetting $settings): void
     {
         $waService = new WhatsAppService($settings);
-        $messages  = $waService->parseInboundMessages($payload);
+        $messages = $waService->parseInboundMessages($payload);
+
+        foreach ($waService->parseMessageStatuses($payload) as $statusEvent) {
+            $conversation = Conversation::where('wa_message_id', $statusEvent['wa_message_id'])->first();
+
+            if (! $conversation) {
+                continue;
+            }
+
+            $rank = ['sent' => 1, 'delivered' => 2, 'read' => 3, 'failed' => 4];
+            $incoming = $statusEvent['status'];
+
+            // Meta may deliver status webhooks out of order. Never turn a read
+            // receipt back into delivered/sent, while always surfacing failures.
+            if ($incoming === 'failed' || ($rank[$incoming] ?? 0) >= ($rank[$conversation->status] ?? 0)) {
+                $conversation->update(['status' => $incoming]);
+            }
+        }
 
         foreach ($messages as $msg) {
             if (empty($msg['from']) || empty($msg['wa_message_id'])) {
@@ -95,10 +114,10 @@ class MetaWebhookController extends Controller
                 $msg['wa_message_id'],
                 $msg['body'],
                 (int) $msg['timestamp'],
-                $msg['type']            ?? 'text',
-                $msg['media_id']        ?? null,
-                $msg['referral']        ?? null,
-                $msg['interactive_id']  ?? null,
+                $msg['type'] ?? 'text',
+                $msg['media_id'] ?? null,
+                $msg['referral'] ?? null,
+                $msg['interactive_id'] ?? null,
             );
         }
     }
