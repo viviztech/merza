@@ -60,6 +60,11 @@ class AdminOrderService
                 'quantity'             => $qty,
                 'unit_price'           => $variant->price,
                 'subtotal'             => (float) $variant->price * $qty,
+                'gst_rate'             => (float) $variant->product->gst_rate,
+                'gst_amount'           => OrderItem::gstIncludedIn(
+                    (float) $variant->price * $qty,
+                    (float) $variant->product->gst_rate,
+                ),
             ]);
         }
 

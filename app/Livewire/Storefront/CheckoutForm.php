@@ -313,6 +313,7 @@ class CheckoutForm extends Component
         }
 
         $subtotal    = $cart->subtotal();
+        $gstTotal    = $cart->gstTotal();
         $deliveryFee = $breakdown['total_fee'];
         $total       = $subtotal + $deliveryFee;
         $items       = $cart->items();
@@ -331,6 +332,7 @@ class CheckoutForm extends Component
                 'landmark'                 => $this->landmark ?: null,
                 'customer_email'           => $this->customer_email ?: null,
                 'subtotal'                 => $subtotal,
+                'gst_total'                => $gstTotal,
                 'delivery_fee'             => $deliveryFee,
                 'total'                    => $total,
                 'payment_method'           => $isPreorderOnly ? 'cod' : 'upi',
@@ -350,6 +352,11 @@ class CheckoutForm extends Component
                     'quantity'             => $item->qty,
                     'unit_price'           => $item->price,
                     'subtotal'             => $item->price * $item->qty,
+                    'gst_rate'             => $item->gst_rate ?? 0,
+                    'gst_amount'           => OrderItem::gstIncludedIn(
+                        $item->price * $item->qty,
+                        $item->gst_rate ?? 0,
+                    ),
                 ]);
             }
         } catch (\Throwable $e) {
@@ -465,6 +472,7 @@ class CheckoutForm extends Component
         $cart              = app(CartService::class);
         $items             = $cart->items();
         $subtotal          = $cart->subtotal();
+        $gstTotal          = $cart->gstTotal();
         $weightKg          = $cart->totalWeightKg();
         $giftWeightKg      = $cart->totalFreeGiftWeightKg();
         $breakdown         = $this->getDeliveryBreakdown();
@@ -482,6 +490,6 @@ class CheckoutForm extends Component
             ->pluck('name');
 
         return view('livewire.storefront.checkout-form',
-            compact('items', 'subtotal', 'weightKg', 'giftWeightKg', 'breakdown', 'deliveryFee', 'total', 'stateOptions', 'isPreorderOnly'));
+            compact('items', 'subtotal', 'gstTotal', 'weightKg', 'giftWeightKg', 'breakdown', 'deliveryFee', 'total', 'stateOptions', 'isPreorderOnly'));
     }
 }

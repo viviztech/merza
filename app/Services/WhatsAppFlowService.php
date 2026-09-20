@@ -734,6 +734,7 @@ class WhatsAppFlowService
                 'variant_name' => $variant->name,
                 'sku'          => $variant->sku,
                 'price'        => (float) $variant->price,
+                'gst_rate'     => (float) $variant->product->gst_rate,
                 'qty'          => 1,
                 'weight_kg'    => $weightKg,
             ];
@@ -996,6 +997,11 @@ class WhatsAppFlowService
                 'quantity'           => $item['qty'],
                 'unit_price'         => $item['price'],
                 'subtotal'           => $item['price'] * $item['qty'],
+                'gst_rate'           => $item['gst_rate'] ?? 0,
+                'gst_amount'         => OrderItem::gstIncludedIn(
+                    $item['price'] * $item['qty'],
+                    $item['gst_rate'] ?? 0,
+                ),
             ]);
         }
 

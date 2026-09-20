@@ -13,7 +13,7 @@ class Order extends Model
         'order_number', 'channel', 'user_id', 'contact_id', 'lead_id',
         'customer_name', 'customer_phone', 'customer_email',
         'delivery_address', 'city', 'postcode', 'state', 'landmark',
-        'subtotal', 'delivery_fee', 'packaging_fee', 'total',
+        'subtotal', 'gst_total', 'delivery_fee', 'packaging_fee', 'total',
         'status', 'payment_method', 'payment_status', 'payment_reference', 'payment_screenshot_path',
         'payment_verification_status', 'payment_verified_amount', 'payment_verification_notes',
         'notes', 'admin_notes', 'tracking_number',
@@ -22,6 +22,7 @@ class Order extends Model
 
     protected $casts = [
         'subtotal'                 => 'decimal:2',
+        'gst_total'                => 'decimal:2',
         'delivery_fee'             => 'decimal:2',
         'packaging_fee'            => 'decimal:2',
         'total'                    => 'decimal:2',
@@ -139,10 +140,14 @@ class Order extends Model
     public function recalculateTotals(): void
     {
         $subtotal = $this->items()->sum('subtotal');
+        $gstTotal = $this->items()->sum('gst_amount');
 
         $this->forceFill([
-            'subtotal' => $subtotal,
-            'total'    => $subtotal + $this->delivery_fee + $this->packaging_fee,
+            'subtotal'  => $subtotal,
+            'gst_total' => $gstTotal,
+            // Product prices are GST-inclusive, so tax is disclosed rather
+            // than added again to the amount the customer already saw.
+            'total'     => $subtotal + $this->delivery_fee + $this->packaging_fee,
         ])->saveQuietly();
     }
 

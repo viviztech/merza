@@ -16,12 +16,13 @@ class Product extends Model implements HasMedia
     protected $fillable = [
         'category_id', 'name', 'slug', 'short_description', 'description',
         'harvest_date', 'farm_location', 'sweetness_level', 'delivery_time',
-        'base_price', 'unit', 'is_active', 'is_featured', 'is_available_today',
+        'base_price', 'gst_rate', 'unit', 'is_active', 'is_featured', 'is_available_today',
         'is_preorder', 'available_from', 'preorder_note', 'sort_order',
     ];
 
     protected $casts = [
         'base_price'         => 'decimal:2',
+        'gst_rate'           => 'decimal:2',
         'harvest_date'       => 'date',
         'is_active'          => 'boolean',
         'is_featured'        => 'boolean',

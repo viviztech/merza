@@ -271,6 +271,12 @@
                                     <span>Subtotal</span>
                                     <span>₹{{ number_format($subtotal, 2) }}</span>
                                 </div>
+                                @if($gstTotal > 0)
+                                    <div class="flex justify-between text-xs text-stone-400">
+                                        <span>Includes GST</span>
+                                        <span>₹{{ number_format($gstTotal, 2) }}</span>
+                                    </div>
+                                @endif
                                 <div class="flex justify-between text-stone-500">
                                     <span>Total weight</span>
                                     <span>{{ number_format($weightKg, 2) }} kg</span>

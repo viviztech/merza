@@ -11,11 +11,14 @@ class OrderItem extends Model
         'order_id', 'product_variant_id',
         'product_name', 'variant_name', 'free_gift_label', 'free_gift_weight_kg', 'sku',
         'is_preorder', 'available_from', 'quantity', 'unit_price', 'subtotal',
+        'gst_rate', 'gst_amount',
     ];
 
     protected $casts = [
         'unit_price'           => 'decimal:2',
         'subtotal'             => 'decimal:2',
+        'gst_rate'             => 'decimal:2',
+        'gst_amount'           => 'decimal:2',
         'free_gift_weight_kg'  => 'decimal:3',
         'is_preorder'           => 'boolean',
         'available_from'        => 'date',
@@ -38,5 +41,19 @@ class OrderItem extends Model
     public function variant(): BelongsTo
     {
         return $this->belongsTo(ProductVariant::class, 'product_variant_id');
+    }
+
+    public static function gstIncludedIn(float $amount, float $rate): float
+    {
+        if ($amount <= 0 || $rate <= 0) {
+            return 0.0;
+        }
+
+        return round($amount * $rate / (100 + $rate), 2);
+    }
+
+    public function getTaxableAmountAttribute(): float
+    {
+        return round((float) $this->subtotal - (float) $this->gst_amount, 2);
     }
 }

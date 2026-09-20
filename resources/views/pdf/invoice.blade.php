@@ -143,10 +143,11 @@
     <thead>
       <tr>
         <th style="width:5%">#</th>
-        <th style="width:45%">Product</th>
-        <th class="right" style="width:10%">Qty</th>
-        <th class="right" style="width:20%">Unit Price</th>
-        <th class="right" style="width:20%">Subtotal</th>
+        <th style="width:35%">Product</th>
+        <th class="right" style="width:8%">Qty</th>
+        <th class="right" style="width:17%">Unit Price</th>
+        <th class="right" style="width:18%">GST</th>
+        <th class="right" style="width:17%">Subtotal</th>
       </tr>
     </thead>
     <tbody>
@@ -159,6 +160,14 @@
         </td>
         <td class="right">{{ $item->quantity }}</td>
         <td class="right">Rs. {{ number_format($item->unit_price, 2) }}</td>
+        <td class="right">
+          @if($item->gst_rate > 0)
+            {{ number_format($item->gst_rate, 0) }}%<br>
+            <span class="variant-name">Rs. {{ number_format($item->gst_amount, 2) }} included</span>
+          @else
+            &mdash;
+          @endif
+        </td>
         <td class="right">Rs. {{ number_format($item->subtotal, 2) }}</td>
       </tr>
       @endforeach
@@ -168,13 +177,29 @@
   {{-- Totals --}}
   <table class="totals-table">
     <tr>
-      <td class="label">Subtotal</td>
+      <td class="label">Taxable Value</td>
+      <td class="amount">Rs. {{ number_format($order->subtotal - $order->gst_total, 2) }}</td>
+    </tr>
+    @if($order->gst_total > 0)
+    <tr>
+      <td class="label">GST Included</td>
+      <td class="amount">Rs. {{ number_format($order->gst_total, 2) }}</td>
+    </tr>
+    @endif
+    <tr>
+      <td class="label">Product Total</td>
       <td class="amount">Rs. {{ number_format($order->subtotal, 2) }}</td>
     </tr>
     <tr>
       <td class="label">Delivery Fee</td>
       <td class="amount">Rs. {{ number_format($order->delivery_fee, 2) }}</td>
     </tr>
+    @if($order->packaging_fee > 0)
+    <tr>
+      <td class="label">Packaging Fee</td>
+      <td class="amount">Rs. {{ number_format($order->packaging_fee, 2) }}</td>
+    </tr>
+    @endif
     <tr class="totals-row-total">
       <td class="label">Total</td>
       <td class="amount">Rs. {{ number_format($order->total, 2) }}</td>

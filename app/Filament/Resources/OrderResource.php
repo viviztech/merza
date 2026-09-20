@@ -162,6 +162,11 @@ class OrderResource extends Resource
             'quantity'             => $qty,
             'unit_price'           => $variant->price,
             'subtotal'             => (float) $variant->price * $qty,
+            'gst_rate'             => (float) $variant->product->gst_rate,
+            'gst_amount'           => \App\Models\OrderItem::gstIncludedIn(
+                (float) $variant->price * $qty,
+                (float) $variant->product->gst_rate,
+            ),
         ]);
     }
 
@@ -286,6 +291,8 @@ class OrderResource extends Resource
                     TextEntry::make('quantity')->label('Qty'),
                     TextEntry::make('unit_price')->money('INR')->label('Unit Price'),
                     TextEntry::make('subtotal')->money('INR')->label('Subtotal'),
+                    TextEntry::make('gst_rate')->suffix('%')->label('GST'),
+                    TextEntry::make('gst_amount')->money('INR')->label('GST Included'),
                     TextEntry::make('is_preorder')
                         ->label('Pre-booking')
                         ->badge()
@@ -295,14 +302,15 @@ class OrderResource extends Resource
                         ->label('Available From')
                         ->date('d M Y')
                         ->placeholder('—'),
-                ])->columns(6),
+                ])->columns(8),
             ]),
 
             SchemaSection::make('Financials')->schema([
                 TextEntry::make('subtotal')->money('INR'),
+                TextEntry::make('gst_total')->money('INR')->label('GST Included'),
                 TextEntry::make('delivery_fee')->money('INR'),
                 TextEntry::make('total')->money('INR')->weight('bold'),
-            ])->columns(3),
+            ])->columns(4),
 
             SchemaSection::make('Delivery Tracking')->schema([
                 TextEntry::make('tracking_number')->placeholder('Not assigned'),

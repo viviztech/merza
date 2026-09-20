@@ -43,6 +43,7 @@ class CartService
                 'free_gift_weight_kg'  => (float) ($variant->free_gift_weight_kg ?? 0),
                 'sku'                  => $variant->sku,
                 'price'                => (float) $variant->price,
+                'gst_rate'             => (float) $variant->product->gst_rate,
                 'qty'                  => $qty,
                 'thumbnail_url'        => $variant->product->thumbnail_url,
                 'weight_kg'            => $weightKg,
@@ -98,6 +99,17 @@ class CartService
         return array_sum(array_map(
             fn($item) => $item['price'] * $item['qty'],
             $this->all()
+        ));
+    }
+
+    public function gstTotal(): float
+    {
+        return array_sum(array_map(
+            fn ($item) => \App\Models\OrderItem::gstIncludedIn(
+                (float) $item['price'] * (int) $item['qty'],
+                (float) ($item['gst_rate'] ?? 0),
+            ),
+            $this->all(),
         ));
     }
 

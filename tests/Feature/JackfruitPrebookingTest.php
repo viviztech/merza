@@ -35,6 +35,10 @@ class JackfruitPrebookingTest extends TestCase
             'base_price' => 499,
             'is_active' => true,
             'is_preorder' => true,
+            'harvest_date' => '2026-08-18',
+            'farm_location' => 'Bodinayakanur, Tamil Nadu',
+            'sweetness_level' => 'Honey sweet',
+            'delivery_time' => 'Delivered within 48 hours',
             'available_from' => '2026-08-20',
             'preorder_note' => 'Fresh harvest dispatches next week.',
         ]);
@@ -76,6 +80,19 @@ class JackfruitPrebookingTest extends TestCase
         $item = app(CartService::class)->items()->first();
         $this->assertTrue($item->is_preorder);
         $this->assertSame(3, $item->qty);
+    }
+
+    public function test_prebooking_page_prioritizes_usp_points_and_hides_price_controls(): void
+    {
+        Livewire::test(ProductDetail::class, ['slug' => $this->product->slug])
+            ->assertSee('Why pre-book this harvest')
+            ->assertSee('18 Aug 2026')
+            ->assertSee('Bodinayakanur, Tamil Nadu')
+            ->assertSee('Honey sweet')
+            ->assertSee('Delivered within 48 hours')
+            ->assertSee('Pre-book now')
+            ->assertDontSee('Choose Size / Weight')
+            ->assertDontSee('₹499.00');
     }
 
     public function test_out_of_stock_product_cannot_be_added(): void

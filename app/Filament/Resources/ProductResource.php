@@ -145,6 +145,19 @@ class ProductResource extends Resource
                     ])->columns(2),
 
                 SchemaSection::make('Variants & Pricing')->schema([
+                    Forms\Components\Select::make('gst_rate')
+                        ->label('GST rate')
+                        ->options([
+                            '0'  => 'No GST',
+                            '5'  => '5%',
+                            '12' => '12%',
+                            '18' => '18%',
+                            '28' => '28%',
+                        ])
+                        ->default('0')
+                        ->required()
+                        ->helperText('Product prices include GST. The tax portion will be shown separately on invoices.'),
+
                     Forms\Components\Repeater::make('variants')
                         ->relationship('variants')
                         ->schema([
@@ -309,6 +322,12 @@ class ProductResource extends Resource
                 Tables\Columns\TextColumn::make('base_price')
                     ->money('INR')
                     ->label('From'),
+
+                Tables\Columns\TextColumn::make('gst_rate')
+                    ->label('GST')
+                    ->formatStateUsing(fn ($state) => (float) $state > 0 ? number_format((float) $state, 0) . '%' : 'No GST')
+                    ->badge()
+                    ->color(fn ($state) => (float) $state > 0 ? 'info' : 'gray'),
 
                 Tables\Columns\IconColumn::make('is_featured')
                     ->boolean()
