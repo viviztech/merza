@@ -58,7 +58,10 @@ class WhatsAppInboxTest extends TestCase
 
         Livewire::test(WhatsAppInbox::class)
             ->call('selectThread', $first->id)
-            ->assertSet('selectedContactId', $first->id);
+            ->assertSet('selectedContactId', $first->id)
+            ->assertSet('mobileThreadOpen', true)
+            ->call('closeThread')
+            ->assertSet('mobileThreadOpen', false);
 
         $this->assertNotNull($firstMessage->fresh()->seen_at);
     }

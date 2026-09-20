@@ -33,6 +33,8 @@ class WhatsAppInbox extends Page
 
     public string $replyText = '';
 
+    public bool $mobileThreadOpen = false;
+
     public function mount(): void
     {
         $this->selectedContactId = $this->threadQuery()->value('contacts.id');
@@ -79,8 +81,15 @@ class WhatsAppInbox extends Page
         );
 
         $this->selectedContactId = $contactId;
+        $this->mobileThreadOpen = true;
         $this->replyText = '';
         $this->markSelectedThreadSeen();
+        $this->dispatch('scroll-chat-to-bottom');
+    }
+
+    public function closeThread(): void
+    {
+        $this->mobileThreadOpen = false;
     }
 
     public function sendReply(): void
@@ -115,6 +124,7 @@ class WhatsAppInbox extends Page
         SendWhatsAppMessageJob::dispatch($conversation->id);
 
         $this->replyText = '';
+        $this->dispatch('scroll-chat-to-bottom');
 
         Notification::make()
             ->title('Reply queued')
