@@ -329,6 +329,11 @@
                                             <span>Courier ({{ number_format($breakdown['chargeable_weight'], 2) }} kg × ₹{{ number_format($breakdown['rate_per_kg'], 0) }})</span>
                                             <span>₹{{ number_format($breakdown['shipping_cost'], 2) }}</span>
                                         </div>
+                                        @if($breakdown['chargeable_weight'] > $breakdown['unrounded_chargeable_weight'])
+                                            <p class="text-[11px] text-stone-400">
+                                                Courier minimum/slab applied ({{ number_format($breakdown['minimum_chargeable_weight_kg'], 2) }} kg minimum, rounded by {{ number_format($breakdown['billing_weight_step_kg'], 2) }} kg).
+                                            </p>
+                                        @endif
                                         @if($breakdown['packing_charge'] > 0)
                                             <div class="flex justify-between">
                                                 <span>Packing charge</span>

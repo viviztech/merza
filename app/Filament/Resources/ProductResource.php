@@ -24,8 +24,11 @@ use Illuminate\Support\Str;
 class ProductResource extends Resource
 {
     protected static ?string $model = Product::class;
+
     protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-shopping-bag';
+
     protected static string|\UnitEnum|null $navigationGroup = 'Catalogue';
+
     protected static ?int $navigationSort = 1;
 
     public static function form(Schema $schema): Schema
@@ -38,8 +41,7 @@ class ProductResource extends Resource
                         ->required()
                         ->maxLength(200)
                         ->live(onBlur: true)
-                        ->afterStateUpdated(fn ($state, Set $set) =>
-                            $set('slug', Str::slug($state))),
+                        ->afterStateUpdated(fn ($state, Set $set) => $set('slug', Str::slug($state))),
 
                     Forms\Components\TextInput::make('slug')
                         ->required()
@@ -64,12 +66,14 @@ class ProductResource extends Resource
                                     $name = $get('name');
                                     if (empty($name)) {
                                         Notification::make()->title('Enter a product name first')->warning()->send();
+
                                         return;
                                     }
                                     $settings = BotSetting::current();
-                                    $ai       = new AiProviderService($settings);
+                                    $ai = new AiProviderService($settings);
                                     if (! $ai->isConfigured()) {
                                         Notification::make()->title("{$ai->providerLabel()} API key not configured in Bot Settings")->warning()->send();
+
                                         return;
                                     }
                                     $result = $ai->chat(
@@ -92,16 +96,18 @@ class ProductResource extends Resource
                                 ->label('✨ Generate')
                                 ->icon('heroicon-o-sparkles')
                                 ->action(function (Get $get, Set $set) {
-                                    $name     = $get('name');
+                                    $name = $get('name');
                                     $category = Category::find($get('category_id'))?->name ?? 'fruit';
                                     if (empty($name)) {
                                         Notification::make()->title('Enter a product name first')->warning()->send();
+
                                         return;
                                     }
                                     $settings = BotSetting::current();
-                                    $ai       = new AiProviderService($settings);
+                                    $ai = new AiProviderService($settings);
                                     if (! $ai->isConfigured()) {
                                         Notification::make()->title("{$ai->providerLabel()} API key not configured in Bot Settings")->warning()->send();
+
                                         return;
                                     }
                                     $result = $ai->chat(
@@ -112,7 +118,7 @@ class ProductResource extends Resource
                                     if ($result) {
                                         $html = strip_tags($result, '<p><b><i><ul><ol><li><strong><em>');
                                         if (! str_contains($html, '<p>')) {
-                                            $html = '<p>' . str_replace("\n\n", '</p><p>', trim($html)) . '</p>';
+                                            $html = '<p>'.str_replace("\n\n", '</p><p>', trim($html)).'</p>';
                                         }
                                         $set('description', $html);
                                         Notification::make()->title('Description generated — review and edit before saving')->success()->send();
@@ -148,8 +154,8 @@ class ProductResource extends Resource
                     Forms\Components\Select::make('gst_rate')
                         ->label('GST rate')
                         ->options([
-                            '0'  => 'No GST',
-                            '5'  => '5%',
+                            '0' => 'No GST',
+                            '5' => '5%',
                             '12' => '12%',
                             '18' => '18%',
                             '28' => '28%',
@@ -193,13 +199,24 @@ class ProductResource extends Resource
                                 ->helperText('Extra weight the gift adds to the package — counted in courier charges.'),
 
                             Forms\Components\TextInput::make('weight_value')
-                                ->label('Weight')
+                                ->label('Selling Weight / Quantity')
+                                ->required()
                                 ->numeric()
-                                ->minValue(0),
+                                ->minValue(0.001)
+                                ->helperText('Enter 250 with g, 1 with kg, or the number of pieces/boxes.'),
 
                             Forms\Components\Select::make('weight_unit')
                                 ->options(['g' => 'g', 'kg' => 'kg', 'pcs' => 'pcs', 'box' => 'box'])
-                                ->default('kg'),
+                                ->default('kg')
+                                ->live(),
+
+                            Forms\Components\TextInput::make('shipping_weight_kg')
+                                ->label('Courier Weight (kg)')
+                                ->numeric()
+                                ->minValue(0.001)
+                                ->step(0.001)
+                                ->required(fn (Get $get): bool => in_array($get('weight_unit'), ['pcs', 'box'], true))
+                                ->helperText('Optional for g/kg (auto-converted). Required for pieces/boxes. Include the product packet, but not the outer order carton.'),
 
                             Forms\Components\TextInput::make('stock_qty')
                                 ->label('Stock')
@@ -325,7 +342,7 @@ class ProductResource extends Resource
 
                 Tables\Columns\TextColumn::make('gst_rate')
                     ->label('GST')
-                    ->formatStateUsing(fn ($state) => (float) $state > 0 ? number_format((float) $state, 0) . '%' : 'No GST')
+                    ->formatStateUsing(fn ($state) => (float) $state > 0 ? number_format((float) $state, 0).'%' : 'No GST')
                     ->badge()
                     ->color(fn ($state) => (float) $state > 0 ? 'info' : 'gray'),
 
@@ -374,9 +391,9 @@ class ProductResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index'  => Pages\ListProducts::route('/'),
+            'index' => Pages\ListProducts::route('/'),
             'create' => Pages\CreateProduct::route('/create'),
-            'edit'   => Pages\EditProduct::route('/{record}/edit'),
+            'edit' => Pages\EditProduct::route('/{record}/edit'),
         ];
     }
 }

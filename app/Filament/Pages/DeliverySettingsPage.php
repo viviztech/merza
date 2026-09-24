@@ -3,6 +3,7 @@
 namespace App\Filament\Pages;
 
 use App\Models\DeliverySetting;
+use Filament\Actions\Action;
 use Filament\Forms;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
@@ -10,14 +11,17 @@ use Filament\Schemas\Components\Actions as ActionsGroup;
 use Filament\Schemas\Components\Form;
 use Filament\Schemas\Components\Section as SchemaSection;
 use Filament\Schemas\Schema;
-use Filament\Actions\Action;
 
 class DeliverySettingsPage extends Page
 {
     protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-truck';
+
     protected static string|\UnitEnum|null $navigationGroup = 'Settings';
+
     protected static ?string $navigationLabel = 'Delivery Settings';
+
     protected static ?string $title = 'Delivery & Courier Settings';
+
     protected static ?int $navigationSort = 4;
 
     public ?array $data = [];
@@ -53,16 +57,26 @@ class DeliverySettingsPage extends Page
                             ->label('Free Weight (kg)')
                             ->helperText('Weight deducted from chargeable weight on qualifying orders (offsets packing weight).')
                             ->numeric()->suffix('kg')->required(),
+
+                        Forms\Components\TextInput::make('minimum_chargeable_weight_kg')
+                            ->label('Minimum Billable Weight (kg)')
+                            ->helperText('Light packets are charged at least this weight. Use the minimum specified by your courier.')
+                            ->numeric()->minValue(0.001)->step(0.1)->suffix('kg')->required(),
+
+                        Forms\Components\TextInput::make('billing_weight_step_kg')
+                            ->label('Courier Weight Slab (kg)')
+                            ->helperText('Chargeable weight is rounded up to this slab, commonly 0.5 kg.')
+                            ->numeric()->minValue(0.001)->step(0.1)->suffix('kg')->required(),
                     ])->columns(2),
 
                 SchemaSection::make('How Charges Are Calculated')
                     ->schema([
                         Forms\Components\Placeholder::make('formula_below')
                             ->label('Orders below threshold')
-                            ->content('Chargeable weight = Order weight + Packing weight  |  Fee = (Chargeable weight × Zone rate) + Packing charge'),
+                            ->content('Billable weight = max(order weight, minimum weight), rounded up to the courier slab | Fee = (Billable weight × zone rate) + packing charge'),
                         Forms\Components\Placeholder::make('formula_above')
                             ->label('Orders at/above threshold')
-                            ->content('Chargeable weight = Order weight + Packing weight − Free weight  |  Fee = Chargeable weight × Zone rate  (no packing charge)'),
+                            ->content('Billable weight = order weight + packing weight − free weight, rounded up to the courier slab | Fee = Billable weight × zone rate (no packing charge)'),
                     ]),
 
                 ActionsGroup::make([

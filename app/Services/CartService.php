@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\OrderItem;
 use App\Models\ProductVariant;
 use Illuminate\Support\Collection;
 
@@ -25,31 +26,29 @@ class CartService
         }
 
         $qty = min(max(1, $qty), $maximum);
-        $cart    = $this->all();
+        $cart = $this->all();
 
         if (isset($cart[$variantId])) {
             $cart[$variantId]['qty'] = min($cart[$variantId]['qty'] + $qty, $maximum);
         } else {
-            $weightKg = $variant->weight_unit === 'g'
-                ? ($variant->weight_value / 1000)
-                : (float) $variant->weight_value;
+            $weightKg = $variant->shipping_weight_in_kg;
 
             $cart[$variantId] = [
-                'variant_id'           => $variantId,
-                'product_id'           => $variant->product_id,
-                'product_name'         => $variant->product->name,
-                'variant_name'         => $variant->name,
-                'free_gift_label'      => $variant->free_gift_label,
-                'free_gift_weight_kg'  => (float) ($variant->free_gift_weight_kg ?? 0),
-                'sku'                  => $variant->sku,
-                'price'                => (float) $variant->price,
-                'gst_rate'             => (float) $variant->product->gst_rate,
-                'qty'                  => $qty,
-                'thumbnail_url'        => $variant->product->thumbnail_url,
-                'weight_kg'            => $weightKg,
-                'is_preorder'          => (bool) $variant->product->is_preorder,
-                'available_from'       => $variant->product->available_from?->toDateString(),
-                'preorder_note'        => $variant->product->preorder_note,
+                'variant_id' => $variantId,
+                'product_id' => $variant->product_id,
+                'product_name' => $variant->product->name,
+                'variant_name' => $variant->name,
+                'free_gift_label' => $variant->free_gift_label,
+                'free_gift_weight_kg' => (float) ($variant->free_gift_weight_kg ?? 0),
+                'sku' => $variant->sku,
+                'price' => (float) $variant->price,
+                'gst_rate' => (float) $variant->product->gst_rate,
+                'qty' => $qty,
+                'thumbnail_url' => $variant->product->thumbnail_url,
+                'weight_kg' => $weightKg,
+                'is_preorder' => (bool) $variant->product->is_preorder,
+                'available_from' => $variant->product->available_from?->toDateString(),
+                'preorder_note' => $variant->product->preorder_note,
             ];
         }
 
@@ -61,10 +60,13 @@ class CartService
     {
         $cart = $this->all();
 
-        if (!isset($cart[$variantId])) return;
+        if (! isset($cart[$variantId])) {
+            return;
+        }
 
         if ($qty <= 0) {
             $this->remove($variantId);
+
             return;
         }
 
@@ -97,7 +99,7 @@ class CartService
     public function subtotal(): float
     {
         return array_sum(array_map(
-            fn($item) => $item['price'] * $item['qty'],
+            fn ($item) => $item['price'] * $item['qty'],
             $this->all()
         ));
     }
@@ -105,7 +107,7 @@ class CartService
     public function gstTotal(): float
     {
         return array_sum(array_map(
-            fn ($item) => \App\Models\OrderItem::gstIncludedIn(
+            fn ($item) => OrderItem::gstIncludedIn(
                 (float) $item['price'] * (int) $item['qty'],
                 (float) ($item['gst_rate'] ?? 0),
             ),
@@ -120,7 +122,7 @@ class CartService
     public function totalWeightKg(): float
     {
         return array_sum(array_map(
-            fn($item) => (($item['weight_kg'] ?? 0) + ($item['free_gift_weight_kg'] ?? 0)) * $item['qty'],
+            fn ($item) => (($item['weight_kg'] ?? 0) + ($item['free_gift_weight_kg'] ?? 0)) * $item['qty'],
             $this->all()
         ));
     }
@@ -132,14 +134,14 @@ class CartService
     public function totalFreeGiftWeightKg(): float
     {
         return array_sum(array_map(
-            fn($item) => ($item['free_gift_weight_kg'] ?? 0) * $item['qty'],
+            fn ($item) => ($item['free_gift_weight_kg'] ?? 0) * $item['qty'],
             $this->all()
         ));
     }
 
     public function items(): Collection
     {
-        return collect($this->all())->map(fn($item) => (object) array_merge(
+        return collect($this->all())->map(fn ($item) => (object) array_merge(
             $item,
             ['line_total' => $item['price'] * $item['qty']]
         ));

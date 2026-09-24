@@ -8,15 +8,16 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class ProductVariant extends Model
 {
     protected $fillable = [
-        'product_id', 'name', 'sku', 'price', 'free_gift_label', 'free_gift_weight_kg', 'weight_value', 'weight_unit',
+        'product_id', 'name', 'sku', 'price', 'free_gift_label', 'free_gift_weight_kg', 'weight_value', 'weight_unit', 'shipping_weight_kg',
         'stock_qty', 'low_stock_threshold', 'is_active', 'sort_order',
     ];
 
     protected $casts = [
-        'price'                => 'decimal:2',
-        'weight_value'         => 'decimal:3',
-        'free_gift_weight_kg'  => 'decimal:3',
-        'is_active'            => 'boolean',
+        'price' => 'decimal:2',
+        'weight_value' => 'decimal:3',
+        'shipping_weight_kg' => 'decimal:3',
+        'free_gift_weight_kg' => 'decimal:3',
+        'is_active' => 'boolean',
     ];
 
     public function product(): BelongsTo
@@ -43,6 +44,20 @@ class ProductVariant extends Model
         }
 
         return $this->weight_unit === 'g' ? (float) $this->weight_value / 1000 : (float) $this->weight_value;
+    }
+
+    /**
+     * Physical weight used by the courier calculator. A dedicated override is
+     * useful for piece/box variants and products whose packed weight differs
+     * from the customer-facing net weight.
+     */
+    public function getShippingWeightInKgAttribute(): float
+    {
+        if ((float) $this->shipping_weight_kg > 0) {
+            return (float) $this->shipping_weight_kg;
+        }
+
+        return (float) ($this->weight_in_kg ?? 0);
     }
 
     public function getPricePerKgAttribute(): ?float

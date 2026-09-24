@@ -747,9 +747,7 @@ class WhatsAppFlowService
         if (isset($cart[$key])) {
             $cart[$key]['qty'] = min($cart[$key]['qty'] + 1, $variant->stock_qty);
         } else {
-            $weightKg = $variant->weight_unit === 'g'
-                ? ((float) $variant->weight_value / 1000)
-                : (float) $variant->weight_value;
+            $weightKg = $variant->shipping_weight_in_kg;
 
             $cart[$key] = [
                 'variant_id' => $variant->id,

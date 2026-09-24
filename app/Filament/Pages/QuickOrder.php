@@ -40,18 +40,25 @@ use Illuminate\Support\HtmlString;
 class QuickOrder extends Page
 {
     protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-bolt';
+
     protected static string|\UnitEnum|null $navigationGroup = 'Orders & Delivery';
+
     protected static ?string $navigationLabel = 'Quick Order';
+
     protected static ?string $title = 'Quick Order';
+
     protected static ?int $navigationSort = 0;
 
     public ?array $data = [];
 
     public ?Contact $foundContact = null;
+
     public ?Order $lastOrder = null;
+
     public ?string $duplicateWarning = null;
 
     public ?string $previewMessage = null;
+
     public bool $previewReady = false;
 
     public bool $editingCustomerDetails = false;
@@ -62,9 +69,9 @@ class QuickOrder extends Page
             'customer_phone' => request()->query('phone', ''),
             'payment_method' => 'cod',
             'payment_status' => 'unpaid',
-            'delivery_fee'   => 0,
+            'delivery_fee' => 0,
             'packaging_charge' => false,
-            'items'          => [['product_variant_id' => null, 'quantity' => 1]],
+            'items' => [['product_variant_id' => null, 'quantity' => 1]],
         ];
 
         if (filled($this->data['customer_phone'])) {
@@ -188,7 +195,7 @@ class QuickOrder extends Page
                             ->defaultItems(1)
                             ->addActionLabel('+ Add a line manually')
                             ->reorderable(false)
-                            ->deleteAction(fn (\Filament\Actions\Action $action) => $action->after(function () {
+                            ->deleteAction(fn (Action $action) => $action->after(function () {
                                 $this->previewReady = false;
                                 $this->suggestPackagingCharge();
                             }))
@@ -198,18 +205,18 @@ class QuickOrder extends Page
                 SchemaSection::make('4. Payment & Delivery')->schema([
                     Forms\Components\Select::make('payment_method')
                         ->options([
-                            'cod'           => 'Cash on Delivery',
-                            'upi'           => 'UPI Payment',
+                            'cod' => 'Cash on Delivery',
+                            'upi' => 'UPI Payment',
                             'bank_transfer' => 'Bank Transfer',
-                            'whatsapp'      => 'WhatsApp Order',
+                            'whatsapp' => 'WhatsApp Order',
                         ])
                         ->default('cod')
                         ->required(),
 
                     Forms\Components\Select::make('payment_status')
                         ->options([
-                            'unpaid'   => 'Unpaid',
-                            'paid'     => 'Paid',
+                            'unpaid' => 'Unpaid',
+                            'paid' => 'Paid',
                             'refunded' => 'Refunded',
                         ])
                         ->default('unpaid')
@@ -218,12 +225,12 @@ class QuickOrder extends Page
                     Forms\Components\Placeholder::make('delivery_fee_presets')
                         ->label('Delivery fee — quick pick')
                         ->content(fn () => new HtmlString(
-                            '<div class="flex flex-wrap gap-2">' . collect([0, 50, 100, 150])
-                                ->map(fn ($amount) => '<button type="button" wire:click="setDeliveryFee(' . $amount . ')" '
-                                    . 'class="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 '
-                                    . 'shadow-sm hover:border-primary-400 hover:text-primary-600 dark:border-white/10 dark:bg-white/5 dark:text-gray-200">'
-                                    . "\u{20B9}{$amount}</button>")
-                                ->implode('') . '</div>'
+                            '<div class="flex flex-wrap gap-2">'.collect([0, 50, 100, 150])
+                                ->map(fn ($amount) => '<button type="button" wire:click="setDeliveryFee('.$amount.')" '
+                                    .'class="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 '
+                                    .'shadow-sm hover:border-primary-400 hover:text-primary-600 dark:border-white/10 dark:bg-white/5 dark:text-gray-200">'
+                                    ."\u{20B9}{$amount}</button>")
+                                ->implode('').'</div>'
                         ))
                         ->columnSpanFull(),
 
@@ -237,8 +244,8 @@ class QuickOrder extends Page
 
                     Forms\Components\Toggle::make('packaging_charge')
                         ->label(fn () => 'Packaging Charge ('
-                            . "\u{20B9}" . number_format((float) BotSetting::current()->packaging_charge_amount, 0)
-                            . ')')
+                            ."\u{20B9}".number_format((float) BotSetting::current()->packaging_charge_amount, 0)
+                            .')')
                         ->helperText('Auto-suggested for orders under 5kg — untick if it doesn\'t apply.')
                         ->live()
                         ->afterStateUpdated(fn () => $this->previewReady = false),
@@ -264,10 +271,10 @@ class QuickOrder extends Page
                             ->label('')
                             ->content(fn () => new HtmlString(
                                 '<textarea readonly rows="16" id="wa-preview-textarea" '
-                                . 'class="fi-input block w-full rounded-lg border-none bg-white text-sm text-gray-950 '
-                                . 'shadow-sm ring-1 ring-gray-950/10 dark:bg-white/5 dark:text-white dark:ring-white/20 '
-                                . 'focus:ring-2 focus:ring-primary-600">'
-                                . e($this->previewMessage) . '</textarea>'
+                                .'class="fi-input block w-full rounded-lg border-none bg-white text-sm text-gray-950 '
+                                .'shadow-sm ring-1 ring-gray-950/10 dark:bg-white/5 dark:text-white dark:ring-white/20 '
+                                .'focus:ring-2 focus:ring-primary-600">'
+                                .e($this->previewMessage).'</textarea>'
                             ))
                             ->columnSpanFull(),
 
@@ -364,11 +371,7 @@ class QuickOrder extends Page
         return (float) $this->cartLines()->sum(function (array $line) {
             $variant = $line['variant'];
 
-            return match ($variant->weight_unit) {
-                'kg'    => (float) $variant->weight_value * $line['quantity'],
-                'g'     => (float) $variant->weight_value / 1000 * $line['quantity'],
-                default => 0.0,
-            };
+            return $variant->shipping_weight_in_kg * $line['quantity'];
         });
     }
 
@@ -399,8 +402,8 @@ class QuickOrder extends Page
         foreach ($items as $key => $row) {
             if ((int) ($row['product_variant_id'] ?? 0) === $variantId) {
                 $items[$key]['quantity'] = (int) ($row['quantity'] ?? 1) + 1;
-                $this->data['items']     = $items;
-                $this->previewReady      = false;
+                $this->data['items'] = $items;
+                $this->previewReady = false;
                 $this->suggestPackagingCharge();
 
                 return;
@@ -409,25 +412,25 @@ class QuickOrder extends Page
 
         foreach ($items as $key => $row) {
             if (blank($row['product_variant_id'] ?? null)) {
-                $items[$key]         = ['product_variant_id' => $variantId, 'quantity' => 1];
+                $items[$key] = ['product_variant_id' => $variantId, 'quantity' => 1];
                 $this->data['items'] = $items;
-                $this->previewReady  = false;
+                $this->previewReady = false;
                 $this->suggestPackagingCharge();
 
                 return;
             }
         }
 
-        $items[]              = ['product_variant_id' => $variantId, 'quantity' => 1];
-        $this->data['items']  = $items;
-        $this->previewReady   = false;
+        $items[] = ['product_variant_id' => $variantId, 'quantity' => 1];
+        $this->data['items'] = $items;
+        $this->previewReady = false;
         $this->suggestPackagingCharge();
     }
 
     public function setDeliveryFee(int $amount): void
     {
         $this->data['delivery_fee'] = $amount;
-        $this->previewReady         = false;
+        $this->previewReady = false;
     }
 
     /**
@@ -457,23 +460,23 @@ class QuickOrder extends Page
             return new HtmlString('<div class="text-sm text-gray-400">No items added yet — tap a product above.</div>');
         }
 
-        $count         = $lines->sum('quantity');
-        $subtotal      = $lines->sum('lineTotal');
-        $deliveryFee   = (float) ($this->data['delivery_fee'] ?? 0);
-        $packagingFee  = $this->packagingFeeAmount();
-        $total         = $subtotal + $deliveryFee + $packagingFee;
+        $count = $lines->sum('quantity');
+        $subtotal = $lines->sum('lineTotal');
+        $deliveryFee = (float) ($this->data['delivery_fee'] ?? 0);
+        $packagingFee = $this->packagingFeeAmount();
+        $total = $subtotal + $deliveryFee + $packagingFee;
 
         return new HtmlString(
             '<div class="flex flex-wrap items-center gap-x-6 gap-y-1 rounded-lg bg-primary-50 px-4 py-3 text-sm dark:bg-primary-500/10">'
-            . '<span>' . $count . ' item' . ($count === 1 ? '' : 's') . '</span>'
-            . '<span>Subtotal: <strong>' . "\u{20B9}" . number_format($subtotal, 0) . '</strong></span>'
-            . '<span>Delivery: <strong>' . "\u{20B9}" . number_format($deliveryFee, 0) . '</strong></span>'
-            . ($packagingFee > 0
-                ? '<span>Packaging: <strong>' . "\u{20B9}" . number_format($packagingFee, 0) . '</strong></span>'
+            .'<span>'.$count.' item'.($count === 1 ? '' : 's').'</span>'
+            .'<span>Subtotal: <strong>'."\u{20B9}".number_format($subtotal, 0).'</strong></span>'
+            .'<span>Delivery: <strong>'."\u{20B9}".number_format($deliveryFee, 0).'</strong></span>'
+            .($packagingFee > 0
+                ? '<span>Packaging: <strong>'."\u{20B9}".number_format($packagingFee, 0).'</strong></span>'
                 : '')
-            . '<span class="text-base font-bold text-primary-700 dark:text-primary-300">Total: '
-            . "\u{20B9}" . number_format($total, 0) . '</span>'
-            . '</div>'
+            .'<span class="text-base font-bold text-primary-700 dark:text-primary-300">Total: '
+            ."\u{20B9}".number_format($total, 0).'</span>'
+            .'</div>'
         );
     }
 
@@ -485,26 +488,26 @@ class QuickOrder extends Page
      */
     protected function buildConfirmationMessage(): string
     {
-        $lines      = [];
+        $lines = [];
         $itemsTotal = 0.0;
 
         foreach ($this->cartLines() as $line) {
             $variant = $line['variant'];
-            $qty     = $line['quantity'];
+            $qty = $line['quantity'];
             $itemsTotal += $line['lineTotal'];
 
             $weightValue = rtrim(rtrim(number_format((float) $variant->weight_value, 3, '.', ''), '0'), '.');
-            $pack        = trim($weightValue . $variant->weight_unit);
-            $qtyLabel    = $qty > 1 ? " x{$qty}" : '';
+            $pack = trim($weightValue.$variant->weight_unit);
+            $qtyLabel = $qty > 1 ? " x{$qty}" : '';
 
             $lines[] = "{$variant->product->name} ({$pack}){$qtyLabel}";
-            $lines[] = 'Item Cost: ' . "\u{20B9}" . number_format($line['lineTotal'], 0);
+            $lines[] = 'Item Cost: '."\u{20B9}".number_format($line['lineTotal'], 0);
         }
 
-        $deliveryFee  = (float) ($this->data['delivery_fee'] ?? 0);
+        $deliveryFee = (float) ($this->data['delivery_fee'] ?? 0);
         $packagingFee = $this->packagingFeeAmount();
-        $total        = $itemsTotal + $deliveryFee + $packagingFee;
-        $bot          = BotSetting::current();
+        $total = $itemsTotal + $deliveryFee + $packagingFee;
+        $bot = BotSetting::current();
 
         return implode("\n", array_filter([
             "\u{1F34B} *MERZA BODI* | Quick Order Confirmation",
@@ -512,16 +515,16 @@ class QuickOrder extends Page
             "\u{1F49A} Trusted by 1000+ Happy Customers",
             '',
             "\u{1F4E6} *Order Summary*",
-            'Name: ' . ($this->data['customer_name'] ?? ''),
-            'Place: ' . ($this->data['city'] ?? ''),
+            'Name: '.($this->data['customer_name'] ?? ''),
+            'Place: '.($this->data['city'] ?? ''),
             implode("\n", $lines),
-            'Courier Charge: ' . "\u{20B9}" . number_format($deliveryFee, 0),
-            $packagingFee > 0 ? 'Packaging Charge: ' . "\u{20B9}" . number_format($packagingFee, 0) : null,
-            '*Total Amount: ' . "\u{20B9}" . number_format($total, 0) . '*',
+            'Courier Charge: '."\u{20B9}".number_format($deliveryFee, 0),
+            $packagingFee > 0 ? 'Packaging Charge: '."\u{20B9}".number_format($packagingFee, 0) : null,
+            '*Total Amount: '."\u{20B9}".number_format($total, 0).'*',
             '',
             "\u{1F4B3} *Payment*",
-            'GPay: ' . ($bot->upi_id ?: 'Not set in Settings'),
-            'Account Name: ' . ($bot->upi_payee_name ?: 'Not set in Settings'),
+            'GPay: '.($bot->upi_id ?: 'Not set in Settings'),
+            'Account Name: '.($bot->upi_payee_name ?: 'Not set in Settings'),
             "\u{1F4F7} Please share your payment screenshot after payment.",
             'Send full Delivery Address for dispatch.',
             '',
@@ -531,7 +534,7 @@ class QuickOrder extends Page
             "\u{1F4CD} *Order Tracking*",
             'Tracking ID will be shared after dispatch.',
             'Track your order & receive updates on WhatsApp:'
-                . "\n" . ($bot->whatsapp_group_link ?: 'https://chat.whatsapp.com/FtWyjA7FjP2C4j7NpY4Mlz?s=cl&p=a&mlu=4'),
+                ."\n".($bot->whatsapp_group_link ?: 'https://chat.whatsapp.com/FtWyjA7FjP2C4j7NpY4Mlz?s=cl&p=a&mlu=4'),
             '',
             "\u{1F310} www.merzabodi.com",
             "\u{1F33F} Fresh from Farm. Delivered with Care.",
@@ -551,7 +554,7 @@ class QuickOrder extends Page
         }
 
         $this->previewMessage = $this->buildConfirmationMessage();
-        $this->previewReady   = true;
+        $this->previewReady = true;
     }
 
     /**
@@ -559,9 +562,9 @@ class QuickOrder extends Page
      */
     protected function lookupCustomer(?string $phone, callable $set): void
     {
-        $this->foundContact           = null;
-        $this->lastOrder              = null;
-        $this->duplicateWarning       = null;
+        $this->foundContact = null;
+        $this->lastOrder = null;
+        $this->duplicateWarning = null;
         $this->editingCustomerDetails = false;
 
         $digits = preg_replace('/[^0-9+]/', '', (string) $phone);
@@ -591,12 +594,12 @@ class QuickOrder extends Page
             $this->applyPreviousAddress($set);
         }
 
-        $recentDuplicate = (new AdminOrderService())->findRecentDuplicate($digits);
+        $recentDuplicate = (new AdminOrderService)->findRecentDuplicate($digits);
 
         if ($recentDuplicate) {
             $this->duplicateWarning = "Heads up: {$recentDuplicate->customer_name} already placed order "
-                . "{$recentDuplicate->order_number} {$recentDuplicate->created_at->diffForHumans()}. "
-                . 'Check before creating another.';
+                ."{$recentDuplicate->order_number} {$recentDuplicate->created_at->diffForHumans()}. "
+                .'Check before creating another.';
         }
     }
 
@@ -607,7 +610,7 @@ class QuickOrder extends Page
 
     protected function renderCustomerSummary(): HtmlString
     {
-        $name    = $this->data['customer_name'] ?? '';
+        $name = $this->data['customer_name'] ?? '';
         $address = trim(implode(', ', array_filter([
             $this->data['delivery_address'] ?? null,
             $this->data['city'] ?? null,
@@ -617,9 +620,9 @@ class QuickOrder extends Page
 
         return new HtmlString(
             '<div class="rounded-lg bg-emerald-50 px-4 py-3 text-sm dark:bg-emerald-500/10">'
-            . '<div class="font-semibold text-emerald-700 dark:text-emerald-400">✓ ' . e($name) . '</div>'
-            . '<div class="text-gray-600 dark:text-gray-400">' . e($address ?: 'No address on file yet — click Edit to add one.') . '</div>'
-            . '</div>'
+            .'<div class="font-semibold text-emerald-700 dark:text-emerald-400">✓ '.e($name).'</div>'
+            .'<div class="text-gray-600 dark:text-gray-400">'.e($address ?: 'No address on file yet — click Edit to add one.').'</div>'
+            .'</div>'
         );
     }
 
@@ -649,23 +652,23 @@ class QuickOrder extends Page
             $from = $message->direction === 'inbound' ? 'Customer' : ($message->is_bot ? 'Bot' : 'Staff');
 
             return '<div class="border-b border-gray-100 py-1.5 last:border-0 dark:border-white/10">'
-                . '<span class="font-medium text-gray-500 dark:text-gray-400">' . e($from) . ':</span> '
-                . '<span class="text-gray-700 dark:text-gray-300">' . e((string) str($message->message)->limit(140)) . '</span>'
-                . '</div>';
+                .'<span class="font-medium text-gray-500 dark:text-gray-400">'.e($from).':</span> '
+                .'<span class="text-gray-700 dark:text-gray-300">'.e((string) str($message->message)->limit(140)).'</span>'
+                .'</div>';
         })->implode('');
 
         return new HtmlString(
             '<details class="rounded-lg border border-gray-200 px-4 py-2 text-sm dark:border-white/10">'
-            . '<summary class="cursor-pointer font-medium text-gray-600 dark:text-gray-300">Recent WhatsApp messages</summary>'
-            . '<div class="mt-2">' . $rows . '</div>'
-            . '</details>'
+            .'<summary class="cursor-pointer font-medium text-gray-600 dark:text-gray-300">Recent WhatsApp messages</summary>'
+            .'<div class="mt-2">'.$rows.'</div>'
+            .'</details>'
         );
     }
 
     protected function renderLookupResult(): ?HtmlString
     {
         if ($this->duplicateWarning) {
-            return new HtmlString('<div class="text-sm font-semibold text-amber-600">⚠️ ' . e($this->duplicateWarning) . '</div>');
+            return new HtmlString('<div class="text-sm font-semibold text-amber-600">⚠️ '.e($this->duplicateWarning).'</div>');
         }
 
         if ($this->foundContact) {
@@ -673,14 +676,14 @@ class QuickOrder extends Page
 
             return new HtmlString(
                 '<div class="text-sm font-semibold text-emerald-600">✓ Existing customer: '
-                . e($this->foundContact->name) . " — {$count} previous order(s)</div>"
+                .e($this->foundContact->name)." — {$count} previous order(s)</div>"
             );
         }
 
         if ($this->lastOrder) {
             return new HtmlString(
                 '<div class="text-sm font-semibold text-emerald-600">✓ Found a previous order under this number: '
-                . e($this->lastOrder->customer_name) . '</div>'
+                .e($this->lastOrder->customer_name).'</div>'
             );
         }
 
@@ -705,7 +708,7 @@ class QuickOrder extends Page
         $address = $this->lastOrder->delivery_address;
 
         if (filled($this->lastOrder->landmark) && ! str_contains((string) $address, $this->lastOrder->landmark)) {
-            $address = trim($address . ' (Near: ' . $this->lastOrder->landmark . ')');
+            $address = trim($address.' (Near: '.$this->lastOrder->landmark.')');
         }
 
         $set('delivery_address', $address);
@@ -724,7 +727,7 @@ class QuickOrder extends Page
 
         $set('items', $this->lastOrder->items->map(fn ($item) => [
             'product_variant_id' => $item->product_variant_id,
-            'quantity'           => $item->quantity,
+            'quantity' => $item->quantity,
         ])->toArray());
     }
 
@@ -748,11 +751,11 @@ class QuickOrder extends Page
         // $this->data is already kept in sync by the live form bindings.
         $this->content->getState();
 
-        $data  = $this->data;
+        $data = $this->data;
         $items = $data['items'] ?? [];
         unset($data['items'], $data['preview_display']);
 
-        $service = new AdminOrderService();
+        $service = new AdminOrderService;
 
         $stockIssues = $service->checkAvailability($items);
 
@@ -773,8 +776,8 @@ class QuickOrder extends Page
             items: $items,
             customerData: array_intersect_key($data, array_flip($customerFields)),
             orderData: array_diff_key($data, array_flip($excludedFields)) + [
-                'status'        => 'confirmed',
-                'confirmed_at'  => now(),
+                'status' => 'confirmed',
+                'confirmed_at' => now(),
                 'packaging_fee' => $this->packagingFeeAmount(),
             ],
             contact: $this->foundContact,
@@ -785,7 +788,7 @@ class QuickOrder extends Page
             ->success()
             ->send();
 
-        $this->previewReady   = false;
+        $this->previewReady = false;
         $this->previewMessage = null;
 
         $this->redirect(OrderResource::getUrl('view', ['record' => $order]));
