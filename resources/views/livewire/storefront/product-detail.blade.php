@@ -230,7 +230,9 @@
                         wire:loading.attr="disabled"
                         @if($selectedVariant?->stock_qty <= 0) disabled @endif
                         class="w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 disabled:opacity-50 disabled:cursor-not-allowed text-white font-extrabold py-4 px-6 rounded-2xl flex items-center justify-center gap-2 transition-all shadow-lg shadow-amber-200/50 hover:shadow-xl hover:-translate-y-0.5 text-base">
-                    <span wire:loading.remove wire:target="buyNow">{{ $product->is_preorder ? 'Pre-book & checkout' : 'Buy now' }} · ₹{{ number_format(($selectedVariant?->price ?? 0) * $qty, 2) }}</span>
+                    <span wire:loading.remove wire:target="buyNow">
+                        {{ $product->is_preorder ? 'Pre-book now' : 'Buy now · ₹'.number_format(($selectedVariant?->price ?? 0) * $qty, 2) }}
+                    </span>
                     <span wire:loading wire:target="buyNow">Opening checkout…</span>
                 </button>
 

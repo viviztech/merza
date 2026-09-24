@@ -1,4 +1,12 @@
 <x-layouts.storefront title="Order {{ $order->order_number }} — Payment {{ $status === 'SUCCESS' ? 'Confirmed' : 'Status' }}">
+    @if($metaPurchase)
+        <script>
+            window.addEventListener('load', () => {
+                window.merzaTrackMetaPurchase?.(@json($metaPurchase));
+            }, { once: true });
+        </script>
+    @endif
+
     <div class="max-w-lg mx-auto px-4 py-12 text-center">
 
         @if($status === 'SUCCESS')

@@ -206,7 +206,8 @@
     </tr>
   </table>
 
-  {{-- Payment --}}
+  {{-- Payment is intentionally omitted for pre-booking acknowledgements. --}}
+  @unless($order->isPreorderOnly())
   <div class="payment-section">
     <div class="payment-row">Payment Method: <span>{{ match($order->payment_method) { 'cod' => 'Cash on Delivery', 'upi' => 'UPI Payment', 'bank_transfer' => 'Bank Transfer', 'whatsapp' => 'WhatsApp Order', default => $order->payment_method } }}</span></div>
     <div class="payment-row">Payment Status: <span>{{ ucfirst($order->payment_status) }}</span></div>
@@ -214,6 +215,7 @@
       <div class="payment-row">Payment Reference / UTR: <span>{{ $order->payment_reference }}</span></div>
     @endif
   </div>
+  @endunless
 
   {{-- Customer Notes --}}
   @if($order->notes)

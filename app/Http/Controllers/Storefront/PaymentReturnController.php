@@ -61,8 +61,9 @@ class PaymentReturnController extends Controller
     public function confirmation(Request $request, Order $order): View
     {
         $status = $request->query('status', $order->payment_status === 'paid' ? 'SUCCESS' : 'UNKNOWN');
+        $metaPurchase = session()->pull("meta_purchase_events.{$order->id}");
 
-        return view('storefront.checkout.confirmation', compact('order', 'status'));
+        return view('storefront.checkout.confirmation', compact('order', 'status', 'metaPurchase'));
     }
 
     /**

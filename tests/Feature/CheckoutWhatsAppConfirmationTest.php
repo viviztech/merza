@@ -75,6 +75,8 @@ class CheckoutWhatsAppConfirmationTest extends TestCase
 
         $test->assertSet('orderPlaced', true);
 
+        $test->assertDispatched('meta-purchase');
+
         Queue::assertPushed(SendWhatsAppMessageJob::class);
 
         $contact = Contact::where('phone', '9123456780')->first();
@@ -83,6 +85,13 @@ class CheckoutWhatsAppConfirmationTest extends TestCase
         $conversation = Conversation::where('contact_id', $contact->id)->latest()->first();
         $this->assertNotNull($conversation);
         $this->assertStringContainsString($test->get('orderNumber'), $conversation->message);
+
+        $order = \App\Models\Order::where('order_number', $test->get('orderNumber'))->firstOrFail();
+        $pixelPayload = session("meta_purchase_events.{$order->id}");
+        $this->assertSame($order->order_number, $pixelPayload['orderId']);
+        $this->assertSame('INR', $pixelPayload['currency']);
+        $this->assertSame([(string) $this->variant->id], $pixelPayload['contentIds']);
+        $this->assertSame(1, $pixelPayload['numItems']);
     }
 
     public function test_opted_out_contact_does_not_get_a_confirmation_queued(): void

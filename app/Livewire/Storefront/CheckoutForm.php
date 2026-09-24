@@ -70,16 +70,25 @@ class CheckoutForm extends Component
 
     protected function rules(): array
     {
+        $preorderOnly = $this->isPreorderOnlyCart();
+
         return [
             'customer_name'      => 'required|string|max:120',
             'customer_phone'     => 'required|string|max:20',
             'customer_email'     => 'nullable|email|max:255',
-            'delivery_address'   => 'required|string|max:500',
-            'postcode'           => ['required', 'regex:/^\d{6}$/'],
-            'city'               => 'required|string|max:80',
-            'state'              => 'required|string|max:80',
+            'delivery_address'   => ($preorderOnly ? 'nullable' : 'required').'|string|max:500',
+            'postcode'           => $preorderOnly ? ['nullable'] : ['required', 'regex:/^\d{6}$/'],
+            'city'               => ($preorderOnly ? 'nullable' : 'required').'|string|max:80',
+            'state'              => ($preorderOnly ? 'nullable' : 'required').'|string|max:80',
             'landmark'           => 'nullable|string|max:150',
         ];
+    }
+
+    private function isPreorderOnlyCart(): bool
+    {
+        $items = app(CartService::class)->items();
+
+        return $items->isNotEmpty() && $items->every(fn ($item) => $item->is_preorder ?? false);
     }
 
     protected function messages(): array
@@ -292,7 +301,12 @@ class CheckoutForm extends Component
 
     public function placeOrder(): void
     {
-        $this->postcode = preg_replace('/\D/', '', $this->postcode) ?? '';
+        $isPreorderOnly = $this->isPreorderOnlyCart();
+
+        if (! $isPreorderOnly) {
+            $this->postcode = preg_replace('/\D/', '', $this->postcode) ?? '';
+        }
+
         $this->validate();
 
         $cart = app(CartService::class);
@@ -302,22 +316,21 @@ class CheckoutForm extends Component
             return;
         }
 
-        $zone      = $this->resolveZone();
+        $zone = $isPreorderOnly ? null : $this->resolveZone();
         $breakdown = $zone ? (new DeliveryCalculatorService())->calculateForZone($zone, $cart->totalWeightKg()) : null;
 
         // No courier charge could be calculated for this area — do not let the
         // customer proceed to payment/order confirmation without a real charge.
-        if (! $breakdown) {
+        if (! $isPreorderOnly && ! $breakdown) {
             $this->addError('city', "Sorry, we don't currently deliver to {$this->city}, {$this->state}. Please double-check the pincode, or contact us on WhatsApp for help arranging delivery.");
             return;
         }
 
         $subtotal    = $cart->subtotal();
         $gstTotal    = $cart->gstTotal();
-        $deliveryFee = $breakdown['total_fee'];
+        $deliveryFee = $isPreorderOnly ? 0 : $breakdown['total_fee'];
         $total       = $subtotal + $deliveryFee;
         $items       = $cart->items();
-        $isPreorderOnly = $items->isNotEmpty() && $items->every(fn ($item) => $item->is_preorder ?? false);
 
         try {
             $order = Order::create([
@@ -325,17 +338,17 @@ class CheckoutForm extends Component
                 'user_id'                  => auth()->id(),
                 'customer_name'            => $this->customer_name,
                 'customer_phone'           => $this->customer_phone,
-                'delivery_address'         => $this->delivery_address,
-                'city'                     => $this->city,
-                'postcode'                 => $this->postcode,
-                'state'                    => $this->state,
-                'landmark'                 => $this->landmark ?: null,
+                'delivery_address'         => $isPreorderOnly ? 'Pre-order — address to be confirmed' : $this->delivery_address,
+                'city'                     => $isPreorderOnly ? null : $this->city,
+                'postcode'                 => $isPreorderOnly ? null : $this->postcode,
+                'state'                    => $isPreorderOnly ? null : $this->state,
+                'landmark'                 => $isPreorderOnly ? null : ($this->landmark ?: null),
                 'customer_email'           => $this->customer_email ?: null,
                 'subtotal'                 => $subtotal,
                 'gst_total'                => $gstTotal,
                 'delivery_fee'             => $deliveryFee,
                 'total'                    => $total,
-                'payment_method'           => $isPreorderOnly ? 'cod' : 'upi',
+                'payment_method'           => $isPreorderOnly ? 'whatsapp' : 'upi',
             ]);
 
             foreach ($cart->items() as $item) {
@@ -370,6 +383,16 @@ class CheckoutForm extends Component
 
         app(AnalyticsTracker::class)->track('order_placed', null, $order->id);
 
+        $metaPurchase = [
+            'orderId' => $order->order_number,
+            'value' => (float) $order->total,
+            'currency' => 'INR',
+            'contentIds' => $items->pluck('variant_id')->map(fn ($id) => (string) $id)->values()->all(),
+            'numItems' => (int) $items->sum('qty'),
+        ];
+        session()->put("meta_purchase_events.{$order->id}", $metaPurchase);
+        $this->dispatch('meta-purchase', ...$metaPurchase);
+
         $this->sendWhatsAppConfirmation($order);
 
         if (! $isPreorderOnly && $this->gatewayActive()) {
@@ -393,7 +416,9 @@ class CheckoutForm extends Component
         $this->orderIsPreorderOnly = $isPreorderOnly;
         $preorderDate = $order->items()->where('is_preorder', true)->max('available_from');
         $dispatchBase = $preorderDate ? \Carbon\Carbon::parse($preorderDate) : now();
-        $this->expectedDelivery = $dispatchBase->copy()->addDays($zone->eta_days ?? 2)->format('D, d M Y');
+        $this->expectedDelivery = $isPreorderOnly
+            ? ($preorderDate ? $dispatchBase->format('D, d M Y') : null)
+            : $dispatchBase->copy()->addDays($zone->eta_days ?? 2)->format('D, d M Y');
     }
 
     /**

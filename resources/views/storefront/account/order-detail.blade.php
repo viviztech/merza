@@ -40,6 +40,7 @@
                     <dt class="text-stone-500">Placed on</dt>
                     <dd class="font-semibold text-stone-800">{{ $order->created_at->format('d M Y, h:i A') }}</dd>
                 </div>
+                @unless($order->isPreorderOnly())
                 <div class="flex justify-between">
                     <dt class="text-stone-500">Payment status</dt>
                     <dd>
@@ -53,6 +54,7 @@
                         @endif
                     </dd>
                 </div>
+                @endunless
                 @if($order->notes)
                     <div class="flex justify-between">
                         <dt class="text-stone-500">Notes</dt>

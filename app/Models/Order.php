@@ -132,6 +132,15 @@ class Order extends Model
         return $this->hasMany(OrderItem::class);
     }
 
+    public function isPreorderOnly(): bool
+    {
+        $items = $this->relationLoaded('items')
+            ? $this->items
+            : $this->items()->get(['is_preorder']);
+
+        return $items->isNotEmpty() && $items->every(fn (OrderItem $item) => $item->is_preorder);
+    }
+
     /**
      * Recompute subtotal/total from current line items. Called whenever
      * order items change (admin edit, storefront checkout, etc.) so totals

@@ -72,9 +72,13 @@
 
                         {{-- Footer --}}
                         <div class="px-5 py-3 bg-stone-50 border-t border-stone-100 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 text-xs text-stone-500">
-                            <span>Payment: <strong class="text-stone-700">{{ ucfirst(str_replace('_', ' ', $order->payment_method ?? 'N/A')) }}</strong>
-                                · Status: <strong class="{{ $order->payment_status === 'paid' ? 'text-emerald-600' : 'text-yellow-600' }}">{{ ucfirst($order->payment_status ?? 'pending') }}</strong>
-                            </span>
+                            @if($order->isPreorderOnly())
+                                <span class="font-semibold text-emerald-700">Pre-booking · Payment arranged before dispatch</span>
+                            @else
+                                <span>Payment: <strong class="text-stone-700">{{ ucfirst(str_replace('_', ' ', $order->payment_method ?? 'N/A')) }}</strong>
+                                    · Status: <strong class="{{ $order->payment_status === 'paid' ? 'text-emerald-600' : 'text-yellow-600' }}">{{ ucfirst($order->payment_status ?? 'pending') }}</strong>
+                                </span>
+                            @endif
                             @if($order->tracking_number)
                                 <span>Tracking: <strong class="text-stone-700">{{ $order->tracking_number }}</strong></span>
                             @endif

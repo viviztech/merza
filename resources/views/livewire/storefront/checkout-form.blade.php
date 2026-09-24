@@ -16,8 +16,8 @@
                 </span>
             </div>
 
-            <h1 class="text-3xl font-extrabold text-brand-green-dark mb-2">Order Placed! 🥭</h1>
-            <p class="text-stone-500 mb-4">Your fresh fruits are being prepared.</p>
+            <h1 class="text-3xl font-extrabold text-brand-green-dark mb-2">{{ $orderIsPreorderOnly ? 'Pre-booking Confirmed! 🌱' : 'Order Placed! 🥭' }}</h1>
+            <p class="text-stone-500 mb-4">{{ $orderIsPreorderOnly ? 'Your harvest reservation is saved. No payment is needed now.' : 'Your fresh fruits are being prepared.' }}</p>
 
             <div class="bg-gradient-to-r from-amber-50 to-orange-50 border-2 border-amber-200 rounded-3xl p-5 mb-6">
                 <p class="text-xs text-amber-600 font-bold uppercase tracking-widest mb-1">Order Number</p>
@@ -27,7 +27,7 @@
             @if($expectedDelivery)
                 <div class="inline-flex items-center gap-2 bg-emerald-50 border border-emerald-200 rounded-2xl px-5 py-3 mb-6">
                     <span class="text-lg">🚚</span>
-                    <span class="text-sm font-bold text-emerald-700">Expected Delivery: {{ $expectedDelivery }}</span>
+                    <span class="text-sm font-bold text-emerald-700">{{ $orderIsPreorderOnly ? 'Expected availability' : 'Expected Delivery' }}: {{ $expectedDelivery }}</span>
                 </div>
             @endif
 
@@ -65,10 +65,12 @@
                    class="inline-flex items-center justify-center gap-2 bg-white border-2 border-amber-200 text-amber-700 font-extrabold px-6 py-4 rounded-2xl hover:bg-amber-50 transition-all">
                     Track Order
                 </a>
+                @unless($orderIsPreorderOnly)
                 <a href="{{ URL::signedRoute('customer.orders.invoice', ['order' => $orderId]) }}"
                    class="inline-flex items-center justify-center gap-2 bg-white border-2 border-amber-200 text-amber-700 font-extrabold px-6 py-4 rounded-2xl hover:bg-amber-50 transition-all">
                     Download Invoice
                 </a>
+                @endunless
                 <a href="https://wa.me/918667696278?text=Hi%2C+my+order+number+is+{{ $orderNumber }}.+Can+you+confirm+delivery+details?"
                    target="_blank"
                    class="inline-flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold px-6 py-4 rounded-2xl transition-all shadow-lg">
@@ -141,7 +143,7 @@
                     <div class="bg-white rounded-3xl border border-amber-100 shadow-sm overflow-hidden">
                         <div class="bg-gradient-to-r from-amber-50 to-orange-50 border-b border-amber-100 px-5 py-4 flex items-center gap-2">
                             <span class="w-6 h-6 rounded-lg bg-amber-500 text-white flex items-center justify-center text-xs font-bold">1</span>
-                            <h2 class="font-extrabold text-stone-800">Delivery Details</h2>
+                            <h2 class="font-extrabold text-stone-800">{{ $isPreorderOnly ? 'Reservation Contact' : 'Delivery Details' }}</h2>
                         </div>
                         <div class="p-5 grid sm:grid-cols-2 gap-4">
 
@@ -150,7 +152,7 @@
                                 <input id="checkout-mobile" wire:model.live.debounce.600ms="customer_phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="86676 96278"
                                        class="w-full border-2 {{ $errors->has('customer_phone') ? 'border-red-300 bg-red-50' : 'border-stone-200 focus:border-amber-400' }} rounded-xl px-4 py-3 text-base focus:outline-none transition-colors bg-white placeholder-stone-300">
                                 @error('customer_phone') <p class="text-red-500 text-xs mt-1 font-medium">{{ $message }}</p> @enderror
-                                <p class="text-[11px] text-stone-400 mt-1.5">Used to find saved addresses and send WhatsApp updates.</p>
+                                <p class="text-[11px] text-stone-400 mt-1.5">{{ $isPreorderOnly ? 'We will use this number for harvest and booking updates.' : 'Used to find saved addresses and send WhatsApp updates.' }}</p>
                             </div>
 
                             <div>
@@ -160,7 +162,7 @@
                                 @error('customer_name') <p class="text-red-500 text-xs mt-1 font-medium">{{ $message }}</p> @enderror
                             </div>
 
-                            @if($returningCustomerName)
+                            @if(! $isPreorderOnly && $returningCustomerName)
                                 <div class="sm:col-span-2 bg-emerald-50 border border-emerald-200 rounded-2xl p-4">
                                     <p class="text-sm font-extrabold text-emerald-800">Welcome back, {{ $returningCustomerName }}</p>
                                     @if($hasPreviousAddress && $previousAddressApplied)
@@ -176,7 +178,7 @@
                                 </div>
                             @endif
 
-                            @unless($previousAddressApplied)
+                            @if(! $isPreorderOnly && ! $previousAddressApplied)
                                 <div class="sm:col-span-2" x-data="{ locating: false, locationError: '' }">
                                     <button type="button" @click="locationError = ''; if (!navigator.geolocation) { locationError = 'Location autofill is not supported on this device.'; return; } locating = true; navigator.geolocation.getCurrentPosition(position => $wire.autofillFromLocation(position.coords.latitude, position.coords.longitude).then(() => locating = false), () => { locating = false; locationError = 'Allow location access, or enter your address below.'; }, { enableHighAccuracy: true, timeout: 10000 });" :disabled="locating"
                                             class="w-full flex items-center justify-center gap-2 border-2 border-emerald-200 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-extrabold py-3.5 rounded-2xl transition-colors disabled:opacity-60">
@@ -223,8 +225,22 @@
                                     </select>
                                     @error('state') <p class="text-red-500 text-xs mt-1 font-medium">{{ $message }}</p> @enderror
                                 </div>
-                            @endunless
+                            @endif
 
+                            @if($isPreorderOnly)
+                            <div class="sm:col-span-2">
+                                <label for="checkout-email" class="block text-xs font-extrabold text-stone-600 mb-1.5 uppercase tracking-wide">Email <span class="font-normal text-stone-400 normal-case">(optional)</span></label>
+                                <input id="checkout-email" wire:model="customer_email" type="email" autocomplete="email" placeholder="you@example.com" class="w-full border-2 {{ $errors->has('customer_email') ? 'border-red-300 bg-red-50' : 'border-stone-200 focus:border-amber-400' }} rounded-xl px-4 py-3 text-base focus:outline-none transition-colors bg-white placeholder-stone-300">
+                                @error('customer_email') <p class="text-red-500 text-xs mt-1 font-medium">{{ $message }}</p> @enderror
+                            </div>
+                            <div class="sm:col-span-2 flex items-start gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
+                                <span class="mt-0.5 flex h-8 w-8 flex-none items-center justify-center rounded-xl bg-emerald-600 text-white">✓</span>
+                                <div>
+                                    <p class="text-sm font-extrabold text-emerald-900">That is all we need to reserve your harvest.</p>
+                                    <p class="mt-1 text-xs leading-relaxed text-emerald-700">No address or payment details are required now. We will confirm delivery and payment with you before dispatch.</p>
+                                </div>
+                            </div>
+                            @else
                             <details class="sm:col-span-2 group">
                                 <summary class="cursor-pointer text-xs font-bold text-stone-500 hover:text-amber-700 list-none">+ Add email <span class="font-normal">(optional)</span></summary>
                                 <div class="mt-3 max-w-md">
@@ -233,6 +249,7 @@
                                     @error('customer_email') <p class="text-red-500 text-xs mt-1 font-medium">{{ $message }}</p> @enderror
                                 </div>
                             </details>
+                            @endif
                         </div>
                     </div>
                 </div>
@@ -262,10 +279,20 @@
                                             <p class="text-[10px] font-bold text-emerald-700">🎁 {{ $item->free_gift_label }}</p>
                                         @endif
                                     </div>
-                                    <p class="text-sm font-extrabold text-amber-600 flex-shrink-0">₹{{ number_format($item->line_total, 2) }}</p>
+                                    @unless($isPreorderOnly)
+                                        <p class="text-sm font-extrabold text-amber-600 flex-shrink-0">₹{{ number_format($item->line_total, 2) }}</p>
+                                    @endunless
                                 </div>
                             @endforeach
 
+                            @if($isPreorderOnly)
+                                <div class="border-t border-emerald-100 pt-3">
+                                    <div class="rounded-2xl bg-emerald-50 px-4 py-3 text-center">
+                                        <p class="text-sm font-extrabold text-emerald-800">Reserved now · Pay later</p>
+                                        <p class="mt-1 text-xs text-emerald-700">Final quantity, delivery and payment will be confirmed before dispatch.</p>
+                                    </div>
+                                </div>
+                            @else
                             <div class="border-t border-amber-100 pt-3 space-y-1.5 text-sm">
                                 <div class="flex justify-between text-stone-500">
                                     <span>Subtotal</span>
@@ -325,6 +352,7 @@
                                     <span class="text-amber-600 text-lg">₹{{ number_format($total, 2) }}</span>
                                 </div>
                             </div>
+                            @endif
 
                         </div>
                     </div>

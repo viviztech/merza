@@ -556,6 +556,39 @@
     </a>
     @endunless
 
+    @if($integrations->meta_pixel_id)
+        <script>
+            window.merzaTrackMetaPurchase = function (payload) {
+                if (!payload || typeof window.fbq !== 'function') return;
+
+                const storageKey = `merza-meta-purchase-${payload.orderId}`;
+
+                try {
+                    if (sessionStorage.getItem(storageKey)) return;
+                    sessionStorage.setItem(storageKey, '1');
+                } catch (error) {
+                    // Tracking should still work when storage is unavailable.
+                }
+
+                window.fbq('track', 'Purchase', {
+                    value: Number(payload.value || 0),
+                    currency: payload.currency || 'INR',
+                    content_ids: payload.contentIds || [],
+                    content_type: 'product',
+                    num_items: Number(payload.numItems || 0),
+                }, {
+                    eventID: `merza-order-${payload.orderId}`,
+                });
+            };
+
+            document.addEventListener('livewire:init', () => {
+                Livewire.on('meta-purchase', (payload) => {
+                    window.merzaTrackMetaPurchase(Array.isArray(payload) ? payload[0] : payload);
+                });
+            });
+        </script>
+    @endif
+
     @livewireScripts
 </body>
 </html>
