@@ -5,12 +5,15 @@ namespace Tests\Feature;
 use App\Filament\Pages\QuickOrder;
 use App\Models\Category;
 use App\Models\Contact;
+use App\Models\DeliveryZone;
 use App\Models\Order;
+use App\Models\OrderItem;
 use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Models\User;
 use Filament\Actions\Action;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Livewire\Features\SupportTesting\Testable;
 use Livewire\Livewire;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
@@ -26,7 +29,7 @@ class QuickOrderPageTest extends TestCase
      * "Use Previous Address" / "Repeat Last Order" buttons), so we find and
      * invoke them directly off the live schema tree instead.
      */
-    private function callSchemaAction(\Livewire\Features\SupportTesting\Testable $test, string $name): void
+    private function callSchemaAction(Testable $test, string $name): void
     {
         $schema = $test->instance()->getSchema('content');
 
@@ -42,6 +45,7 @@ class QuickOrderPageTest extends TestCase
     }
 
     private User $admin;
+
     private ProductVariant $variant;
 
     protected function setUp(): void
@@ -50,30 +54,30 @@ class QuickOrderPageTest extends TestCase
 
         Role::firstOrCreate(['name' => 'Admin', 'guard_name' => 'web']);
         $this->admin = User::create([
-            'name'     => 'Test Admin',
-            'email'    => 'admin-test@merza.com',
+            'name' => 'Test Admin',
+            'email' => 'admin-test@merza.com',
             'password' => bcrypt('password'),
         ]);
         $this->admin->assignRole('Admin');
 
         $category = Category::create(['name' => 'Fresh Fruits', 'slug' => 'fresh-fruits', 'is_active' => true]);
-        $product  = Product::create([
+        $product = Product::create([
             'category_id' => $category->id,
-            'name'        => 'Test Mango',
-            'slug'        => 'test-mango',
-            'base_price'  => 100,
-            'unit'        => 'kg',
-            'is_active'   => true,
+            'name' => 'Test Mango',
+            'slug' => 'test-mango',
+            'base_price' => 100,
+            'unit' => 'kg',
+            'is_active' => true,
         ]);
         $this->variant = ProductVariant::create([
-            'product_id'   => $product->id,
-            'name'         => '5 kg',
-            'sku'          => 'TM-5KG',
-            'price'        => 500,
+            'product_id' => $product->id,
+            'name' => '5 kg',
+            'sku' => 'TM-5KG',
+            'price' => 500,
             'weight_value' => 5,
-            'weight_unit'  => 'kg',
-            'stock_qty'    => 10,
-            'is_active'    => true,
+            'weight_unit' => 'kg',
+            'stock_qty' => 10,
+            'is_active' => true,
         ]);
     }
 
@@ -84,38 +88,75 @@ class QuickOrderPageTest extends TestCase
             ->assertSuccessful();
     }
 
+    public function test_light_packet_gets_automatic_courier_charge_in_message(): void
+    {
+        $this->variant->update([
+            'name' => '16g',
+            'price' => 159,
+            'weight_value' => 16,
+            'weight_unit' => 'g',
+        ]);
+
+        $zone = DeliveryZone::create([
+            'name' => 'Tamil Nadu',
+            'match_type' => 'state',
+            'match_values' => ['Tamil Nadu'],
+            'rate_per_kg' => 60,
+            'is_active' => true,
+        ]);
+
+        $this->actingAs($this->admin);
+
+        $test = Livewire::test(QuickOrder::class)
+            ->set('data.customer_phone', '9111111111')
+            ->set('data.customer_name', 'Packet Customer')
+            ->set('data.delivery_address', '1 Test Street')
+            ->set('data.city', 'Theni')
+            ->set('data.state', 'Tamil Nadu')
+            ->set('data.postcode', '625513')
+            ->set('data.delivery_zone_id', $zone->id)
+            ->set('data.items.0.product_variant_id', $this->variant->id)
+            ->set('data.items.0.quantity', 1)
+            ->call('generatePreview');
+
+        $test->assertSet('data.delivery_fee', 110.0)
+            ->assertSet('previewReady', true)
+            ->assertSet('previewMessage', fn (?string $message) => str_contains((string) $message, 'Courier Charge: ₹110')
+                && str_contains((string) $message, '*Total Amount: ₹269*'));
+    }
+
     public function test_typing_a_known_phone_number_prefills_customer_and_shows_previous_order(): void
     {
         $contact = Contact::create([
-            'name'   => 'Repeat Customer',
-            'phone'  => '9333333333',
+            'name' => 'Repeat Customer',
+            'phone' => '9333333333',
             'source' => 'whatsapp',
         ]);
 
         $previousOrder = Order::create([
-            'channel'          => 'manual',
-            'contact_id'       => $contact->id,
-            'customer_name'    => 'Repeat Customer',
-            'customer_phone'   => '9333333333',
+            'channel' => 'manual',
+            'contact_id' => $contact->id,
+            'customer_name' => 'Repeat Customer',
+            'customer_phone' => '9333333333',
             'delivery_address' => '12 Old Street',
-            'city'             => 'Madurai',
-            'state'            => 'Tamil Nadu',
-            'postcode'         => '625001',
-            'subtotal'         => 500,
-            'delivery_fee'     => 20,
-            'total'            => 520,
-            'payment_method'   => 'cod',
+            'city' => 'Madurai',
+            'state' => 'Tamil Nadu',
+            'postcode' => '625001',
+            'subtotal' => 500,
+            'delivery_fee' => 20,
+            'total' => 520,
+            'payment_method' => 'cod',
         ]);
 
-        \App\Models\OrderItem::create([
-            'order_id'           => $previousOrder->id,
+        OrderItem::create([
+            'order_id' => $previousOrder->id,
             'product_variant_id' => $this->variant->id,
-            'product_name'       => 'Test Mango',
-            'variant_name'       => '5 kg',
-            'sku'                => 'TM-5KG',
-            'quantity'           => 2,
-            'unit_price'         => 500,
-            'subtotal'           => 1000,
+            'product_name' => 'Test Mango',
+            'variant_name' => '5 kg',
+            'sku' => 'TM-5KG',
+            'quantity' => 2,
+            'unit_price' => 500,
+            'subtotal' => 1000,
         ]);
 
         $this->actingAs($this->admin);
@@ -131,36 +172,36 @@ class QuickOrderPageTest extends TestCase
     public function test_repeat_last_order_button_fills_address_and_items(): void
     {
         $contact = Contact::create([
-            'name'   => 'Repeat Customer',
-            'phone'  => '9777777777',
+            'name' => 'Repeat Customer',
+            'phone' => '9777777777',
             'source' => 'whatsapp',
         ]);
 
         $previousOrder = Order::create([
-            'channel'          => 'manual',
-            'contact_id'       => $contact->id,
-            'customer_name'    => 'Repeat Customer',
-            'customer_phone'   => '9777777777',
+            'channel' => 'manual',
+            'contact_id' => $contact->id,
+            'customer_name' => 'Repeat Customer',
+            'customer_phone' => '9777777777',
             'delivery_address' => '12 Old Street',
-            'city'             => 'Madurai',
-            'state'            => 'Tamil Nadu',
-            'postcode'         => '625001',
-            'landmark'         => 'Near Temple',
-            'subtotal'         => 500,
-            'delivery_fee'     => 20,
-            'total'            => 520,
-            'payment_method'   => 'cod',
+            'city' => 'Madurai',
+            'state' => 'Tamil Nadu',
+            'postcode' => '625001',
+            'landmark' => 'Near Temple',
+            'subtotal' => 500,
+            'delivery_fee' => 20,
+            'total' => 520,
+            'payment_method' => 'cod',
         ]);
 
-        \App\Models\OrderItem::create([
-            'order_id'           => $previousOrder->id,
+        OrderItem::create([
+            'order_id' => $previousOrder->id,
             'product_variant_id' => $this->variant->id,
-            'product_name'       => 'Test Mango',
-            'variant_name'       => '5 kg',
-            'sku'                => 'TM-5KG',
-            'quantity'           => 2,
-            'unit_price'         => 500,
-            'subtotal'           => 1000,
+            'product_name' => 'Test Mango',
+            'variant_name' => '5 kg',
+            'sku' => 'TM-5KG',
+            'quantity' => 2,
+            'unit_price' => 500,
+            'subtotal' => 1000,
         ]);
 
         $this->actingAs($this->admin);

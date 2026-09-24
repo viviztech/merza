@@ -6,9 +6,11 @@ use App\Filament\Resources\OrderResource;
 use App\Models\BotSetting;
 use App\Models\Contact;
 use App\Models\Conversation;
+use App\Models\DeliveryZone;
 use App\Models\Order;
 use App\Models\ProductVariant;
 use App\Services\AdminOrderService;
+use App\Services\DeliveryCalculatorService;
 use Filament\Actions\Action;
 use Filament\Forms;
 use Filament\Notifications\Notification;
@@ -139,8 +141,13 @@ class QuickOrder extends Page
                             ->required()
                             ->helperText('House/street/area — mention a nearby landmark if it helps the courier.')
                             ->columnSpanFull(),
-                        Forms\Components\TextInput::make('city')->label('District / City'),
-                        Forms\Components\TextInput::make('state'),
+                        Forms\Components\TextInput::make('city')
+                            ->label('District / City')
+                            ->live(debounce: 500)
+                            ->afterStateUpdated(fn () => $this->suggestCourierCharge()),
+                        Forms\Components\TextInput::make('state')
+                            ->live(debounce: 500)
+                            ->afterStateUpdated(fn () => $this->suggestCourierCharge()),
                         Forms\Components\TextInput::make('postcode')
                             ->label('Pincode')
                             ->rule('digits:6'),
@@ -176,7 +183,7 @@ class QuickOrder extends Page
                                     ->live()
                                     ->afterStateUpdated(function () {
                                         $this->previewReady = false;
-                                        $this->suggestPackagingCharge();
+                                        $this->suggestCourierCharge();
                                     })
                                     ->required(),
 
@@ -188,7 +195,7 @@ class QuickOrder extends Page
                                     ->live(debounce: 500)
                                     ->afterStateUpdated(function () {
                                         $this->previewReady = false;
-                                        $this->suggestPackagingCharge();
+                                        $this->suggestCourierCharge();
                                     }),
                             ])
                             ->columns(2)
@@ -197,12 +204,25 @@ class QuickOrder extends Page
                             ->reorderable(false)
                             ->deleteAction(fn (Action $action) => $action->after(function () {
                                 $this->previewReady = false;
-                                $this->suggestPackagingCharge();
+                                $this->suggestCourierCharge();
                             }))
                             ->columnSpanFull(),
                     ]),
 
                 SchemaSection::make('4. Payment & Delivery')->schema([
+                    Forms\Components\Select::make('delivery_zone_id')
+                        ->label('Delivery Zone')
+                        ->options(fn () => DeliveryZone::active()
+                            ->get()
+                            ->mapWithKeys(fn (DeliveryZone $zone) => [
+                                $zone->id => "{$zone->name} (₹{$zone->rate_per_kg}/kg)",
+                            ]))
+                        ->searchable()
+                        ->preload()
+                        ->live()
+                        ->afterStateUpdated(fn () => $this->suggestCourierCharge())
+                        ->helperText('Select a zone to calculate courier charges automatically.'),
+
                     Forms\Components\Select::make('payment_method')
                         ->options([
                             'cod' => 'Cash on Delivery',
@@ -240,7 +260,8 @@ class QuickOrder extends Page
                         ->default(0)
                         ->required()
                         ->live()
-                        ->afterStateUpdated(fn () => $this->previewReady = false),
+                        ->afterStateUpdated(fn () => $this->previewReady = false)
+                        ->helperText('Auto-calculated from product weight and Delivery Settings. You can still override it.'),
 
                     Forms\Components\Toggle::make('packaging_charge')
                         ->label(fn () => 'Packaging Charge ('
@@ -389,6 +410,41 @@ class QuickOrder extends Page
     }
 
     /**
+     * Use the same central zone/weight calculator as the storefront and
+     * WhatsApp checkout. The resulting delivery fee already includes the
+     * configured packing charge, so the optional Quick Order packaging
+     * toggle remains off unless staff deliberately adds another fee.
+     */
+    protected function suggestCourierCharge(): bool
+    {
+        $weight = $this->cartWeightKg();
+
+        if ($weight <= 0) {
+            return false;
+        }
+
+        $zone = filled($this->data['delivery_zone_id'] ?? null)
+            ? DeliveryZone::active()->find($this->data['delivery_zone_id'])
+            : (new DeliveryCalculatorService)->findZone(
+                (string) ($this->data['city'] ?? ''),
+                (string) ($this->data['state'] ?? ''),
+            );
+
+        if (! $zone) {
+            return false;
+        }
+
+        $breakdown = (new DeliveryCalculatorService)->calculateForZone($zone, $weight);
+
+        $this->data['delivery_zone_id'] = $zone->id;
+        $this->data['delivery_fee'] = $breakdown['total_fee'];
+        $this->data['packaging_charge'] = false;
+        $this->previewReady = false;
+
+        return true;
+    }
+
+    /**
      * Adds a tapped product to the cart — bumps the quantity if it's
      * already in there, otherwise fills the first empty row or appends a
      * new one. Mutating $this->data directly (rather than via a form Set
@@ -404,7 +460,7 @@ class QuickOrder extends Page
                 $items[$key]['quantity'] = (int) ($row['quantity'] ?? 1) + 1;
                 $this->data['items'] = $items;
                 $this->previewReady = false;
-                $this->suggestPackagingCharge();
+                $this->suggestCourierCharge();
 
                 return;
             }
@@ -415,7 +471,7 @@ class QuickOrder extends Page
                 $items[$key] = ['product_variant_id' => $variantId, 'quantity' => 1];
                 $this->data['items'] = $items;
                 $this->previewReady = false;
-                $this->suggestPackagingCharge();
+                $this->suggestCourierCharge();
 
                 return;
             }
@@ -424,7 +480,7 @@ class QuickOrder extends Page
         $items[] = ['product_variant_id' => $variantId, 'quantity' => 1];
         $this->data['items'] = $items;
         $this->previewReady = false;
-        $this->suggestPackagingCharge();
+        $this->suggestCourierCharge();
     }
 
     public function setDeliveryFee(int $amount): void
@@ -549,6 +605,16 @@ class QuickOrder extends Page
 
         if ($this->cartLines()->isEmpty()) {
             Notification::make()->title('Add at least one item first')->danger()->send();
+
+            return;
+        }
+
+        if ((float) ($this->data['delivery_fee'] ?? 0) <= 0 && ! $this->suggestCourierCharge()) {
+            Notification::make()
+                ->title('Select a delivery zone')
+                ->body('Courier charge cannot be ₹0 for a shipped order. Select the customer delivery zone, then generate the message again.')
+                ->danger()
+                ->send();
 
             return;
         }
@@ -770,7 +836,7 @@ class QuickOrder extends Page
         }
 
         $customerFields = ['customer_name', 'customer_phone', 'customer_email', 'delivery_address', 'city', 'state', 'postcode'];
-        $excludedFields = [...$customerFields, 'packaging_charge'];
+        $excludedFields = [...$customerFields, 'packaging_charge', 'delivery_zone_id'];
 
         $order = $service->createOrder(
             items: $items,
