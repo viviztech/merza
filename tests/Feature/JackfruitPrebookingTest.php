@@ -104,6 +104,8 @@ class JackfruitPrebookingTest extends TestCase
         app(CartService::class)->add($this->variant->id, 1);
 
         $test = Livewire::test(CheckoutForm::class)
+            ->assertSeeHtml('id="merza-checkout-form"')
+            ->assertSeeHtml('data-form-id="merza-checkout-form"')
             ->assertSee('Reservation Contact')
             ->assertSee('That is all we need to reserve your harvest.')
             ->assertDontSee('Delivery Details')
@@ -117,6 +119,8 @@ class JackfruitPrebookingTest extends TestCase
             ->assertSet('orderPlaced', true)
             ->assertSet('orderIsPreorderOnly', true)
             ->assertSee('Pre-booking Confirmed!')
+            ->assertSeeHtml('id="checkout-thank-you"')
+            ->assertSeeHtml('data-form-id="merza-checkout-form"')
             ->assertDontSee('Download Invoice');
 
         $test->assertDispatched('meta-purchase');

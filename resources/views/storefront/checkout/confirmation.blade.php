@@ -7,7 +7,12 @@
         </script>
     @endif
 
-    <div class="max-w-lg mx-auto px-4 py-12 text-center">
+    <div id="checkout-thank-you"
+         data-form-id="merza-checkout-form"
+         data-order-id="{{ $order->id }}"
+         data-order-number="{{ $order->order_number }}"
+         class="max-w-lg mx-auto px-4 py-12 text-center">
+        <input type="hidden" name="form_id" value="merza-checkout-form">
 
         @if($status === 'SUCCESS')
             <div class="relative inline-flex mb-6">

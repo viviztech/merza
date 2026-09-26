@@ -4,7 +4,12 @@
         {{-- ══════════════════════════════════════ --}}
         {{-- SUCCESS SCREEN --}}
         {{-- ══════════════════════════════════════ --}}
-        <div class="text-center py-12 max-w-lg mx-auto">
+        <div id="checkout-thank-you"
+             data-form-id="merza-checkout-form"
+             data-order-id="{{ $orderId }}"
+             data-order-number="{{ $orderNumber }}"
+             class="text-center py-12 max-w-lg mx-auto">
+            <input type="hidden" name="form_id" value="merza-checkout-form">
             <div class="relative inline-flex mb-6">
                 <div class="w-28 h-28 rounded-3xl bg-gradient-to-br from-emerald-400 to-green-600 flex items-center justify-center text-6xl shadow-2xl shadow-emerald-200">
                     🎉
@@ -135,7 +140,11 @@
             @endif
             @error('cart') <p class="bg-red-50 border border-red-200 text-red-600 text-sm px-4 py-3 rounded-2xl mb-4">{{ $message }}</p> @enderror
 
-            <form wire:submit="placeOrder">
+            <form id="merza-checkout-form"
+                  name="merza-checkout-form"
+                  data-form-id="merza-checkout-form"
+                  wire:submit="placeOrder">
+                <input type="hidden" name="form_id" value="merza-checkout-form">
             <div class="grid lg:grid-cols-3 gap-6">
 
                 {{-- ── Delivery Details (first on mobile; left columns on desktop) ── --}}
