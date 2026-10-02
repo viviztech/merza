@@ -29,6 +29,7 @@ class Contact extends Model
 
     protected $fillable = [
         'assigned_to', 'name', 'phone', 'email', 'source', 'customer_category',
+        'meta_ad_id', 'meta_ad_name',
         'tags', 'notes', 'city', 'state',
         'is_customer', 'is_blocked', 'last_contacted_at',
         'wa_opted_out', 'wa_opted_out_at',

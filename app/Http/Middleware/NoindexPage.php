@@ -13,6 +13,14 @@ class NoindexPage
     {
         app(Seo::class)->noindex();
 
-        return $next($request);
+        $response = $next($request);
+
+        // A cached checkout contains a CSRF token tied to an older session.
+        // Always fetch a fresh form when a customer opens or revisits checkout.
+        if ($request->routeIs('checkout.index')) {
+            $response->headers->set('Cache-Control', 'private, no-store');
+        }
+
+        return $response;
     }
 }

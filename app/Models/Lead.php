@@ -10,6 +10,7 @@ class Lead extends Model
 {
     protected $fillable = [
         'contact_id', 'assigned_to', 'stage', 'source',
+        'meta_lead_id', 'meta_ad_id', 'meta_ad_name',
         'product_interest', 'estimated_value', 'notes',
         'due_at', 'converted_at',
     ];

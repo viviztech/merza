@@ -103,6 +103,10 @@ class JackfruitPrebookingTest extends TestCase
         Queue::fake();
         app(CartService::class)->add($this->variant->id, 1);
 
+        $response = $this->get(route('checkout.index'));
+        $response->assertOk();
+        $this->assertStringContainsString('no-store', $response->headers->get('Cache-Control'));
+
         $test = Livewire::test(CheckoutForm::class)
             ->assertSeeHtml('id="merza-checkout-form"')
             ->assertSeeHtml('data-form-id="merza-checkout-form"')

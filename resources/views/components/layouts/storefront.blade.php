@@ -589,6 +589,85 @@
         </script>
     @endif
 
+    @if(request()->routeIs('checkout.index'))
+        <script>
+            // Livewire's default 419 handler shows a browser confirm and loses entered details.
+            // A 419 means the action was rejected, so one fresh checkout load is safe.
+            document.addEventListener('livewire:init', () => {
+                const formId = 'merza-checkout-form';
+                const draftKey = 'merza-checkout-expired-draft';
+                const retryKey = 'merza-checkout-session-refreshed-at';
+                const fields = {
+                    customer_phone: 'checkout-mobile',
+                    customer_name: 'checkout-name',
+                    customer_email: 'checkout-email',
+                    delivery_address: 'checkout-address',
+                    postcode: 'checkout-pincode',
+                    landmark: 'checkout-landmark',
+                    city: 'checkout-district',
+                    state: 'checkout-state',
+                };
+
+                document.addEventListener('livewire:initialized', () => {
+                    const form = document.getElementById(formId);
+                    if (!form) return;
+
+                    try {
+                        const draft = JSON.parse(sessionStorage.getItem(draftKey) || 'null');
+                        sessionStorage.removeItem(draftKey);
+                        if (!draft) return;
+
+                        const componentId = form.closest('[wire\\:id]')?.getAttribute('wire:id');
+                        const component = componentId ? Livewire.find(componentId) : null;
+                        for (const [property, id] of Object.entries(fields)) {
+                            const input = document.getElementById(id);
+                            if (!input || typeof draft[property] !== 'string') continue;
+                            input.value = draft[property];
+                            component?.$wire.$set(property, draft[property], false);
+                        }
+                    } catch (error) {
+                        // Checkout still works when sessionStorage is unavailable.
+                    }
+                });
+
+                Livewire.hook('request', ({ fail }) => {
+                    fail(({ status, preventDefault }) => {
+                        if (status !== 419 || !document.getElementById(formId)) return;
+                        preventDefault();
+
+                        let refreshedRecently = false;
+                        try {
+                            refreshedRecently = Date.now() - Number(sessionStorage.getItem(retryKey)) < 30000;
+                        } catch (error) { /* Storage may be disabled. */ }
+
+                        if (refreshedRecently) {
+                            const form = document.getElementById(formId);
+                            if (!document.getElementById('checkout-session-error')) {
+                                const message = document.createElement('p');
+                                message.id = 'checkout-session-error';
+                                message.className = 'mb-4 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700';
+                                message.textContent = 'Your booking session could not be refreshed. Please reload the page and try again.';
+                                form.before(message);
+                            }
+                            return;
+                        }
+
+                        try {
+                            const draft = {};
+                            for (const [property, id] of Object.entries(fields)) {
+                                const input = document.getElementById(id);
+                                if (input) draft[property] = input.value;
+                            }
+                            sessionStorage.setItem(draftKey, JSON.stringify(draft));
+                            sessionStorage.setItem(retryKey, String(Date.now()));
+                        } catch (error) { /* Reload still obtains a fresh session. */ }
+
+                        window.location.reload();
+                    });
+                });
+            });
+        </script>
+    @endif
     @livewireScripts
 </body>
 </html>

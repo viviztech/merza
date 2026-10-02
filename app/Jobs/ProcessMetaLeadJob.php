@@ -64,17 +64,21 @@ class ProcessMetaLeadJob implements ShouldQueue
             ]);
 
             $fields = $metaService->parseFields($leadData['field_data'] ?? []);
+            $attribution = [
+                'meta_ad_id' => filled($leadData['ad_id'] ?? null) ? (string) $leadData['ad_id'] : null,
+                'meta_ad_name' => filled($leadData['ad_name'] ?? null) ? (string) $leadData['ad_name'] : null,
+            ];
 
             // 2. Create or update Contact
             $contact = null;
             if ($settings->auto_create_contact) {
-                $contact = $this->upsertContact($fields, $log);
+                $contact = $this->upsertContact($fields, $attribution, $log);
             }
 
             // 3. Create Lead
             $lead = null;
             if ($settings->auto_create_lead && $contact) {
-                $lead = $this->createLead($contact, $fields, $log);
+                $lead = $this->createLead($contact, $fields, $attribution, $log);
             }
 
             // 4. Generate AI follow-up message
@@ -122,7 +126,7 @@ class ProcessMetaLeadJob implements ShouldQueue
         }
     }
 
-    private function upsertContact(array $fields, BotActivityLog $parentLog): Contact
+    private function upsertContact(array $fields, array $attribution, BotActivityLog $parentLog): Contact
     {
         $phone = preg_replace('/[^0-9+]/', '', $fields['phone_number'] ?? $fields['phone'] ?? '');
         $name  = $fields['full_name'] ?? $fields['name'] ?? 'Unknown';
@@ -130,6 +134,9 @@ class ProcessMetaLeadJob implements ShouldQueue
         $existing = $phone ? Contact::where('phone', $phone)->first() : null;
 
         if ($existing) {
+            if (array_filter($attribution)) {
+                $existing->update($attribution);
+            }
             BotActivityLog::create([
                 'event_type'   => 'contact_updated',
                 'meta_lead_id' => $parentLog->meta_lead_id,
@@ -144,6 +151,7 @@ class ProcessMetaLeadJob implements ShouldQueue
             'phone'       => $phone ?: 'unknown_' . uniqid(),
             'email'       => $fields['email'] ?? null,
             'source'      => 'meta_ads',
+            ...$attribution,
             'tags'        => ['meta_lead'],
             'is_customer' => false,
         ]);
@@ -158,12 +166,22 @@ class ProcessMetaLeadJob implements ShouldQueue
         return $contact;
     }
 
-    private function createLead(Contact $contact, array $fields, BotActivityLog $parentLog): Lead
+    private function createLead(Contact $contact, array $fields, array $attribution, BotActivityLog $parentLog): Lead
     {
+        $existing = Lead::where('meta_lead_id', $parentLog->meta_lead_id)->first();
+        if ($existing) {
+            if (array_filter($attribution)) {
+                $existing->update(array_filter($attribution));
+            }
+            return $existing;
+        }
+
         $lead = Lead::create([
             'contact_id'       => $contact->id,
             'stage'            => 'new',
             'source'           => 'meta_ads',
+            'meta_lead_id'     => $parentLog->meta_lead_id,
+            ...$attribution,
             'product_interest' => $fields['product'] ?? null,
             'notes'            => 'Auto-created from Meta Lead Ad (form: ' . $parentLog->meta_form_id . ')',
         ]);

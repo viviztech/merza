@@ -58,6 +58,11 @@ class LeadResource extends Resource
                     ])
                     ->default('other'),
 
+                Forms\Components\TextInput::make('meta_ad_name')
+                    ->label('Meta Ad')
+                    ->disabled()
+                    ->dehydrated(false),
+
                 Forms\Components\Select::make('assigned_to')
                     ->label('Assigned To')
                     ->options(User::pluck('name', 'id'))
@@ -105,6 +110,13 @@ class LeadResource extends Resource
                         'meta_ads' => 'warning', 'whatsapp' => 'success',
                         default => 'gray',
                     }),
+
+                Tables\Columns\TextColumn::make('meta_ad_name')
+                    ->label('Meta Ad')
+                    ->state(fn (Lead $r) => $r->meta_ad_name ?: $r->meta_ad_id)
+                    ->placeholder('—')
+                    ->searchable()
+                    ->tooltip(fn (Lead $r) => $r->meta_ad_id ? "Ad ID: {$r->meta_ad_id}" : null),
 
                 Tables\Columns\TextColumn::make('product_interest')
                     ->label('Interest')

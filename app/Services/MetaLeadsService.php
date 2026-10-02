@@ -28,7 +28,7 @@ class MetaLeadsService
     /**
      * Fetch full lead field data from the Graph API using the lead gen lead ID.
      *
-     * @return array{id: string, field_data: array, created_time: string}|null
+     * @return array{id: string, field_data: array, created_time?: string, ad_id?: string, ad_name?: string}|null
      */
     public function fetchLead(string $leadId): ?array
     {

@@ -107,6 +107,10 @@ class ContactResource extends Resource
                     Infolists\Components\TextEntry::make('source')
                         ->badge()
                         ->formatStateUsing(fn (?string $state) => $state ? Contact::SOURCE_LABELS[$state] ?? $state : null),
+                    Infolists\Components\TextEntry::make('meta_ad_name')
+                        ->label('Latest Meta Ad')
+                        ->state(fn (Contact $r) => $r->meta_ad_name ?: $r->meta_ad_id)
+                        ->placeholder('—'),
                     Infolists\Components\TextEntry::make('customer_category')
                         ->label('Customer Category')
                         ->badge()
@@ -189,6 +193,13 @@ class ContactResource extends Resource
                         'old_excel_import'  => 'gray',
                         default             => 'gray',
                     }),
+
+                Tables\Columns\TextColumn::make('meta_ad_name')
+                    ->label('Latest Meta Ad')
+                    ->state(fn (Contact $r) => $r->meta_ad_name ?: $r->meta_ad_id)
+                    ->placeholder('—')
+                    ->searchable()
+                    ->tooltip(fn (Contact $r) => $r->meta_ad_id ? "Ad ID: {$r->meta_ad_id}" : null),
 
                 Tables\Columns\TextColumn::make('customer_category')
                     ->label('Category')

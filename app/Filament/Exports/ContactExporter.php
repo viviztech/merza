@@ -19,6 +19,8 @@ class ContactExporter extends Exporter
             ExportColumn::make('email'),
             ExportColumn::make('source')
                 ->formatStateUsing(fn (?string $state) => $state ? Contact::SOURCE_LABELS[$state] ?? $state : null),
+            ExportColumn::make('meta_ad_name')->label('Latest Meta Ad'),
+            ExportColumn::make('meta_ad_id')->label('Meta Ad ID'),
             ExportColumn::make('customer_category')
                 ->label('Customer Category')
                 ->formatStateUsing(fn (?string $state) => $state ? Contact::CATEGORY_LABELS[$state] ?? $state : null),
