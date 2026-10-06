@@ -15,7 +15,7 @@ class Product extends Model implements HasMedia
 
     protected $fillable = [
         'category_id', 'name', 'slug', 'short_description', 'description',
-        'harvest_date', 'farm_location', 'sweetness_level', 'delivery_time',
+        'harvest_date', 'farm_location', 'sweetness_level', 'delivery_time', 'buying_highlights',
         'base_price', 'gst_rate', 'unit', 'is_active', 'is_featured', 'is_available_today',
         'is_preorder', 'available_from', 'preorder_note', 'sort_order',
     ];
@@ -24,6 +24,7 @@ class Product extends Model implements HasMedia
         'base_price'         => 'decimal:2',
         'gst_rate'           => 'decimal:2',
         'harvest_date'       => 'date',
+        'buying_highlights'  => 'array',
         'is_active'          => 'boolean',
         'is_featured'        => 'boolean',
         'is_available_today' => 'boolean',

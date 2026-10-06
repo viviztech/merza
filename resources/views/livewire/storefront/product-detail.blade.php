@@ -81,16 +81,16 @@
                 </div>
             @endif
 
-            @if($product->is_preorder)
-                {{-- Pre-bookings lead with the product's USP details, not transactional pricing. --}}
-                <section aria-labelledby="prebooking-highlights" class="mb-5 overflow-hidden rounded-2xl border border-emerald-200 bg-white shadow-sm">
+            @if($product->is_preorder || $product->farm_location || $product->sweetness_level || $product->delivery_time || filled($product->buying_highlights))
+                <section aria-labelledby="product-highlights" class="mb-5 overflow-hidden rounded-2xl border border-emerald-200 bg-white shadow-sm">
                     <div class="border-b border-emerald-100 bg-emerald-50 px-4 py-3">
-                        <p class="text-[10px] font-extrabold uppercase tracking-[0.18em] text-emerald-600">Why pre-book this harvest</p>
-                        <h2 id="prebooking-highlights" class="mt-0.5 text-base font-extrabold text-emerald-950">Fresh from our farm, reserved for you</h2>
+                        <p class="text-[10px] font-extrabold uppercase tracking-[0.18em] text-emerald-600">{{ $product->is_preorder ? 'Why pre-book this harvest' : 'Why buy from Merza' }}</p>
+                        <h2 id="product-highlights" class="mt-0.5 text-base font-extrabold text-emerald-950">{{ $product->is_preorder ? 'Fresh from our farm, reserved for you' : 'What makes this product special' }}</h2>
                     </div>
 
+                    @if(($product->is_preorder && $product->harvest_date) || $product->farm_location || $product->sweetness_level || $product->delivery_time || $product->is_preorder)
                     <dl class="grid grid-cols-2 divide-x divide-y divide-emerald-100 sm:grid-cols-2">
-                        @if($product->harvest_date)
+                        @if($product->is_preorder && $product->harvest_date)
                             <div class="min-w-0 p-3.5">
                                 <dt class="text-[10px] font-bold uppercase tracking-wider text-stone-400">Harvest</dt>
                                 <dd class="mt-1 text-sm font-extrabold text-stone-800">{{ $product->harvest_date->format('d M Y') }}</dd>
@@ -111,15 +111,30 @@
                             </div>
                         @endif
 
-                        <div class="min-w-0 p-3.5">
-                            <dt class="text-[10px] font-bold uppercase tracking-wider text-stone-400">Dispatch</dt>
-                            <dd class="mt-1 text-sm font-extrabold leading-snug text-stone-800">
-                                {{ $product->delivery_time ?: ($product->available_from ? 'From '.$product->available_from->format('d M Y') : 'After harvest') }}
-                            </dd>
-                        </div>
+                        @if($product->is_preorder || $product->delivery_time)
+                            <div class="min-w-0 p-3.5">
+                                <dt class="text-[10px] font-bold uppercase tracking-wider text-stone-400">Dispatch</dt>
+                                <dd class="mt-1 text-sm font-extrabold leading-snug text-stone-800">
+                                    {{ $product->delivery_time ?: ($product->available_from ? 'From '.$product->available_from->format('d M Y') : 'After harvest') }}
+                                </dd>
+                            </div>
+                        @endif
                     </dl>
-                </section>
+                    @endif
 
+                    @if(filled($product->buying_highlights))
+                        <ul class="flex flex-wrap gap-2 px-4 py-3" aria-label="Product benefits">
+                            @foreach($product->buying_highlights as $highlight)
+                                @if(filled($highlight))
+                                    <li class="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-800">{{ $highlight }}</li>
+                                @endif
+                            @endforeach
+                        </ul>
+                    @endif
+                </section>
+            @endif
+
+            @if($product->is_preorder)
                 {{-- Compact reservation actions. The first active variant remains selected by default. --}}
                 <div class="mb-5 flex flex-wrap gap-2">
                     <button wire:click="buyNow"

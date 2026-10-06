@@ -1,4 +1,7 @@
 <x-layouts.storefront title="Order {{ $order->order_number }} — Payment {{ $status === 'SUCCESS' ? 'Confirmed' : 'Status' }}">
+    @if(in_array($status, ['PENDING', 'UNKNOWN', 'PROCESSING']))
+        <script>setTimeout(() => window.location.reload(), 10000);</script>
+    @endif
     @if($metaPurchase)
         <script>
             window.addEventListener('load', () => {
@@ -32,7 +35,7 @@
                 😕
             </div>
             <h1 class="text-3xl font-extrabold text-stone-800 mb-2">Payment {{ ucfirst(strtolower($status)) }}</h1>
-            <p class="text-stone-500 mb-4">Your order was placed but payment didn't go through. No amount was captured for this attempt.</p>
+            <p class="text-stone-500 mb-4">Your order was placed, but this payment attempt was not confirmed. If money was deducted, contact us with your order number so we can verify it.</p>
         @else
             <div class="w-28 h-28 mx-auto mb-6 rounded-3xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center text-6xl shadow-2xl shadow-amber-200">
                 ⏳

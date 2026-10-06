@@ -107,6 +107,8 @@ class CheckoutForm extends Component
 
     public function updatedCustomerPhone(): void
     {
+        $this->resetErrorBag('customer_phone');
+
         $this->returningCustomerName   = null;
         $this->hasPreviousAddress      = false;
         $this->previousAddressApplied  = false;

@@ -128,11 +128,13 @@ class ProductResource extends Resource
                 ])->columns(2),
 
                 SchemaSection::make('Freshness & Origin')
-                    ->description('Shown on the product page to build trust — all optional.')
+                    ->description('Product facts shown on the storefront. Add only details that are true for this product.')
                     ->schema([
                         Forms\Components\DatePicker::make('harvest_date')
                             ->label('Harvest Date')
-                            ->native(false),
+                            ->native(false)
+                            ->helperText('Shown only for pre-bookings.')
+                            ->visible(fn (Get $get): bool => (bool) $get('is_preorder')),
 
                         Forms\Components\TextInput::make('farm_location')
                             ->label('Farm Location')
@@ -148,6 +150,16 @@ class ProductResource extends Resource
                             ->label('Delivery Time')
                             ->placeholder('e.g. Delivered within 24 hours')
                             ->maxLength(100),
+
+                        Forms\Components\TagsInput::make('buying_highlights')
+                            ->label('Why buy from Merza')
+                            ->placeholder('Add a short benefit')
+                            ->helperText('Add up to 4 short reasons customers should choose this product. Use only claims you can support.')
+                            ->suggestions(['Hand selected', 'Packed fresh', 'Locally grown', 'Ready to enjoy'])
+                            ->rules(['array', 'max:4'])
+                            ->nestedRecursiveRules('string|max:60')
+                            ->reorderable()
+                            ->columnSpanFull(),
                     ])->columns(2),
 
                 SchemaSection::make('Variants & Pricing')->schema([

@@ -87,6 +87,17 @@ class CheckoutRepeatCustomerTest extends TestCase
             ->assertSet('hasPreviousAddress', false);
     }
 
+    public function test_phone_error_clears_after_customer_enters_a_number(): void
+    {
+        app(CartService::class)->add($this->variant->id, 1);
+
+        Livewire::test(CheckoutForm::class)
+            ->call('placeOrder')
+            ->assertHasErrors(['customer_phone' => 'required'])
+            ->set('customer_phone', '9444398406')
+            ->assertHasNoErrors('customer_phone');
+    }
+
     public function test_formatted_six_digit_pincode_is_normalized_and_auto_filled(): void
     {
         Http::fake([

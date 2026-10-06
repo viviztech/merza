@@ -105,16 +105,24 @@ class SabPaisaService
             return null;
         }
 
-        $response = Http::timeout(15)
-            ->withHeaders([
-                'X-Api-Key'     => config('services.sabpaisa.api_key'),
-                'X-Merchant-Id' => config('services.sabpaisa.merchant_id'),
-                'Content-Type'  => 'application/json',
-            ])
-            ->post($this->baseUrl() . '/api/v2/payments/enquiry', [
-                'clientCode'    => config('services.sabpaisa.merchant_id'),
-                'merchantTxnId' => $merchantTxnId,
+        try {
+            $response = Http::timeout(15)
+                ->withHeaders([
+                    'X-Api-Key'     => config('services.sabpaisa.api_key'),
+                    'X-Merchant-Id' => config('services.sabpaisa.merchant_id'),
+                    'Content-Type'  => 'application/json',
+                ])
+                ->post($this->baseUrl() . '/api/v2/payments/enquiry', [
+                    'clientCode'    => config('services.sabpaisa.merchant_id'),
+                    'merchantTxnId' => $merchantTxnId,
+                ]);
+        } catch (\Throwable $e) {
+            Log::error('SabPaisaService: enquiry request failed', [
+                'merchant_txn_id' => $merchantTxnId,
+                'error' => $e->getMessage(),
             ]);
+            return null;
+        }
 
         if ($response->failed() || ! $response->json('success')) {
             Log::error('SabPaisaService: enquiry failed', [
@@ -171,13 +179,13 @@ class SabPaisaService
      */
     public function verifyWebhookSignature(string $rawBody, ?string $signatureHeader): bool
     {
-        if (empty($signatureHeader) || ! str_contains($signatureHeader, '.')) {
+        if (blank(config('services.sabpaisa.webhook_secret')) || empty($signatureHeader) || ! str_contains($signatureHeader, '.')) {
             return false;
         }
 
         [$timestamp, $signature] = explode('.', $signatureHeader, 2);
 
-        if (! ctype_digit($timestamp) || abs(time() - (int) $timestamp) > 300) {
+        if (! ctype_digit($timestamp) || abs((int) round(microtime(true) * 1000) - (int) $timestamp) > 300000) {
             return false;
         }
 
@@ -185,6 +193,33 @@ class SabPaisaService
         $expected      = base64_encode(hash_hmac('sha256', $signedPayload, (string) config('services.sabpaisa.webhook_secret'), true));
 
         return hash_equals($expected, $signature);
+    }
+
+    public function enquiryConfirmsOrder(Order $order, ?array $result): bool
+    {
+        return $result !== null
+            && ($result['success'] ?? false) === true
+            && ($result['status'] ?? null) === 'SUCCESS'
+            && ($result['merchantTxnId'] ?? null) === $order->order_number
+            && ($result['currency'] ?? null) === 'INR'
+            && is_numeric($result['amountPaise'] ?? null)
+            && is_numeric($result['paidAmount'] ?? null)
+            && (int) ($result['amountPaise'] ?? -1) === (int) round((float) $order->total * 100)
+            && (int) round((float) ($result['paidAmount'] ?? -1) * 100) === (int) round((float) $order->total * 100);
+    }
+
+    public function webhookConfirmsOrder(Order $order, array $payload): bool
+    {
+        $expectedPaise = (int) round((float) $order->total * 100);
+
+        return ($payload['event'] ?? null) === 'payment.success'
+            && ($payload['status'] ?? null) === 'SUCCESS'
+            && ($payload['merchant_txn_id'] ?? null) === $order->order_number
+            && ($payload['currency'] ?? null) === 'INR'
+            && is_numeric($payload['request_amount'] ?? null)
+            && is_numeric($payload['paid_amount'] ?? null)
+            && (int) round((float) ($payload['request_amount'] ?? -1) * 100) === $expectedPaise
+            && (int) round((float) ($payload['paid_amount'] ?? -1) * 100) === $expectedPaise;
     }
 
     /**

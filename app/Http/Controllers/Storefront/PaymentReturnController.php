@@ -46,7 +46,7 @@ class PaymentReturnController extends Controller
         $confirmationUrl = URL::temporarySignedRoute(
             'checkout.confirmation',
             now()->addMinutes(30),
-            ['order' => $order->id, 'status' => $order->fresh()->payment_status === 'paid' ? 'SUCCESS' : ($params['status'] ?? 'UNKNOWN')]
+            ['order' => $order->id, 'status' => $params['status'] ?? 'UNKNOWN']
         );
 
         return redirect($confirmationUrl);
@@ -58,10 +58,17 @@ class PaymentReturnController extends Controller
      * emails/SMS's the customer). No login required, same guest-access
      * pattern as the signed customer invoice route.
      */
-    public function confirmation(Request $request, Order $order): View
+    public function confirmation(Request $request, Order $order, SabPaisaService $sabPaisa): View
     {
-        $status = $request->query('status', $order->payment_status === 'paid' ? 'SUCCESS' : 'UNKNOWN');
-        $metaPurchase = session()->pull("meta_purchase_events.{$order->id}");
+        $this->confirmIfPaid($order, $sabPaisa);
+        $order->refresh();
+
+        $status = $order->payment_status === 'paid'
+            ? 'SUCCESS'
+            : ($request->query('status') === 'SUCCESS' ? 'PENDING' : $request->query('status', 'UNKNOWN'));
+        $metaPurchase = $order->payment_status === 'paid'
+            ? session()->pull("meta_purchase_events.{$order->id}")
+            : null;
 
         return view('storefront.checkout.confirmation', compact('order', 'status', 'metaPurchase'));
     }
@@ -78,11 +85,13 @@ class PaymentReturnController extends Controller
 
         $result = $sabPaisa->enquiry($order->order_number);
 
-        if (($result['status'] ?? null) === 'SUCCESS') {
+        if ($sabPaisa->enquiryConfirmsOrder($order, $result)) {
             $order->update([
                 'payment_status'    => 'paid',
                 'payment_reference' => $result['txnId'] ?? $order->payment_reference,
             ]);
+        } elseif (($result['status'] ?? null) === 'SUCCESS') {
+            Log::warning('SabPaisa enquiry did not match order amount or identity', ['order_id' => $order->id]);
         }
     }
 }

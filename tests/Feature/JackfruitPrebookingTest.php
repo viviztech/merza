@@ -42,6 +42,7 @@ class JackfruitPrebookingTest extends TestCase
             'farm_location' => 'Bodinayakanur, Tamil Nadu',
             'sweetness_level' => 'Honey sweet',
             'delivery_time' => 'Delivered within 48 hours',
+            'buying_highlights' => ['Hand selected', 'Packed fresh'],
             'available_from' => '2026-08-20',
             'preorder_note' => 'Fresh harvest dispatches next week.',
         ]);
@@ -93,9 +94,24 @@ class JackfruitPrebookingTest extends TestCase
             ->assertSee('Bodinayakanur, Tamil Nadu')
             ->assertSee('Honey sweet')
             ->assertSee('Delivered within 48 hours')
+            ->assertSee('Hand selected')
+            ->assertSee('Packed fresh')
             ->assertSee('Pre-book now')
             ->assertDontSee('Choose Size / Weight')
             ->assertDontSee('₹499.00');
+    }
+
+    public function test_regular_product_shows_benefits_without_harvest_date(): void
+    {
+        $this->product->update(['is_preorder' => false]);
+
+        Livewire::test(ProductDetail::class, ['slug' => $this->product->slug])
+            ->assertSee('Why buy from Merza')
+            ->assertSee('Grown at')
+            ->assertSee('Hand selected')
+            ->assertSee('Packed fresh')
+            ->assertDontSee('Harvest')
+            ->assertDontSee('18 Aug 2026');
     }
 
     public function test_prebooking_checkout_only_requires_contact_details_and_has_no_payment_step(): void

@@ -44,6 +44,11 @@ class SabPaisaWebhookController extends Controller
 
         // Idempotent by design — a redirect return may have already marked
         // this paid, and SabPaisa retries webhooks up to 10 times.
+        if ($status === 'SUCCESS' && ! $sabPaisa->webhookConfirmsOrder($order, $payload)) {
+            Log::warning('SabPaisa webhook success did not match order amount or identity', ['order_id' => $order->id]);
+            return response('Payment details do not match order', 422);
+        }
+
         if ($status === 'SUCCESS' && $order->payment_status !== 'paid') {
             $order->update([
                 'payment_status'    => 'paid',
