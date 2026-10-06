@@ -9,7 +9,7 @@ class BotSetting extends Model
     protected $fillable = [
         'meta_app_id', 'meta_app_secret', 'meta_page_id',
         'meta_page_access_token', 'meta_verify_token', 'meta_lead_form_id',
-        'whatsapp_phone_number_id', 'whatsapp_access_token',
+        'whatsapp_phone_number_id', 'whatsapp_access_token', 'whatsapp_business_account_id',
         'anthropic_api_key', 'anthropic_model',
         'ai_provider', 'groq_api_key', 'groq_model',
         'openai_api_key', 'openai_model', 'sarvam_api_key',

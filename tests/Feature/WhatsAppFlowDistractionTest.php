@@ -48,6 +48,14 @@ class WhatsAppFlowDistractionTest extends TestCase
             'name'  => 'WA: 9999900000',
             'phone' => '9999900000',
         ]);
+        Conversation::create([
+            'contact_id' => $this->contact->id,
+            'channel' => 'whatsapp',
+            'direction' => 'inbound',
+            'message' => 'Hello',
+            'status' => 'read',
+            'sent_at' => now(),
+        ]);
 
         $category = Category::create(['name' => 'Mangoes', 'slug' => 'mangoes', 'is_active' => true]);
         $product  = Product::create([

@@ -191,6 +191,11 @@ class MetaBotSettingsPage extends Page
                             ->placeholder('1234567890123456')
                             ->helperText('Found in Meta for Developers > WhatsApp > API Setup.'),
 
+                        Forms\Components\TextInput::make('whatsapp_business_account_id')
+                            ->label('WhatsApp Business Account ID')
+                            ->placeholder('1234567890123456')
+                            ->helperText('Needed to load Meta-approved templates in the inbox.'),
+
                         Forms\Components\Textarea::make('whatsapp_access_token')
                             ->label('WhatsApp Access Token')
                             ->rows(2)

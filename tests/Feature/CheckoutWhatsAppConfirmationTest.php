@@ -58,7 +58,7 @@ class CheckoutWhatsAppConfirmationTest extends TestCase
         ]);
     }
 
-    public function test_placing_an_order_queues_a_whatsapp_confirmation_and_creates_a_contact(): void
+    public function test_placing_an_order_without_recent_whatsapp_inbound_does_not_queue_freeform_confirmation(): void
     {
         Queue::fake();
 
@@ -77,14 +77,12 @@ class CheckoutWhatsAppConfirmationTest extends TestCase
 
         $test->assertDispatched('meta-purchase');
 
-        Queue::assertPushed(SendWhatsAppMessageJob::class);
+        Queue::assertNotPushed(SendWhatsAppMessageJob::class);
 
         $contact = Contact::where('phone', '9123456780')->first();
         $this->assertNotNull($contact);
 
-        $conversation = Conversation::where('contact_id', $contact->id)->latest()->first();
-        $this->assertNotNull($conversation);
-        $this->assertStringContainsString($test->get('orderNumber'), $conversation->message);
+        $this->assertFalse(Conversation::where('contact_id', $contact->id)->where('direction', 'outbound')->exists());
 
         $order = \App\Models\Order::where('order_number', $test->get('orderNumber'))->firstOrFail();
         $pixelPayload = session("meta_purchase_events.{$order->id}");
@@ -116,5 +114,31 @@ class CheckoutWhatsAppConfirmationTest extends TestCase
             ->call('placeOrder');
 
         Queue::assertNotPushed(SendWhatsAppMessageJob::class);
+    }
+
+    public function test_recent_whatsapp_customer_can_receive_freeform_order_confirmation(): void
+    {
+        Queue::fake();
+        $contact = Contact::create(['name' => 'Recent Customer', 'phone' => '9123456782', 'source' => 'whatsapp']);
+        Conversation::create([
+            'contact_id' => $contact->id,
+            'channel' => 'whatsapp',
+            'direction' => 'inbound',
+            'message' => 'I want to order',
+            'status' => 'read',
+            'sent_at' => now(),
+        ]);
+        app(CartService::class)->add($this->variant->id, 1);
+
+        Livewire::test(CheckoutForm::class)
+            ->set('customer_name', 'Recent Customer')
+            ->set('customer_phone', '9123456782')
+            ->set('delivery_address', '789 Test Street')
+            ->set('postcode', '625513')
+            ->set('city', 'Theni')
+            ->set('state', 'Tamil Nadu')
+            ->call('placeOrder');
+
+        Queue::assertPushed(SendWhatsAppMessageJob::class);
     }
 }

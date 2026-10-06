@@ -77,16 +77,6 @@ class WhatsAppFlowService
             return true;
         }
 
-        // Session expired with a cart still in it — WhatsAppSession stashed the
-        // progress and is waiting on resume_cart/fresh_start (handled above via
-        // the interactive branch). Anything else re-shows the same prompt rather
-        // than silently proceeding as if nothing had happened.
-        if ($session->state === 'resume_prompt') {
-            $this->sendResumePrompt($contact, $session);
-
-            return true;
-        }
-
         // Text message
         $lower = mb_strtolower(trim($body));
 
@@ -97,13 +87,14 @@ class WhatsAppFlowService
             return true;
         }
 
-        // Re-opt-in: if previously opted out and user sends START, re-enable
-        if ($contact->wa_opted_out && in_array($lower, ['start', 'hi', 'hello', 'yes', 'ஆம்'], true)) {
+        // START lifts the block for this customer-initiated service chat only.
+        // It does not create consent for future utility or marketing outreach.
+        if ($contact->wa_opted_out && $lower === 'start') {
             $contact->update(['wa_opted_out' => false, 'wa_opted_out_at' => null]);
             $session->setState('start');
             $this->sendTrackedText(
                 $contact->phone,
-                "Welcome back! 🎉 You've been re-subscribed to Merza messages.\n\nReply *menu* to see what we have for you today. 🥭"
+                "Welcome back to Merza support. Reply *menu* to see what we have today. This does not subscribe you to future offers or order updates."
             );
 
             return true;
@@ -112,6 +103,13 @@ class WhatsAppFlowService
         // If opted out, silently drop — do not send any automated message
         if ($contact->wa_opted_out) {
             Log::info('WhatsApp message from opted-out contact ignored', ['phone' => $contact->phone]);
+
+            return true;
+        }
+
+        // Preserve the cart flow after checking STOP and START.
+        if ($session->state === 'resume_prompt') {
+            $this->sendResumePrompt($contact, $session);
 
             return true;
         }
@@ -713,17 +711,17 @@ class WhatsAppFlowService
 
     private function handleOptOut(Contact $contact, WhatsAppSession $session): void
     {
+        $this->sendTrackedText(
+            $contact->phone,
+            "Merza has stopped WhatsApp messages to you. To start a new support chat later, send *START*. That will not subscribe you to offers or order updates."
+        );
+
         $contact->optOutWhatsApp();
 
-        // Expire the session so no further automated flows trigger
+        // Expire the session so no further automated flows trigger.
         $session->update(['state' => 'opted_out', 'expires_at' => now()->addYears(10)]);
 
         Log::info('WhatsApp opt-out received', ['phone' => $contact->phone]);
-
-        $this->sendTrackedText(
-            $contact->phone,
-            "You have been unsubscribed from Merza automated messages. ✅\n\nYou will no longer receive automated WhatsApp messages from us.\n\nIf you ever want to reconnect, simply send *START* and we'll be happy to help!\n\n— Merza Team 🥭"
-        );
     }
 
     // ─── Cart ────────────────────────────────────────────────────────────────

@@ -5,10 +5,14 @@ namespace Tests\Feature;
 use App\Filament\Pages\WhatsAppInbox;
 use App\Jobs\SendWhatsAppMessageJob;
 use App\Models\Contact;
+use App\Models\BotSetting;
 use App\Models\Conversation;
 use App\Models\User;
+use App\Services\WhatsAppMessagePolicy;
+use App\Services\WhatsAppService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Facades\Http;
 use Livewire\Livewire;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
@@ -105,6 +109,154 @@ class WhatsAppInboxTest extends TestCase
 
         $this->postJson('/webhook/meta', $this->statusPayload('delivered'))->assertOk();
         $this->assertSame('read', $message->fresh()->status);
+    }
+
+    public function test_reply_is_blocked_when_customer_service_window_expires(): void
+    {
+        Queue::fake();
+        $contact = Contact::create(['name' => 'Older Customer', 'phone' => '955555555555', 'source' => 'whatsapp']);
+        $this->message($contact, 'inbound', 'Yesterday')->update(['sent_at' => now()->subHours(25), 'created_at' => now()->subHours(25)]);
+
+        $this->actingAs($this->admin);
+        Livewire::test(WhatsAppInbox::class)
+            ->set('replyText', 'Late reply')
+            ->call('sendReply')
+            ->assertSet('replyText', 'Late reply')
+            ->assertSee('Reply window closed');
+
+        $this->assertFalse(Conversation::where('contact_id', $contact->id)->where('direction', 'outbound')->exists());
+        Queue::assertNotPushed(SendWhatsAppMessageJob::class);
+    }
+
+    public function test_consent_requires_evidence_and_opt_out_revokes_it(): void
+    {
+        $contact = Contact::create(['name' => 'Opt in Customer', 'phone' => '966666666666', 'source' => 'whatsapp']);
+        $this->message($contact, 'inbound', 'Hello');
+        $this->actingAs($this->admin);
+
+        Livewire::test(WhatsAppInbox::class)
+            ->set('consentCategory', 'marketing')
+            ->set('consentSource', 'checkout')
+            ->set('consentEvidence', 'Checked unchecked offers box on order #123')
+            ->call('recordConsent')
+            ->assertHasNoErrors();
+
+        $this->assertTrue(app(WhatsAppMessagePolicy::class)->hasOutreachConsent($contact, 'marketing'));
+        $contact->optOutWhatsApp();
+        $this->assertFalse(app(WhatsAppMessagePolicy::class)->hasOutreachConsent($contact->fresh(), 'marketing'));
+        $this->assertNotNull($contact->whatsAppConsents()->first()->revoked_at);
+    }
+
+    public function test_queued_reply_is_rechecked_when_the_window_closes(): void
+    {
+        Http::fake();
+        $contact = Contact::create(['name' => 'Queue Customer', 'phone' => '977777777777', 'source' => 'whatsapp']);
+        $this->message($contact, 'inbound', 'Hello')->update(['sent_at' => now()->subHours(25)]);
+        $reply = Conversation::create([
+            'contact_id' => $contact->id,
+            'channel' => 'whatsapp',
+            'direction' => 'outbound',
+            'message' => 'Late reply',
+            'status' => 'sent',
+        ]);
+
+        (new SendWhatsAppMessageJob($reply->id))->handle();
+
+        $this->assertSame('failed', $reply->fresh()->status);
+        $this->assertNotNull($reply->fresh()->failure_reason);
+        Http::assertNothingSent();
+    }
+
+    public function test_failed_meta_receipt_shows_reason(): void
+    {
+        $contact = Contact::create(['name' => 'Receipt failure', 'phone' => '988888888888', 'source' => 'whatsapp']);
+        $message = $this->message($contact, 'outbound', 'On the way');
+        $message->update(['wa_message_id' => 'wamid.receipt-test']);
+        $payload = $this->statusPayload('failed');
+        $payload['entry'][0]['changes'][0]['value']['statuses'][0]['errors'] = [['code' => 131026, 'title' => 'Message undeliverable']];
+
+        $this->postJson('/webhook/meta', $payload)->assertOk();
+
+        $this->assertSame('failed', $message->fresh()->status);
+        $this->assertStringContainsString('131026', $message->fresh()->failure_reason);
+    }
+
+    public function test_only_approved_template_with_category_consent_can_be_sent(): void
+    {
+        BotSetting::current()->update([
+            'whatsapp_business_account_id' => '123456789',
+            'whatsapp_phone_number_id' => '987654321',
+            'whatsapp_access_token' => 'test-token',
+        ]);
+        Http::fake([
+            'graph.facebook.com/*/message_templates*' => Http::response(['data' => [[
+                'name' => 'support_followup', 'language' => 'en_US', 'status' => 'APPROVED',
+                'category' => 'UTILITY', 'components' => [['type' => 'BODY', 'text' => 'Your order is ready.']],
+            ]]], 200),
+            'graph.facebook.com/*/messages' => Http::response(['messages' => [['id' => 'wamid.template']]], 200),
+        ]);
+        $contact = Contact::create(['name' => 'Template Customer', 'phone' => '999999999999', 'source' => 'whatsapp']);
+        $this->message($contact, 'inbound', 'Old message')->update(['sent_at' => now()->subHours(25)]);
+        $this->actingAs($this->admin);
+
+        Livewire::test(WhatsAppInbox::class)
+            ->call('loadApprovedTemplates')
+            ->set('selectedTemplate', 'support_followup|en_US')
+            ->call('sendApprovedTemplate');
+        $this->assertFalse(Conversation::where('wa_message_id', 'wamid.template')->exists());
+
+        $contact->whatsAppConsents()->create([
+            'recorded_by' => $this->admin->id,
+            'category' => 'utility',
+            'source' => 'checkout',
+            'evidence' => 'Explicit order-update opt-in',
+            'granted_at' => now(),
+        ]);
+        Livewire::test(WhatsAppInbox::class)
+            ->call('loadApprovedTemplates')
+            ->set('selectedTemplate', 'support_followup|en_US')
+            ->call('sendApprovedTemplate');
+
+        $this->assertTrue(Conversation::where('wa_message_id', 'wamid.template')->exists());
+    }
+
+    public function test_agent_can_assign_mark_pending_add_private_note_and_use_saved_reply(): void
+    {
+        $contact = Contact::create(['name' => 'Team Customer', 'phone' => '900000000001', 'source' => 'whatsapp']);
+        $this->message($contact, 'inbound', 'Please help');
+        $this->actingAs($this->admin);
+
+        Livewire::test(WhatsAppInbox::class)
+            ->set('assignmentId', (string) $this->admin->id)
+            ->call('assignSelectedContact')
+            ->call('setInboxStatus', 'pending')
+            ->set('internalNote', 'Customer requested a call tomorrow.')
+            ->call('addInternalNote')
+            ->set('savedReplyTitle', 'Delivery help')
+            ->set('savedReplyBody', 'We can help with your delivery.')
+            ->call('saveQuickReply')
+            ->assertHasNoErrors();
+
+        $this->assertSame($this->admin->id, $contact->fresh()->assigned_to);
+        $this->assertSame('pending', $contact->fresh()->whatsapp_inbox_status);
+        $this->assertSame('Customer requested a call tomorrow.', $contact->whatsAppInboxNotes()->first()->body);
+
+        $reply = \App\Models\WhatsAppSavedReply::firstOrFail();
+        Livewire::test(WhatsAppInbox::class)
+            ->call('useSavedReply', $reply->id)
+            ->assertSet('replyText', 'We can help with your delivery.');
+        $this->assertSame(1, Conversation::where('contact_id', $contact->id)->count());
+    }
+
+    public function test_shared_whatsapp_sender_blocks_freeform_without_recent_inbound(): void
+    {
+        BotSetting::current()->update(['whatsapp_phone_number_id' => '123', 'whatsapp_access_token' => 'test-token']);
+        Http::fake();
+        $contact = Contact::create(['name' => 'Outbound Customer', 'phone' => '911111111119', 'source' => 'website']);
+        $service = new WhatsAppService(BotSetting::current());
+
+        $this->assertNull($service->sendTextMessage($contact->phone, 'Hello'));
+        Http::assertNothingSent();
     }
 
     private function message(Contact $contact, string $direction, string $body, bool $isBot = false): Conversation

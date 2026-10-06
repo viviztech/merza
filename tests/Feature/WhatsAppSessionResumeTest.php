@@ -40,6 +40,14 @@ class WhatsAppSessionResumeTest extends TestCase
         ]);
 
         $this->contact = Contact::create(['name' => 'WA: 9888800000', 'phone' => '9888800000']);
+        Conversation::create([
+            'contact_id' => $this->contact->id,
+            'channel' => 'whatsapp',
+            'direction' => 'inbound',
+            'message' => 'Hello',
+            'status' => 'read',
+            'sent_at' => now(),
+        ]);
     }
 
     private function flow(): WhatsAppFlowService

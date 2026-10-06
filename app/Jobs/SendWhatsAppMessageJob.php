@@ -5,6 +5,7 @@ namespace App\Jobs;
 use App\Models\BotSetting;
 use App\Models\Conversation;
 use App\Services\WhatsAppService;
+use App\Services\WhatsAppMessagePolicy;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -42,6 +43,14 @@ class SendWhatsAppMessageJob implements ShouldQueue
             return;
         }
 
+        if (! app(WhatsAppMessagePolicy::class)->canSendFreeform($conversation->contact)) {
+            $conversation->update([
+                'status' => 'failed',
+                'failure_reason' => 'Free-form reply unavailable: contact opted out, is blocked, or the 24-hour reply window closed.',
+            ]);
+            return;
+        }
+
         $settings = BotSetting::current();
         $service  = new WhatsAppService($settings);
 
@@ -59,7 +68,10 @@ class SendWhatsAppMessageJob implements ShouldQueue
                 'wa_id'        => $waMessageId,
             ]);
         } else {
-            $conversation->update(['status' => 'failed']);
+            $conversation->update([
+                'status' => 'failed',
+                'failure_reason' => 'WhatsApp did not accept this message. Check the application logs before retrying.',
+            ]);
             $this->fail('WhatsApp API returned no message ID');
         }
     }

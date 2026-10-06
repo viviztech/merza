@@ -13,11 +13,77 @@ class WhatsAppService
     public function __construct(private readonly BotSetting $settings) {}
 
     /**
+     * List only approved, parameter-free text templates that the inbox can send safely.
+     * Dynamic headers, buttons and body placeholders need a dedicated preview/form.
+     */
+    public function approvedInboxTemplates(): array
+    {
+        $wabaId = $this->settings->whatsapp_business_account_id;
+        $token = $this->settings->whatsapp_access_token;
+
+        if (! ctype_digit((string) $wabaId) || ! $token) {
+            return [];
+        }
+
+        $response = Http::timeout(15)->withToken($token)
+            ->get(self::GRAPH_URL."/{$wabaId}/message_templates", [
+                'fields' => 'name,status,language,category,components',
+                'limit' => 100,
+            ]);
+
+        if ($response->failed()) {
+            Log::warning('WhatsAppService: Could not load approved templates', ['status' => $response->status()]);
+            return [];
+        }
+
+        return collect($response->json('data', []))
+            ->filter(function ($template) {
+                if (($template['status'] ?? '') !== 'APPROVED'
+                    || ! in_array($template['category'] ?? '', ['UTILITY', 'MARKETING'], true)
+                    || empty($template['name']) || empty($template['language'])) {
+                    return false;
+                }
+
+                $components = $template['components'] ?? [];
+                $body = collect($components)->first(fn ($component) => strtoupper($component['type'] ?? '') === 'BODY');
+                if (! is_array($body) || empty($body['text']) || str_contains($body['text'], '{{')) {
+                    return false;
+                }
+
+                return collect($components)->every(fn ($component) => in_array(strtoupper($component['type'] ?? ''), ['BODY', 'FOOTER'], true));
+            })
+            ->map(fn ($template) => [
+                'name' => $template['name'],
+                'language' => $template['language'],
+                'category' => strtolower($template['category']),
+                'body' => collect($template['components'])->first(fn ($component) => strtoupper($component['type'] ?? '') === 'BODY')['text'],
+            ])
+            ->values()->all();
+    }
+
+    private function canSendFreeform(string $phone): bool
+    {
+        if (app(WhatsAppMessagePolicy::class)->canSendFreeformToPhone($phone)) {
+            return true;
+        }
+
+        Log::warning('WhatsAppService: free-form send blocked by contact or 24-hour window policy', [
+            'phone_suffix' => substr(preg_replace('/\D/', '', $phone) ?? '', -4),
+        ]);
+
+        return false;
+    }
+
+    /**
      * Send a text message via WhatsApp Cloud API.
      * Returns the wa_message_id on success, null on failure.
      */
     public function sendTextMessage(string $toPhone, string $body): ?string
     {
+        if (! $this->canSendFreeform($toPhone)) {
+            return null;
+        }
+
         $phoneNumberId = $this->settings->whatsapp_phone_number_id;
         $token = $this->settings->whatsapp_access_token;
 
@@ -58,6 +124,10 @@ class WhatsAppService
      */
     public function sendImageMessage(string $toPhone, string $imageUrl, string $caption = ''): ?string
     {
+        if (! $this->canSendFreeform($toPhone)) {
+            return null;
+        }
+
         $phoneNumberId = $this->settings->whatsapp_phone_number_id;
         $token = $this->settings->whatsapp_access_token;
 
@@ -97,6 +167,10 @@ class WhatsAppService
      */
     public function sendDocumentMessage(string $toPhone, string $documentUrl, string $filename, string $caption = ''): ?string
     {
+        if (! $this->canSendFreeform($toPhone)) {
+            return null;
+        }
+
         $phoneNumberId = $this->settings->whatsapp_phone_number_id;
         $token = $this->settings->whatsapp_access_token;
 
@@ -211,6 +285,10 @@ class WhatsAppService
 
     public function sendInteractiveMessage(string $toPhone, array $interactive): ?string
     {
+        if (! $this->canSendFreeform($toPhone)) {
+            return null;
+        }
+
         $phoneNumberId = $this->settings->whatsapp_phone_number_id;
         $token = $this->settings->whatsapp_access_token;
 
@@ -384,6 +462,12 @@ class WhatsAppService
                         'wa_message_id' => $status['id'],
                         'status' => $status['status'],
                         'timestamp' => $status['timestamp'] ?? (string) now()->timestamp,
+                        'failure_reason' => ($status['status'] ?? '') === 'failed'
+                            ? trim(implode(' ', array_filter([
+                                isset($status['errors'][0]['code']) ? 'Meta error '.$status['errors'][0]['code'].':' : null,
+                                $status['errors'][0]['title'] ?? 'Message delivery failed',
+                            ])))
+                            : null,
                     ];
                 }
             }

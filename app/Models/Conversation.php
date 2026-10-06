@@ -10,7 +10,7 @@ class Conversation extends Model
     protected $fillable = [
         'contact_id', 'handled_by', 'channel', 'direction',
         'message', 'media_url', 'status', 'is_bot', 'sent_at',
-        'wa_message_id', 'replied_to_id', 'ctwa_referral', 'seen_at',
+        'wa_message_id', 'replied_to_id', 'ctwa_referral', 'seen_at', 'failure_reason',
     ];
 
     protected $casts = [

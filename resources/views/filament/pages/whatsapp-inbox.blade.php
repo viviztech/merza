@@ -27,6 +27,9 @@
                     <button type="button" wire:click="setFilter('needs_reply')" @class(['is-active' => $filter === 'needs_reply'])>
                         Needs reply <span>{{ $counts['needsReply'] }}</span>
                     </button>
+                    <button type="button" wire:click="setFilter('mine')" @class(['is-active' => $filter === 'mine'])>
+                        Assigned to me
+                    </button>
                 </div>
             </div>
 
@@ -80,6 +83,7 @@
                         </div>
                     </div>
                     <div class="wa-inbox__contact-actions">
+                        <span class="wa-inbox__assignment-label">{{ ucfirst($selectedContact->whatsapp_inbox_status ?? 'open') }} · {{ $selectedContact->assignedTo?->name ?? 'Unassigned' }}</span>
                         @if ($selectedContact->wa_opted_out)
                             <span class="wa-inbox__warning">Opted out</span>
                         @endif
@@ -144,10 +148,114 @@
                                         </span>
                                     @endif
                                 </footer>
+                                @if ($message->status === 'failed' && $message->failure_reason)
+                                    <div class="wa-inbox__field-error">{{ $message->failure_reason }}</div>
+                                @elseif ($message->direction === 'outbound' && ! $message->sent_at && $message->status !== 'failed')
+                                    <div class="wa-inbox__queued">Queued</div>
+                                @endif
                             </div>
                         </article>
                     @endforeach
                 </div>
+
+                <details class="wa-inbox__consent-panel">
+                    <summary>Team workflow <span>Assignment, status and private notes</span></summary>
+                    <form wire:submit="assignSelectedContact">
+                        <select wire:model="assignmentId" aria-label="Assigned agent">
+                            <option value="">Unassigned</option>
+                            @foreach ($agents as $agent)
+                                <option value="{{ $agent->id }}">{{ $agent->name }}</option>
+                            @endforeach
+                        </select>
+                        <button type="submit">Assign</button>
+                    </form>
+                    <div class="wa-inbox__status-actions" role="group" aria-label="Conversation status">
+                        <button type="button" wire:click="setInboxStatus('open')">Open</button>
+                        <button type="button" wire:click="setInboxStatus('pending')">Pending</button>
+                        <button type="button" wire:click="setInboxStatus('resolved')">Resolved</button>
+                    </div>
+                    <form wire:submit="addInternalNote">
+                        <input wire:model="internalNote" placeholder="Private note for the team" aria-label="Private note" maxlength="2000" required>
+                        <button type="submit">Add note</button>
+                    </form>
+                    @foreach ($internalNotes as $note)
+                        <p><strong>{{ $note->user?->name ?? 'Team' }} · {{ $note->created_at->format('d M, g:i A') }}:</strong> {{ $note->body }}</p>
+                    @endforeach
+                    @error('assignmentId') <span class="wa-inbox__field-error">{{ $message }}</span> @enderror
+                    @error('internalNote') <span class="wa-inbox__field-error">{{ $message }}</span> @enderror
+                </details>
+
+                <details class="wa-inbox__consent-panel">
+                    <summary>Saved replies <span>Fill the composer, then review and send</span></summary>
+                    <div class="wa-inbox__saved-replies">
+                        @foreach ($savedReplies as $savedReply)
+                            <button type="button" wire:click="useSavedReply({{ $savedReply->id }})">{{ $savedReply->title }}</button>
+                        @endforeach
+                    </div>
+                    <form wire:submit="saveQuickReply">
+                        <input wire:model="savedReplyTitle" placeholder="Reply title" aria-label="Saved reply title" maxlength="80" required>
+                        <input wire:model="savedReplyBody" placeholder="Reply text" aria-label="Saved reply text" maxlength="4096" required>
+                        <button type="submit">Save reply</button>
+                    </form>
+                    @error('savedReplyTitle') <span class="wa-inbox__field-error">{{ $message }}</span> @enderror
+                    @error('savedReplyBody') <span class="wa-inbox__field-error">{{ $message }}</span> @enderror
+                </details>
+
+                <div class="wa-inbox__policy-bar">
+                    @if ($selectedContact->wa_opted_out || $selectedContact->is_blocked)
+                        <strong>Messaging unavailable: contact blocked or opted out</strong>
+                    @elseif ($canSendFreeform && $replyWindowExpiresAt)
+                        <strong>Reply window open</strong> until {{ $replyWindowExpiresAt->format('d M Y, g:i A') }}
+                        <span
+                            x-data="{ end: {{ $replyWindowExpiresAt->getTimestampMs() }}, now: Date.now(), remaining() { let s = Math.max(0, Math.floor((this.end - this.now) / 1000)); return `${String(Math.floor(s / 3600)).padStart(2, '0')}:${String(Math.floor((s % 3600) / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}` } }"
+                            x-init="setInterval(() => now = Date.now(), 1000)"
+                            x-text="`(${remaining()} left)`"
+                        >({{ $replyWindowExpiresAt->diffForHumans() }})</span>
+                    @else
+                        <strong>Reply window closed.</strong> Ask the customer to message you, or use a Meta-approved template with the required consent.
+                    @endif
+                </div>
+
+                <details class="wa-inbox__consent-panel">
+                    <summary>Outreach consent <span>{{ $activeConsents->pluck('category')->map(fn ($category) => ucfirst($category))->join(', ') ?: 'No active consent recorded' }}</span></summary>
+                    <p>Record consent only when the customer explicitly agreed to receive this type of WhatsApp message. Save where and how they agreed.</p>
+                    <form wire:submit="recordConsent">
+                        <select wire:model="consentCategory" aria-label="Consent category">
+                            <option value="utility">Order updates (utility)</option>
+                            <option value="marketing">Offers (marketing)</option>
+                        </select>
+                        <input wire:model="consentSource" placeholder="Source (e.g. checkout opt-in)" aria-label="Consent source" maxlength="80" required>
+                        <input wire:model="consentEvidence" placeholder="Evidence (e.g. form ID and exact wording)" aria-label="Consent evidence" maxlength="2000" required>
+                        <button type="submit" @disabled($selectedContact->wa_opted_out || $selectedContact->is_blocked)>Record consent</button>
+                    </form>
+                    @error('consentCategory') <span class="wa-inbox__field-error">{{ $message }}</span> @enderror
+                    @error('consentSource') <span class="wa-inbox__field-error">{{ $message }}</span> @enderror
+                    @error('consentEvidence') <span class="wa-inbox__field-error">{{ $message }}</span> @enderror
+                </details>
+
+                <details class="wa-inbox__consent-panel">
+                    <summary>Meta-approved templates <span>For messages outside the reply window</span></summary>
+                    <button type="button" class="wa-inbox__load-templates" wire:click="loadApprovedTemplates">Load approved templates</button>
+                    @if ($approvedTemplates)
+                        <form wire:submit="sendApprovedTemplate">
+                            <select wire:model="selectedTemplate" aria-label="Approved template" required>
+                                <option value="">Select a template</option>
+                                @foreach ($approvedTemplates as $template)
+                                    <option value="{{ $template['name'].'|'.$template['language'] }}">{{ $template['name'] }} ({{ ucfirst($template['category']) }}, {{ $template['language'] }})</option>
+                                @endforeach
+                            </select>
+                            <button type="submit" @disabled($selectedContact->wa_opted_out || $selectedContact->is_blocked)>Send template</button>
+                        </form>
+                        @foreach ($approvedTemplates as $template)
+                            @if ($selectedTemplate === $template['name'].'|'.$template['language'])
+                                <p>{{ $template['body'] }}</p>
+                            @endif
+                        @endforeach
+                    @else
+                        <p>Configure the WhatsApp Business Account ID in Meta Bot Settings, then load templates. Only approved text templates without variables appear.</p>
+                    @endif
+                    @error('selectedTemplate') <span class="wa-inbox__field-error">{{ $message }}</span> @enderror
+                </details>
 
                 <form class="wa-inbox__composer" wire:submit="sendReply">
                     <div class="wa-inbox__composer-field">
@@ -156,15 +264,15 @@
                             rows="2"
                             maxlength="4096"
                             placeholder="Type a WhatsApp reply…"
-                            @disabled($selectedContact->wa_opted_out || $selectedContact->is_blocked)
+                            @disabled(! $canSendFreeform)
                         ></textarea>
                         @error('replyText') <span class="wa-inbox__field-error">{{ $message }}</span> @enderror
                     </div>
-                    <button type="submit" wire:loading.attr="disabled" @disabled($selectedContact->wa_opted_out || $selectedContact->is_blocked)>
+                    <button type="submit" wire:loading.attr="disabled" @disabled(! $canSendFreeform)>
                         <x-filament::icon icon="heroicon-o-paper-airplane" />
                         <span>Send</span>
                     </button>
-                    <p>Free-form replies are subject to Meta's 24-hour customer service window.</p>
+                    <p>Only customer-initiated conversations allow free-form replies within 24 hours.</p>
                 </form>
             @else
                 <div class="wa-inbox__blank-state">
@@ -218,6 +326,7 @@
         .wa-inbox__contact-actions a { display: flex; align-items: center; gap: .35rem; padding: .48rem .65rem; border: 1px solid #d6d3d1; border-radius: .6rem; background: #fff; color: #57534e; font-size: .68rem; font-weight: 700; }
         .wa-inbox__contact-actions a:hover { border-color: #16a34a; color: #166534; }
         .wa-inbox__contact-actions svg { width: .9rem; }
+        .wa-inbox__assignment-label { color: #57534e; font-size: .68rem; white-space: nowrap; }
         .wa-inbox__warning { padding: .3rem .5rem; border-radius: 999px; background: #fee2e2; color: #b91c1c; font-size: .65rem; font-weight: 800; }
         .wa-inbox__messages { min-height: 0; flex: 1 1 0; overflow-x: hidden; overflow-y: scroll; overscroll-behavior: contain; scrollbar-gutter: stable; padding: 1.1rem clamp(.8rem, 3vw, 2.25rem); scroll-behavior: smooth; }
         .wa-inbox__encryption-note { display: flex; width: fit-content; align-items: center; gap: .35rem; margin: 0 auto 1.2rem; padding: .38rem .65rem; border-radius: .5rem; background: #fffbeb; color: #92400e; font-size: .62rem; box-shadow: 0 1px 2px rgba(0,0,0,.05); }
@@ -247,6 +356,20 @@
         .wa-inbox__composer button svg { width: .95rem; }
         .wa-inbox__composer > p { grid-column: 1 / -1; margin: -.18rem 0 0 .15rem; color: #a8a29e; font-size: .6rem; }
         .wa-inbox__field-error { display: block; margin: .25rem 0 0 .2rem; color: #dc2626; font-size: .65rem; }
+        .wa-inbox__queued { margin-top: .25rem; color: #64748b; font-size: .65rem; }
+        .wa-inbox__policy-bar { flex: none; padding: .45rem .9rem; border-top: 1px solid #e7e5e4; background: #fffbeb; color: #78350f; font-size: .7rem; }
+        .wa-inbox__policy-bar strong { font-weight: 800; }
+        .wa-inbox__consent-panel { flex: none; max-height: 12rem; overflow-y: auto; padding: .4rem .9rem; border-top: 1px solid #e7e5e4; background: #f8fafc; color: #334155; font-size: .7rem; }
+        .wa-inbox__consent-panel summary { cursor: pointer; font-weight: 800; }
+        .wa-inbox__consent-panel summary span { margin-left: .4rem; color: #64748b; font-weight: 500; }
+        .wa-inbox__consent-panel p { margin: .4rem 0; }
+        .wa-inbox__consent-panel form { display: flex; flex-wrap: wrap; gap: .4rem; }
+        .wa-inbox__consent-panel input, .wa-inbox__consent-panel select { min-width: 9rem; flex: 1; padding: .45rem; border: 1px solid #cbd5e1; border-radius: .4rem; background: #fff; }
+        .wa-inbox__consent-panel button { padding: .45rem .65rem; border-radius: .4rem; background: #166534; color: #fff; font-weight: 700; }
+        .wa-inbox__consent-panel button:disabled { opacity: .45; }
+        .wa-inbox__status-actions, .wa-inbox__saved-replies { display: flex; flex-wrap: wrap; gap: .35rem; margin: .45rem 0; }
+        .wa-inbox__status-actions button, .wa-inbox__saved-replies button { padding: .35rem .55rem; border: 1px solid #cbd5e1; border-radius: .4rem; background: #fff; color: #166534; font-weight: 700; }
+        .wa-inbox__load-templates { margin: .4rem 0; }
         .wa-inbox__empty-list, .wa-inbox__blank-state { display: flex; flex-direction: column; align-items: center; justify-content: center; color: #78716c; text-align: center; }
         .wa-inbox__empty-list { min-height: 15rem; padding: 2rem; }
         .wa-inbox__empty-list svg { width: 2rem; margin-bottom: .65rem; color: #a8a29e; }
@@ -275,6 +398,7 @@
             .wa-inbox__contact-identity { gap: .55rem; }
             .wa-inbox__avatar--large { width: 2.35rem; height: 2.35rem; border-radius: .7rem; }
             .wa-inbox__contact-actions { gap: .25rem; }
+            .wa-inbox__assignment-label { display: none; }
             .wa-inbox__contact-actions a { border: 0; background: #f5f5f4; }
             .wa-inbox__messages { padding: .8rem .65rem; }
             .wa-inbox__bubble { max-width: 90%; }

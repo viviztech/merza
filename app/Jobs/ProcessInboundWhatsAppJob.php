@@ -179,22 +179,24 @@ class ProcessInboundWhatsAppJob implements ShouldQueue
         $botEnabled   = $settings->wa_bot_enabled;
         $voiceEnabled = $settings->voice_bot_enabled;
 
+        // Honor opt-out and a later customer-initiated START even when the bot is off.
+        $command = mb_strtolower(trim($messageText));
+        if (! $botEnabled || ($wasVoice && ! $voiceEnabled)) {
+            if (in_array($command, ['stop', 'unsubscribe', 'opt out', 'optout', 'opt-out', 'cancel', 'no messages', 'remove me'], true)) {
+                $contact->optOutWhatsApp();
+            } elseif ($contact->wa_opted_out && $command === 'start') {
+                $contact->update(['wa_opted_out' => false, 'wa_opted_out_at' => null]);
+            }
+            return;
+        }
+
         // Skip bot reply for untranscribable audio
         if ($this->messageType === 'audio' && ! $wasVoice) {
             return;
         }
 
-        // Skip voice bot reply if voice bot is not enabled
-        if ($wasVoice && ! $voiceEnabled) {
-            return;
-        }
-
-        if (! $botEnabled) {
-            return;
-        }
-
         // ── Meta policy: never send automated messages to opted-out contacts ──
-        if ($contact->wa_opted_out) {
+        if ($contact->wa_opted_out && mb_strtolower(trim($messageText)) !== 'start') {
             return;
         }
 

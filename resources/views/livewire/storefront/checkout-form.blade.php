@@ -37,7 +37,7 @@
             @endif
 
             <p class="text-stone-400 text-sm max-w-sm mx-auto mb-6 leading-relaxed">
-                We'll contact you on WhatsApp shortly to confirm your delivery details. Thank you for choosing Merza! 🌿
+                Your order details are available here. For WhatsApp support, use the button below to start a chat with Merza.
             </p>
 
             {{-- Payment screenshot upload (not shown for pre-bookings — no payment was collected) --}}
@@ -161,7 +161,7 @@
                                 <input id="checkout-mobile" wire:model.live.debounce.600ms="customer_phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="86676 96278"
                                        class="w-full border-2 {{ $errors->has('customer_phone') ? 'border-red-300 bg-red-50' : 'border-stone-200 focus:border-amber-400' }} rounded-xl px-4 py-3 text-base focus:outline-none transition-colors bg-white placeholder-stone-300">
                                 @error('customer_phone') <p class="text-red-500 text-xs mt-1 font-medium">{{ $message }}</p> @enderror
-                                <p class="text-[11px] text-stone-400 mt-1.5">{{ $isPreorderOnly ? 'We will use this number for harvest and booking updates.' : 'Used to find saved addresses and send WhatsApp updates.' }}</p>
+                                <p class="text-[11px] text-stone-400 mt-1.5">Used to find saved addresses and contact you about delivery when needed.</p>
                             </div>
 
                             <div>
@@ -510,7 +510,7 @@
                     @if($isPreorderOnly)
                         <div class="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 text-center">
                             <p class="text-sm font-bold text-emerald-800">No payment needed to reserve your booking</p>
-                            <p class="text-xs text-emerald-700 mt-1">We'll reach out on WhatsApp with payment details closer to dispatch.</p>
+                            <p class="text-xs text-emerald-700 mt-1">We will show payment details when your booking is ready for dispatch.</p>
                         </div>
                     @endif
 
@@ -518,7 +518,7 @@
                     <div class="overflow-x-auto rounded-2xl border border-emerald-100 bg-emerald-50/70 px-3 py-2.5">
                         <div class="flex items-center justify-center gap-3 sm:gap-5 whitespace-nowrap text-[11px] font-bold text-emerald-800">
                             @if($isPreorderOnly)
-                                <span>🌿 Farm Fresh</span><span class="text-emerald-300">·</span><span>✓ Quality Checked</span><span class="text-emerald-300">·</span><span>💬 WhatsApp Updates</span>
+                                <span>🌿 Farm Fresh</span><span class="text-emerald-300">·</span><span>✓ Quality Checked</span><span class="text-emerald-300">·</span><span>✓ Booking Updates</span>
                             @else
                                 <span>🌿 Farm Fresh</span><span class="text-emerald-300">·</span><span>✓ Quality Checked</span><span class="text-emerald-300">·</span><span>🔒 Secure Payment</span><span class="text-emerald-300">·</span><span>🚚 Fast Dispatch</span>
                             @endif

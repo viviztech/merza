@@ -21,7 +21,12 @@ class CampaignService
      */
     public function enrollContacts(Campaign $campaign): int
     {
-        $query = Contact::query()->where('is_blocked', false)->where('wa_opted_out', false);
+        $query = Contact::query()
+            ->where('is_blocked', false)
+            ->where('wa_opted_out', false)
+            ->whereHas('whatsAppConsents', fn ($consents) => $consents
+                ->where('category', 'marketing')
+                ->whereNull('revoked_at'));
 
         if (!empty($campaign->filter_tags)) {
             foreach ($campaign->filter_tags as $tag) {
@@ -96,7 +101,7 @@ class CampaignService
             return false;
         }
 
-        if ($contact->wa_opted_out || $contact->is_blocked) {
+        if (! app(WhatsAppMessagePolicy::class)->hasOutreachConsent($contact, 'marketing')) {
             $campaignContact->update(['status' => 'unsubscribed', 'next_send_at' => null]);
             $this->checkCampaignCompletion($campaign);
             return false;

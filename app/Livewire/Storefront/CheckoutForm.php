@@ -451,6 +451,12 @@ class CheckoutForm extends Component
                 return;
             }
 
+            // This confirmation is free-form text. Outside a customer-initiated
+            // service window it would require an approved utility template.
+            if (! app(\App\Services\WhatsAppMessagePolicy::class)->canSendFreeform($contact)) {
+                return;
+            }
+
             $conversation = Conversation::create([
                 'contact_id' => $contact->id,
                 'channel'    => 'whatsapp',

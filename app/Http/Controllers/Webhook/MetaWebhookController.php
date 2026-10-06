@@ -100,7 +100,10 @@ class MetaWebhookController extends Controller
             // Meta may deliver status webhooks out of order. Never turn a read
             // receipt back into delivered/sent, while always surfacing failures.
             if ($incoming === 'failed' || ($rank[$incoming] ?? 0) >= ($rank[$conversation->status] ?? 0)) {
-                $conversation->update(['status' => $incoming]);
+                $conversation->update([
+                    'status' => $incoming,
+                    'failure_reason' => $incoming === 'failed' ? mb_substr($statusEvent['failure_reason'] ?? 'Message delivery failed', 0, 255) : null,
+                ]);
             }
         }
 
