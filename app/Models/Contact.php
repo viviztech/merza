@@ -32,7 +32,7 @@ class Contact extends Model
         'meta_ad_id', 'meta_ad_name',
         'tags', 'notes', 'city', 'state',
         'is_customer', 'is_blocked', 'last_contacted_at',
-        'wa_opted_out', 'wa_opted_out_at', 'whatsapp_inbox_status',
+        'wa_opted_out', 'wa_opted_out_at',
     ];
 
     protected $casts = [
@@ -81,11 +81,6 @@ class Contact extends Model
     public function whatsAppConsents(): HasMany
     {
         return $this->hasMany(WhatsAppConsent::class);
-    }
-
-    public function whatsAppInboxNotes(): HasMany
-    {
-        return $this->hasMany(WhatsAppInboxNote::class);
     }
 
     public function getActiveLeadAttribute(): ?Lead

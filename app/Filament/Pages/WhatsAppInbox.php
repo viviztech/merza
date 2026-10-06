@@ -6,9 +6,6 @@ use App\Jobs\SendWhatsAppMessageJob;
 use App\Models\Contact;
 use App\Models\BotSetting;
 use App\Models\Conversation;
-use App\Models\User;
-use App\Models\WhatsAppConsent;
-use App\Models\WhatsAppSavedReply;
 use App\Services\WhatsAppMessagePolicy;
 use App\Services\WhatsAppService;
 use Filament\Notifications\Notification;
@@ -41,30 +38,15 @@ class WhatsAppInbox extends Page
 
     public bool $mobileThreadOpen = false;
 
-    public string $consentCategory = 'utility';
-
-    public string $consentSource = '';
-
-    public string $consentEvidence = '';
-
     public array $approvedTemplates = [];
 
     public string $selectedTemplate = '';
-
-    public string $assignmentId = '';
-
-    public string $internalNote = '';
-
-    public string $savedReplyTitle = '';
-
-    public string $savedReplyBody = '';
 
     public function mount(): void
     {
         $this->selectedContactId = $this->threadQuery()->value('contacts.id');
 
         if ($this->selectedContactId) {
-            $this->assignmentId = (string) (Contact::find($this->selectedContactId)?->assigned_to ?? '');
             $this->markSelectedThreadSeen();
         }
     }
@@ -92,7 +74,7 @@ class WhatsAppInbox extends Page
 
     public function setFilter(string $filter): void
     {
-        abort_unless(in_array($filter, ['all', 'unread', 'needs_reply', 'mine'], true), 404);
+        abort_unless(in_array($filter, ['all', 'unread', 'needs_reply'], true), 404);
 
         $this->filter = $filter;
         $this->selectFirstVisibleThread();
@@ -109,7 +91,6 @@ class WhatsAppInbox extends Page
         $this->mobileThreadOpen = true;
         $this->replyText = '';
         $this->selectedTemplate = '';
-        $this->assignmentId = (string) (Contact::find($contactId)?->assigned_to ?? '');
         $this->markSelectedThreadSeen();
         $this->dispatch('scroll-chat-to-bottom');
     }
@@ -172,43 +153,6 @@ class WhatsAppInbox extends Page
             ->send();
     }
 
-    public function recordConsent(): void
-    {
-        $this->consentSource = trim($this->consentSource);
-        $this->consentEvidence = trim($this->consentEvidence);
-        $data = $this->validate([
-            'consentCategory' => ['required', 'in:utility,marketing'],
-            'consentSource' => ['required', 'string', 'max:80'],
-            'consentEvidence' => ['required', 'string', 'max:2000'],
-        ]);
-
-        $contact = Contact::findOrFail($this->selectedContactId);
-        abort_unless($contact->conversations()->where('channel', 'whatsapp')->exists(), 404);
-
-        if ($contact->is_blocked || $contact->wa_opted_out) {
-            Notification::make()->title('Consent cannot be recorded for a blocked or opted-out contact')->danger()->send();
-            return;
-        }
-
-        $contact->whatsAppConsents()
-            ->where('category', $data['consentCategory'])
-            ->whereNull('revoked_at')
-            ->update(['revoked_at' => now()]);
-
-        WhatsAppConsent::create([
-            'contact_id' => $contact->id,
-            'recorded_by' => auth()->id(),
-            'category' => $data['consentCategory'],
-            'source' => trim($data['consentSource']),
-            'evidence' => trim($data['consentEvidence']),
-            'granted_at' => now(),
-        ]);
-
-        $this->consentSource = '';
-        $this->consentEvidence = '';
-        Notification::make()->title('Consent evidence recorded')->success()->send();
-    }
-
     public function loadApprovedTemplates(): void
     {
         $this->approvedTemplates = (new WhatsAppService(BotSetting::current()))->approvedInboxTemplates();
@@ -258,62 +202,11 @@ class WhatsAppInbox extends Page
         Notification::make()->title('Approved template sent')->success()->send();
     }
 
-    public function assignSelectedContact(): void
-    {
-        $data = $this->validate(['assignmentId' => ['nullable', 'integer', 'exists:users,id']]);
-        $contact = $this->selectedThreadContact();
-        $contact->update(['assigned_to' => $data['assignmentId'] === '' ? null : (int) $data['assignmentId']]);
-        Notification::make()->title('Assignment updated')->success()->send();
-    }
-
-    public function setInboxStatus(string $status): void
-    {
-        abort_unless(in_array($status, ['open', 'pending', 'resolved'], true), 422);
-        $this->selectedThreadContact()->update(['whatsapp_inbox_status' => $status]);
-        Notification::make()->title('Inbox status updated')->success()->send();
-    }
-
-    public function addInternalNote(): void
-    {
-        $this->internalNote = trim($this->internalNote);
-        $data = $this->validate(['internalNote' => ['required', 'string', 'max:2000']]);
-        $this->selectedThreadContact()->whatsAppInboxNotes()->create([
-            'user_id' => auth()->id(),
-            'body' => trim($data['internalNote']),
-        ]);
-        $this->internalNote = '';
-        Notification::make()->title('Private note saved')->success()->send();
-    }
-
-    public function saveQuickReply(): void
-    {
-        $this->savedReplyTitle = trim($this->savedReplyTitle);
-        $this->savedReplyBody = trim($this->savedReplyBody);
-        $data = $this->validate([
-            'savedReplyTitle' => ['required', 'string', 'max:80'],
-            'savedReplyBody' => ['required', 'string', 'max:4096'],
-        ]);
-        WhatsAppSavedReply::create([
-            'title' => trim($data['savedReplyTitle']),
-            'body' => trim($data['savedReplyBody']),
-            'created_by' => auth()->id(),
-        ]);
-        $this->savedReplyTitle = '';
-        $this->savedReplyBody = '';
-        Notification::make()->title('Saved reply added')->success()->send();
-    }
-
-    public function useSavedReply(int $id): void
-    {
-        $this->selectedThreadContact();
-        $this->replyText = WhatsAppSavedReply::findOrFail($id)->body;
-    }
-
     public function getViewData(): array
     {
         $threads = $this->threadQuery()->limit(100)->get();
         $selectedContact = $this->selectedContactId
-            ? Contact::with('assignedTo')->find($this->selectedContactId)
+            ? Contact::find($this->selectedContactId)
             : null;
 
         $messages = collect();
@@ -336,18 +229,7 @@ class WhatsAppInbox extends Page
             'counts' => $this->filterCounts(),
             'replyWindowExpiresAt' => $selectedContact ? app(WhatsAppMessagePolicy::class)->freeformExpiresAt($selectedContact) : null,
             'canSendFreeform' => $selectedContact ? app(WhatsAppMessagePolicy::class)->canSendFreeform($selectedContact) : false,
-            'activeConsents' => $selectedContact ? $selectedContact->whatsAppConsents()->whereNull('revoked_at')->latest()->get() : collect(),
-            'internalNotes' => $selectedContact ? $selectedContact->whatsAppInboxNotes()->with('user')->latest()->limit(10)->get() : collect(),
-            'agents' => User::query()->orderBy('name')->get(['id', 'name']),
-            'savedReplies' => WhatsAppSavedReply::query()->orderBy('title')->limit(100)->get(),
         ];
-    }
-
-    private function selectedThreadContact(): Contact
-    {
-        $contact = Contact::findOrFail($this->selectedContactId);
-        abort_unless($contact->conversations()->where('channel', 'whatsapp')->exists(), 404);
-        return $contact;
     }
 
     private function threadQuery(): Builder
@@ -398,10 +280,6 @@ class WhatsAppInbox extends Page
             $query->whereRaw("(select direction from conversations where conversations.contact_id = contacts.id and channel = 'whatsapp' order by created_at desc limit 1) = 'inbound'");
         }
 
-        if ($this->filter === 'mine') {
-            $query->where('assigned_to', auth()->id());
-        }
-
         return $query;
     }
 
@@ -422,7 +300,6 @@ class WhatsAppInbox extends Page
     private function selectFirstVisibleThread(): void
     {
         $this->selectedContactId = $this->threadQuery()->value('contacts.id');
-        $this->assignmentId = (string) (Contact::find($this->selectedContactId)?->assigned_to ?? '');
         $this->markSelectedThreadSeen();
     }
 

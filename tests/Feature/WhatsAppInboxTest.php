@@ -128,18 +128,17 @@ class WhatsAppInboxTest extends TestCase
         Queue::assertNotPushed(SendWhatsAppMessageJob::class);
     }
 
-    public function test_consent_requires_evidence_and_opt_out_revokes_it(): void
+    public function test_opt_out_revokes_existing_outreach_consent(): void
     {
         $contact = Contact::create(['name' => 'Opt in Customer', 'phone' => '966666666666', 'source' => 'whatsapp']);
         $this->message($contact, 'inbound', 'Hello');
-        $this->actingAs($this->admin);
-
-        Livewire::test(WhatsAppInbox::class)
-            ->set('consentCategory', 'marketing')
-            ->set('consentSource', 'checkout')
-            ->set('consentEvidence', 'Checked unchecked offers box on order #123')
-            ->call('recordConsent')
-            ->assertHasNoErrors();
+        $contact->whatsAppConsents()->create([
+            'recorded_by' => $this->admin->id,
+            'category' => 'marketing',
+            'source' => 'checkout',
+            'evidence' => 'Customer explicitly opted in',
+            'granted_at' => now(),
+        ]);
 
         $this->assertTrue(app(WhatsAppMessagePolicy::class)->hasOutreachConsent($contact, 'marketing'));
         $contact->optOutWhatsApp();
@@ -220,32 +219,17 @@ class WhatsAppInboxTest extends TestCase
         $this->assertTrue(Conversation::where('wa_message_id', 'wamid.template')->exists());
     }
 
-    public function test_agent_can_assign_mark_pending_add_private_note_and_use_saved_reply(): void
+    public function test_inbox_does_not_show_removed_workflow_sections(): void
     {
         $contact = Contact::create(['name' => 'Team Customer', 'phone' => '900000000001', 'source' => 'whatsapp']);
         $this->message($contact, 'inbound', 'Please help');
         $this->actingAs($this->admin);
 
         Livewire::test(WhatsAppInbox::class)
-            ->set('assignmentId', (string) $this->admin->id)
-            ->call('assignSelectedContact')
-            ->call('setInboxStatus', 'pending')
-            ->set('internalNote', 'Customer requested a call tomorrow.')
-            ->call('addInternalNote')
-            ->set('savedReplyTitle', 'Delivery help')
-            ->set('savedReplyBody', 'We can help with your delivery.')
-            ->call('saveQuickReply')
-            ->assertHasNoErrors();
-
-        $this->assertSame($this->admin->id, $contact->fresh()->assigned_to);
-        $this->assertSame('pending', $contact->fresh()->whatsapp_inbox_status);
-        $this->assertSame('Customer requested a call tomorrow.', $contact->whatsAppInboxNotes()->first()->body);
-
-        $reply = \App\Models\WhatsAppSavedReply::firstOrFail();
-        Livewire::test(WhatsAppInbox::class)
-            ->call('useSavedReply', $reply->id)
-            ->assertSet('replyText', 'We can help with your delivery.');
-        $this->assertSame(1, Conversation::where('contact_id', $contact->id)->count());
+            ->assertDontSee('Team workflow')
+            ->assertDontSee('Saved replies')
+            ->assertDontSee('Outreach consent')
+            ->assertSee('Meta-approved templates');
     }
 
     public function test_shared_whatsapp_sender_blocks_freeform_without_recent_inbound(): void
