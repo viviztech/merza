@@ -7,6 +7,7 @@ use App\Models\BotSetting;
 use App\Models\Order;
 use App\Models\ProductVariant;
 use App\Services\OrderNotificationService;
+use App\Services\OrderTrackingService;
 use Filament\Actions;
 use Filament\Actions\Action;
 use Filament\Forms;
@@ -18,6 +19,7 @@ use Filament\Resources\Resource;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section as SchemaSection;
 use Filament\Schemas\Schema;
+use Filament\Schemas\Components\Utilities\Set;
 use Filament\Tables;
 use Filament\Tables\Table;
 
@@ -119,9 +121,23 @@ class OrderResource extends Resource
             ]),
 
             SchemaSection::make('Delivery Tracking')->schema([
+                static::trackingQrField(),
                 Forms\Components\TextInput::make('tracking_number')
                     ->placeholder('e.g. DTDC123456789')
                     ->nullable(),
+
+                Forms\Components\TextInput::make('courier_name')
+                    ->label('Courier')
+                    ->placeholder('e.g. DTDC')
+                    ->maxLength(80)
+                    ->nullable(),
+
+                Forms\Components\TextInput::make('tracking_url')
+                    ->label('Courier Tracking Link')
+                    ->placeholder('https://courier.example/track/{tracking_id}')
+                    ->helperText('Use the courier tracking URL. {tracking_id} is replaced with the scanned ID when saved.')
+                    ->nullable()
+                    ->columnSpanFull(),
 
                 Forms\Components\DateTimePicker::make('confirmed_at')->nullable(),
                 Forms\Components\DateTimePicker::make('dispatched_at')->nullable(),
@@ -314,6 +330,12 @@ class OrderResource extends Resource
 
             SchemaSection::make('Delivery Tracking')->schema([
                 TextEntry::make('tracking_number')->placeholder('Not assigned'),
+                TextEntry::make('courier_name')->label('Courier')->placeholder('Not assigned'),
+                TextEntry::make('tracking_url')
+                    ->label('Courier Tracking Link')
+                    ->url(fn (Order $record) => $record->tracking_url)
+                    ->openUrlInNewTab()
+                    ->placeholder('Not assigned'),
                 TextEntry::make('confirmed_at')->dateTime('d M Y, h:i A')->placeholder('—'),
                 TextEntry::make('dispatched_at')->dateTime('d M Y, h:i A')->placeholder('—'),
                 TextEntry::make('delivered_at')->dateTime('d M Y, h:i A')->placeholder('—'),
@@ -511,11 +533,12 @@ class OrderResource extends Resource
                     ->modalDescription(fn (Order $r) => "Send order update to {$r->customer_name} ({$r->customer_phone})")
                     ->modalSubmitActionLabel('Send via WhatsApp')
                     ->action(function (Order $r, array $data) {
-                        app(OrderNotificationService::class)->sendStatusUpdate($r, $data['wa_message']);
+                        $queued = app(OrderNotificationService::class)->sendStatusUpdate($r, $data['wa_message']);
 
                         Notification::make()
-                            ->title('WhatsApp message queued for ' . $r->customer_name)
-                            ->success()
+                            ->title($queued ? 'WhatsApp message queued for '.$r->customer_name : 'WhatsApp message not queued')
+                            ->body($queued ? null : 'A customer message within 24 hours is required for a free-form reply.')
+                            ->color($queued ? 'success' : 'warning')
                             ->send();
                     }),
 
@@ -570,9 +593,21 @@ class OrderResource extends Resource
             ->modalSubmitActionLabel(fn (Order $r) => $r->nextAction()['label'] ?? 'Confirm')
             ->form(fn (Order $r) => ($r->nextAction()['trackingForm'] ?? false)
                 ? [
+                    static::trackingQrField(),
                     Forms\Components\TextInput::make('tracking_number')
-                        ->label('Tracking Number (optional)')
-                        ->placeholder('e.g. DTDC123456789'),
+                        ->label('Tracking ID')
+                        ->placeholder('e.g. DTDC123456789')
+                        ->required(),
+                    Forms\Components\TextInput::make('courier_name')
+                        ->label('Courier')
+                        ->placeholder('e.g. DTDC')
+                        ->maxLength(80)
+                        ->required(),
+                    Forms\Components\TextInput::make('tracking_url')
+                        ->label('Courier Tracking Link')
+                        ->placeholder('https://courier.example/track/{tracking_id}')
+                        ->helperText('Paste the official courier link, including the ID or {tracking_id}.')
+                        ->required(),
                 ]
                 : [])
             ->action(function (Order $r, array $data) {
@@ -583,17 +618,58 @@ class OrderResource extends Resource
                 }
 
                 $updates = $next['updates'];
-                if (($next['trackingForm'] ?? false) && ! empty($data['tracking_number'])) {
-                    $updates['tracking_number'] = $data['tracking_number'];
+                if ($next['trackingForm'] ?? false) {
+                    $updates['tracking_number'] = trim($data['tracking_number']);
+                    $updates['courier_name'] = trim($data['courier_name']);
+                    $updates['tracking_url'] = app(OrderTrackingService::class)->completeUrl(
+                        $data['tracking_url'], $updates['tracking_number']
+                    );
                 }
 
-                $r->update($updates);
+                Order::withoutEvents(fn () => $r->update($updates));
+                $queued = app(OrderNotificationService::class)->sendStatusUpdate($r);
+
+                $body = ($next['trackingForm'] ?? false)
+                    ? ($queued ? 'Courier tracking link queued for WhatsApp delivery.' : 'Tracking link saved. WhatsApp could not be queued outside the 24-hour reply window.')
+                    : ($queued ? 'Order update queued for WhatsApp delivery.' : 'Order updated. WhatsApp could not be queued outside the 24-hour reply window.');
 
                 Notification::make()
                     ->title("Order {$r->order_number} updated")
+                    ->body($body)
                     ->success()
                     ->send();
             });
+    }
+
+    private static function trackingQrField(): Forms\Components\ViewField
+    {
+        return Forms\Components\ViewField::make('tracking_qr')
+            ->label('Scan Tracking QR')
+            ->view('filament.forms.components.order-qr-scanner')
+            ->dehydrated(false)
+            ->live()
+            ->afterStateUpdated(function (Set $set, ?string $state): void {
+                if (blank($state)) {
+                    return;
+                }
+
+                try {
+                    $parsed = app(OrderTrackingService::class)->parseQrValue($state);
+                    if ($parsed['tracking_number']) {
+                        $set('tracking_number', $parsed['tracking_number']);
+                        $set('tracking_url', $parsed['tracking_url']);
+                    } elseif ($parsed['tracking_url']) {
+                        $set('tracking_url', $parsed['tracking_url']);
+                    }
+                } catch (\Illuminate\Validation\ValidationException $exception) {
+                    Notification::make()
+                        ->title('Tracking QR could not be used')
+                        ->body(collect($exception->errors())->flatten()->first())
+                        ->danger()
+                        ->send();
+                }
+            })
+            ->columnSpanFull();
     }
 
     private static function nextActionModalDescription(Order $r): string

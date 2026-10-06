@@ -38,8 +38,13 @@
 
     @if($order->tracking_number)
         <div class="mt-4 pt-4 border-t border-stone-100">
-            <p class="text-xs text-stone-500">Tracking number</p>
+            <p class="text-xs text-stone-500">{{ $order->courier_name ? $order->courier_name.' tracking ID' : 'Tracking ID' }}</p>
             <p class="text-sm font-mono font-bold text-stone-700 mt-0.5">{{ $order->tracking_number }}</p>
+            @if($order->tracking_url)
+                <a href="{{ $order->tracking_url }}" target="_blank" rel="noopener noreferrer" class="mt-2 inline-flex text-sm font-semibold text-amber-700 underline">
+                    Track with courier
+                </a>
+            @endif
         </div>
     @endif
 </div>

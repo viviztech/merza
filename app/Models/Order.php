@@ -16,7 +16,7 @@ class Order extends Model
         'subtotal', 'gst_total', 'delivery_fee', 'packaging_fee', 'total',
         'status', 'payment_method', 'payment_status', 'payment_reference', 'payment_screenshot_path',
         'payment_verification_status', 'payment_verified_amount', 'payment_verification_notes',
-        'notes', 'admin_notes', 'tracking_number',
+        'notes', 'admin_notes', 'tracking_number', 'courier_name', 'tracking_url',
         'confirmed_at', 'dispatched_at', 'delivered_at',
     ];
 

@@ -30,10 +30,19 @@ class OrderNotificationService
         $statusDesc = self::STATUS_DESCRIPTIONS[$order->status] ?? $order->status;
         $ai        = new AiProviderService($settings);
 
+        $trackingDetails = '';
+        if ($order->tracking_number) {
+            $trackingDetails = "\nCourier: ".($order->courier_name ?: 'Courier')
+                ."\nTracking ID: {$order->tracking_number}";
+            if ($order->tracking_url) {
+                $trackingDetails .= "\nTrack your shipment: {$order->tracking_url}";
+            }
+        }
+
         if (! $ai->isConfigured()) {
             return "Hi {$order->customer_name}! Your order {$order->order_number} {$statusDesc}."
-                . ($order->tracking_number ? " Tracking: {$order->tracking_number}." : '')
-                . " Thank you for choosing Merza Bodi! \u{1F96D}";
+                . " Thank you for choosing Merza Bodi! \u{1F96D}"
+                . $trackingDetails;
         }
 
         $prompt = "Generate a friendly WhatsApp order status update message.
@@ -41,7 +50,6 @@ Customer name: {$order->customer_name}
 Order number: {$order->order_number}
 Order status: {$statusDesc}
 Order total: \u{20B9}{$order->total}"
-            . ($order->tracking_number ? "\nTracking number: {$order->tracking_number}" : '')
             . "\n\nWrite 2-4 sentences. Warm and professional. Include the order number. End with 'Merza Bodi Team'. Plain text only, no markdown or asterisks.";
 
         $message = $ai->chat(
@@ -50,7 +58,8 @@ Order total: \u{20B9}{$order->total}"
             200
         );
 
-        return $message ?? "Hi {$order->customer_name}! Your order {$order->order_number} {$statusDesc}. Thank you for choosing Merza Bodi!";
+        return ($message ?? "Hi {$order->customer_name}! Your order {$order->order_number} {$statusDesc}. Thank you for choosing Merza Bodi!")
+            . $trackingDetails;
     }
 
     public function findOrCreateContact(Order $order): Contact
@@ -73,9 +82,13 @@ Order total: \u{20B9}{$order->total}"
         ]);
     }
 
-    public function sendStatusUpdate(Order $order, ?string $message = null): void
+    public function sendStatusUpdate(Order $order, ?string $message = null): bool
     {
         $contact = $this->findOrCreateContact($order);
+
+        if (! app(WhatsAppMessagePolicy::class)->canSendFreeform($contact)) {
+            return false;
+        }
 
         $conversation = Conversation::create([
             'contact_id' => $contact->id,
@@ -87,5 +100,7 @@ Order total: \u{20B9}{$order->total}"
         ]);
 
         SendWhatsAppMessageJob::dispatch($conversation->id);
+
+        return true;
     }
 }
