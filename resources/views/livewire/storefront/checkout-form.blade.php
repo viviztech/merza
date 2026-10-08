@@ -1,4 +1,14 @@
 <div class="max-w-5xl mx-auto px-4 py-8">
+    @if($items->isNotEmpty() && ! $orderPlaced)
+        @php
+            $beginCheckoutEcommerce = \App\Support\EcommerceData::cart(app(\App\Services\CartService::class));
+        @endphp
+        @script
+        <script>
+            window.merzaPushEcommerce?.('begin_checkout', @json($beginCheckoutEcommerce));
+        </script>
+        @endscript
+    @endif
 
     @if($orderPlaced)
         {{-- ══════════════════════════════════════ --}}
@@ -276,13 +286,13 @@
                                 <div class="flex gap-3 items-center">
                                     <div class="w-12 h-12 rounded-xl flex-shrink-0 overflow-hidden border border-amber-100"
                                          style="background: linear-gradient(145deg, #fef9c3, #fef3c7);">
-                                        <div class="w-full h-full flex items-center justify-center text-xl">🥭</div>
+                                         <img src="{{ $item->thumbnail_url ?: asset('images/placeholder-product.png') }}" alt="{{ $item->product_name }}" class="w-full h-full object-cover">
                                     </div>
                                     <div class="flex-1 min-w-0">
                                         <p class="text-xs font-extrabold text-stone-800 truncate">{{ $item->product_name }}</p>
                                         <p class="text-[10px] text-stone-400">{{ $item->variant_name }} × {{ $item->qty }}</p>
                                         @if($item->is_preorder ?? false)
-                                            <p class="text-[10px] font-bold text-emerald-700">Pre-booking @if($item->available_from) · Dispatches {{ \Carbon\Carbon::parse($item->available_from)->format('d M Y') }} @endif</p>
+                                            <p class="text-[10px] font-bold text-emerald-700">Pre-booking @if($item->available_from && \Carbon\Carbon::parse($item->available_from)->isFuture()) · Estimated dispatch from {{ \Carbon\Carbon::parse($item->available_from)->format('d M Y') }} @endif</p>
                                         @endif
                                         @if($item->free_gift_label ?? null)
                                             <p class="text-[10px] font-bold text-emerald-700">🎁 {{ $item->free_gift_label }}</p>
@@ -520,7 +530,7 @@
                             @if($isPreorderOnly)
                                 <span>🌿 Farm Fresh</span><span class="text-emerald-300">·</span><span>✓ Quality Checked</span><span class="text-emerald-300">·</span><span>✓ Booking Updates</span>
                             @else
-                                <span>🌿 Farm Fresh</span><span class="text-emerald-300">·</span><span>✓ Quality Checked</span><span class="text-emerald-300">·</span><span>🔒 Secure Payment</span><span class="text-emerald-300">·</span><span>🚚 Fast Dispatch</span>
+                                <span>Order summary</span><span class="text-emerald-300">·</span><span>Delivery estimate shown above</span><span class="text-emerald-300">·</span><span>Secure checkout</span>
                             @endif
                         </div>
                     </div>

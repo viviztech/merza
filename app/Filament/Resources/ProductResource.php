@@ -148,7 +148,8 @@ class ProductResource extends Resource
 
                         Forms\Components\TextInput::make('delivery_time')
                             ->label('Delivery Time')
-                            ->placeholder('e.g. Delivered within 24 hours')
+                            ->placeholder('Calculated at checkout')
+                            ->helperText('Legacy field. Delivery estimates are now calculated from the customer address at checkout and this text is not shown on product pages.')
                             ->maxLength(100),
 
                         Forms\Components\TagsInput::make('buying_highlights')
@@ -160,6 +161,15 @@ class ProductResource extends Resource
                             ->nestedRecursiveRules('string|max:60')
                             ->reorderable()
                             ->columnSpanFull(),
+                    ])->columns(2),
+
+                SchemaSection::make('Product Care & Nutrition')
+                    ->description('Publish only verified product-specific facts. Leave fields empty until confirmed.')
+                    ->schema([
+                        Forms\Components\Textarea::make('storage_instructions')->rows(3),
+                        Forms\Components\TextInput::make('shelf_life')->maxLength(150),
+                        Forms\Components\Textarea::make('nutrition_information')->rows(3),
+                        Forms\Components\Textarea::make('packaging_details')->rows(3),
                     ])->columns(2),
 
                 SchemaSection::make('Variants & Pricing')->schema([

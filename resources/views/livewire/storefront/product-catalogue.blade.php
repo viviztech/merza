@@ -142,7 +142,7 @@
             @if($products->isEmpty())
                 {{-- Empty state --}}
                 <div class="text-center py-24">
-                    <div class="text-7xl mb-5 float-fruit inline-block">🥭</div>
+                    <div class="text-7xl mb-5 float-fruit inline-block">🌿</div>
                     <h3 class="text-xl font-extrabold text-stone-700 mb-2">No fruits found</h3>
                     <p class="text-stone-400 text-sm mb-5">Try a different search term or browse all products</p>
                     <button wire:click="clearFilters"
@@ -154,7 +154,7 @@
                 {{-- Results count --}}
                 <div class="flex items-center justify-between mb-5">
                     <p class="text-sm text-stone-500">
-                        <span class="font-bold text-stone-700">{{ $products->total() }}</span> fruits found
+                        <span class="font-bold text-stone-700">{{ $products->total() }}</span> products found
                         @if($search) for "<span class="text-amber-600 font-medium">{{ $search }}</span>" @endif
                     </p>
                 </div>
@@ -169,16 +169,11 @@
                             <div class="relative aspect-square overflow-hidden"
                                  style="background: linear-gradient(145deg, #fef9c3, #fef3c7);">
                                 @php $thumbUrl = $product->getFirstMediaUrl('thumbnail', 'thumb') ?: $product->getFirstMediaUrl('images', 'thumb'); @endphp
-                                @if($thumbUrl)
-                                    <img src="{{ $thumbUrl }}"
+                                     <img src="{{ $thumbUrl ?: asset('images/placeholder-product.png') }}"
                                          alt="{{ $product->name }}"
                                          loading="lazy"
                                          class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                                         onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
-                                    <div class="w-full h-full items-center justify-center text-6xl group-hover:scale-110 transition-transform duration-300" style="display:none">🥭</div>
-                                @else
-                                    <div class="w-full h-full flex items-center justify-center text-6xl group-hover:scale-110 transition-transform duration-300">🥭</div>
-                                @endif
+                                          onerror="this.onerror=null;this.src='/images/placeholder-product.png'">
 
                                 {{-- Badges --}}
                                 <div class="absolute top-2.5 left-2.5 flex flex-col gap-1">
@@ -188,13 +183,8 @@
                                     @if($product->is_preorder)
                                         <span class="bg-emerald-700 text-white text-[9px] font-extrabold px-2 py-0.5 rounded-full shadow">Pre-book now</span>
                                     @endif
-                                    @php
-                                        $lowQty = $product->activeVariants->where('stock_qty', '>', 0)->where('stock_qty', '<=', 5)->min('stock_qty');
-                                    @endphp
                                     @if($product->activeVariants->isNotEmpty() && $product->activeVariants->where('stock_qty', '>', 0)->isEmpty())
                                         <span class="bg-stone-700 text-white text-[9px] font-bold px-2 py-0.5 rounded-full">Sold Out</span>
-                                    @elseif($lowQty)
-                                        <span class="bg-red-500 text-white text-[9px] font-bold px-2 py-0.5 rounded-full animate-pulse">🔥 Only {{ $lowQty }} left!</span>
                                     @endif
                                 </div>
 
@@ -210,7 +200,7 @@
                                 <h3 class="font-extrabold text-sm text-stone-800 leading-tight line-clamp-2 mb-1">{{ $product->name }}</h3>
                                 <p class="text-xs text-stone-400 line-clamp-1 mb-2">{{ $product->short_description }}</p>
 
-                                @if($product->is_preorder && $product->available_from)
+                                 @if($product->is_preorder && $product->available_from?->isFuture())
                                     <div class="mb-2">
                                         <span class="text-[9px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full">Dispatches {{ $product->available_from->format('d M') }}</span>
                                     </div>
@@ -218,12 +208,10 @@
 
                                 <div class="mt-auto pt-2">
                                     <span class="block text-amber-600 font-extrabold text-base mb-2">
-                                        @if($product->min_price_per_kg)
-                                            ₹{{ number_format($product->min_price_per_kg, 2) }}/kg
-                                        @elseif($product->activeVariants->isNotEmpty())
-                                            ₹{{ number_format($product->activeVariants->min('price'), 2) }}
+                                         @if($product->activeVariants->isNotEmpty())
+                                             From ₹{{ number_format($product->lowestPricedVariant()->price, 2) }}
                                         @else
-                                            ₹{{ number_format($product->base_price, 2) }}
+                                             See sizes
                                         @endif
                                     </span>
                                     <span class="w-full inline-flex items-center justify-center gap-1 bg-amber-500 group-hover:bg-orange-500 text-white text-xs font-bold px-3 py-2 rounded-xl shadow transition-colors">

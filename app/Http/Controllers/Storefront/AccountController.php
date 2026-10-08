@@ -31,7 +31,7 @@ class AccountController extends Controller
         if ($order->user_id !== auth()->id()) {
             abort(403);
         }
-        $order->load('items');
+        $order->load('items.variant.product');
         return view('storefront.account.order-detail', compact('order'));
     }
 

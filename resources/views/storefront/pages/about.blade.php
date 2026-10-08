@@ -1,110 +1,25 @@
-<x-layouts.storefront title="About Us" description="Merza Bodinayakanur — Mukkani fruits and farm-fresh products. Imam Pasand mangoes, Red bananas, Vietnam Early Gold jackfruit, grown with sustainable care.">
-
-    {{-- Hero --}}
-    <section class="relative overflow-hidden bg-gradient-to-br from-emerald-900 via-emerald-800 to-amber-800 text-white py-20 px-4">
-        <div class="absolute inset-0 opacity-10" style="background-image: url('/images/logo.png'); background-size: 400px; background-repeat: repeat; background-position: center;"></div>
-        <div class="relative max-w-3xl mx-auto text-center">
-            <span class="inline-block bg-amber-400/20 border border-amber-400/40 text-amber-300 text-xs font-bold px-4 py-1.5 rounded-full uppercase tracking-widest mb-5">
-                Bodinayakanur, Tamil Nadu
-            </span>
-            <h1 class="text-4xl md:text-5xl font-extrabold mb-5 leading-tight">
-                Mukkani — Three Fruits,<br>
-                <span class="text-amber-400">One Promise.</span>
-            </h1>
-            <p class="text-emerald-100 text-lg leading-relaxed max-w-2xl mx-auto">
-                Fresh, farm-grown fruits and healthy treats that your body will love. Discover the natural goodness of our fields — where every fruit tells a story of care, health, and quality.
-            </p>
+<x-layouts.storefront title="About Merza" description="Learn about Merza in Bodinayakanur, see our current product categories, and find our shop and contact details.">
+    <section class="bg-gradient-to-br from-emerald-900 via-emerald-800 to-amber-800 text-white py-16 px-4">
+        <div class="max-w-4xl mx-auto">
+            <p class="text-amber-300 text-sm font-bold uppercase tracking-widest">Bodinayakanur, Tamil Nadu</p>
+            <h1 class="mt-3 text-4xl md:text-5xl font-extrabold">About Merza</h1>
+            <p class="mt-5 max-w-2xl text-emerald-100 leading-relaxed">Merza offers fresh produce and fruit snacks from Bodinayakanur. Browse our current catalog for the products, sizes and prices available now.</p>
+            <p lang="ta" class="mt-4 max-w-2xl text-emerald-100 leading-relaxed">மெர்சா போடிநாயக்கனூரில் இருந்து புதிய பழங்கள் மற்றும் பழச் சிற்றுண்டிகளை விற்பனை செய்கிறது. தற்போதைய பொருட்களையும் விலைகளையும் எங்கள் இணையதளத்தில் பார்க்கலாம்.</p>
         </div>
     </section>
 
-    {{-- Our Story --}}
-    <section class="max-w-5xl mx-auto px-4 py-16">
-        <div class="grid md:grid-cols-2 gap-12 items-center">
-            <div>
-                <span class="inline-block bg-amber-100 text-amber-700 text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider mb-3">Our Story</span>
-                <h2 class="text-3xl font-extrabold text-brand-green-dark mb-5 leading-tight">
-                    From our fields to your table
-                </h2>
-                <p class="text-stone-600 leading-relaxed">
-                    We grow <strong class="text-stone-800">Imam Pasand mangoes</strong>, <strong class="text-stone-800">Red bananas</strong>, and <strong class="text-stone-800">Vietnam Early Gold jackfruit</strong> using sustainable methods, then bring them straight from our farm to your table — <strong class="text-stone-800">100% real</strong>, with no artificial flavours or colours.
-                </p>
-            </div>
-            <div class="grid grid-cols-2 gap-4">
-                @foreach([
-                    ['🌿', 'Sustainable Farming', 'Agricultural methods that preserve nature and enhance flavour naturally.'],
-                    ['✅', '100% Natural', 'Free from artificial flavours, colours, and preservatives.'],
-                    ['🏡', 'Farm Direct', 'Grown in our own fields — no middlemen, no compromise.'],
-                    ['❤️', 'Family Goodness', 'Perfect for families, kids, and anyone who values purity with taste.'],
-                ] as [$icon, $title, $desc])
-                    <div class="bg-white rounded-2xl p-5 shadow-sm border border-amber-100">
-                        <div class="text-2xl mb-2">{{ $icon }}</div>
-                        <div class="font-bold text-stone-900 text-sm mb-1">{{ $title }}</div>
-                        <div class="text-stone-500 text-xs leading-relaxed">{{ $desc }}</div>
-                    </div>
-                @endforeach
-            </div>
-        </div>
-    </section>
-
-    {{-- Mukkani — Three Fruits --}}
-    <section class="bg-gradient-to-br from-amber-50 to-emerald-50 py-16 px-4">
-        <div class="max-w-5xl mx-auto">
-            <div class="text-center mb-10">
-                <span class="inline-block bg-emerald-100 text-emerald-700 text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider mb-3">Mukkani Fruits</span>
-                <h2 class="text-2xl font-extrabold text-brand-green-dark mb-2">The Three Sacred Fruits</h2>
-                <p class="text-stone-500 text-sm max-w-xl mx-auto">In Tamil tradition, Mukkani (முக்கனி) means the three prized fruits — Mango, Banana, and Jackfruit. We grow all three on our farm.</p>
-            </div>
-            <div class="grid md:grid-cols-3 gap-6 mb-10">
-                @foreach([
-                    ['🥭', 'Imam Pasand Mango', 'The king of mangoes — rich, creamy, and intensely sweet. Our Imam Pasand variety is grown with care for the finest flavour.', 'bg-yellow-50 border-yellow-200'],
-                    ['🍌', 'Red Banana', 'Naturally sweeter and creamier than the common banana, packed with nutrients and antioxidants. A wholesome treat for the whole family.', 'bg-pink-50 border-pink-200'],
-                    ['🍈', 'Vietnam Early Gold Jackfruit', 'Thin-seeded with golden, aromatic flesh. Our Vietnam Early Gold variety delivers tropical sweetness in every bite.', 'bg-emerald-50 border-emerald-200'],
-                ] as [$icon, $name, $desc, $classes])
-                    <div class="rounded-2xl p-6 border {{ $classes }} text-center">
-                        <div class="text-5xl mb-4">{{ $icon }}</div>
-                        <h3 class="font-extrabold text-stone-900 mb-3">{{ $name }}</h3>
-                        <p class="text-stone-500 text-sm leading-relaxed">{{ $desc }}</p>
-                    </div>
-                @endforeach
-            </div>
-
-            {{-- Processed Products --}}
-            <div class="text-center mb-8">
-                <h3 class="text-xl font-extrabold text-stone-900 mb-2">Our Farm Products</h3>
-                <p class="text-stone-500 text-sm">Crafted from freshly harvested fruits — homemade quality in every jar and bottle.</p>
-            </div>
-            <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
-                @foreach([
-                    ['🍊', 'Orange Squash', 'Tangy, refreshing, made from fresh oranges with zero artificial colour.'],
-                    ['🍦', 'Banana Ice Cream', 'Creamy, smooth, and naturally sweet — made from ripe red bananas.'],
-                    ['🍯', 'Mango Jam', 'Tropical sweetness captured in a jar, perfect on toast or with snacks.'],
-                ] as [$icon, $name, $desc])
-                    <div class="bg-white rounded-2xl p-5 text-center shadow-sm border border-amber-100">
-                        <div class="text-3xl mb-2">{{ $icon }}</div>
-                        <div class="font-bold text-stone-900 text-sm mb-1">{{ $name }}</div>
-                        <div class="text-stone-400 text-xs leading-relaxed">{{ $desc }}</div>
-                    </div>
-                @endforeach
-            </div>
-        </div>
-    </section>
-
-    {{-- Values --}}
-    <section class="max-w-5xl mx-auto px-4 py-16">
-        <div class="text-center mb-10">
-            <h2 class="text-2xl font-extrabold text-brand-green-dark mb-2">What We Stand For</h2>
-        </div>
-        <div class="grid md:grid-cols-3 gap-6">
-            @foreach([
-                ['🌱', 'Health First', 'Everything we grow and make is designed to keep your health and taste buds in mind. Pure ingredients, no shortcuts.'],
-                ['🤝', 'Honest Farming', 'Sustainable agricultural methods that preserve nature and enhance the natural flavour of every fruit we grow.'],
-                ['❤️', 'Community Roots', 'We\'re proud to be from Bodinayakanur — growing local, selling local, and building a healthier community.'],
-            ] as [$icon, $title, $desc])
-                <div class="bg-white rounded-2xl p-6 shadow-sm border border-stone-100">
-                    <div class="text-3xl mb-3">{{ $icon }}</div>
-                    <h3 class="font-bold text-stone-900 mb-2">{{ $title }}</h3>
-                    <p class="text-stone-500 text-sm leading-relaxed">{{ $desc }}</p>
-                </div>
+    <section class="max-w-5xl mx-auto px-4 py-14">
+        <h2 class="text-2xl font-extrabold text-emerald-950">What we offer</h2>
+        <p class="mt-3 max-w-3xl text-stone-600 leading-relaxed">Our selection changes with the catalog. Each product page shows available sizes, current prices and any product-specific facts we have confirmed. Delivery costs and estimates depend on your address and are shown at checkout.</p>
+        @if(filled(config('storefront.operator_name')))
+            <p class="mt-4 text-stone-600">Merza is run by {{ config('storefront.operator_name') }}.</p>
+        @endif
+        <div class="mt-8 grid sm:grid-cols-2 md:grid-cols-3 gap-4">
+            @foreach($categories as $category)
+                <a href="{{ route('categories.show', $category->slug) }}" class="block rounded-2xl border border-emerald-100 bg-white p-5 hover:shadow-md transition-shadow">
+                    <h3 class="font-extrabold text-stone-800">{{ $category->name }}</h3>
+                    <p class="mt-2 text-sm text-emerald-700">Browse products →</p>
+                </a>
             @endforeach
         </div>
     </section>

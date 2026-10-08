@@ -1,4 +1,18 @@
 <div class="max-w-6xl mx-auto px-4 py-6 md:py-10">
+    @if($selectedVariant)
+        @php
+            $viewItemEcommerce = [
+                'currency' => 'INR',
+                'value' => (float) $selectedVariant->price,
+                'items' => [\App\Support\EcommerceData::product($product, $selectedVariant)],
+            ];
+        @endphp
+        @script
+        <script>
+            window.merzaPushEcommerce?.('view_item', @json($viewItemEcommerce));
+        </script>
+        @endscript
+    @endif
 
     {{-- Breadcrumb --}}
     <nav class="flex items-center gap-2 text-xs text-stone-400 mb-6 flex-wrap">
@@ -21,9 +35,9 @@
                          alt="{{ $product->name }}"
                          class="w-full h-full object-cover"
                          onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
-                    <div class="w-full h-full items-center justify-center text-[8rem] float-fruit" style="display:none">🥭</div>
+                    <div class="w-full h-full items-center justify-center bg-emerald-50" style="display:none"><img src="/images/placeholder-product.png" alt="" class="w-full h-full object-cover"></div>
                 @else
-                    <div class="w-full h-full flex items-center justify-center text-[8rem] float-fruit">🥭</div>
+                    <img src="/images/placeholder-product.png" alt="" class="w-full h-full object-cover">
                 @endif
             </div>
 
@@ -42,7 +56,7 @@
             {{-- Compact trust strip keeps product and price above the fold on mobile. --}}
             <div class="overflow-x-auto rounded-2xl border border-emerald-100 bg-emerald-50/70 px-3 py-2.5">
                 <div class="flex items-center justify-start sm:justify-center gap-3 whitespace-nowrap text-[11px] font-bold text-emerald-800">
-                    <span>🌿 Farm Fresh</span><span class="text-emerald-300">·</span><span>✓ Quality Checked</span><span class="text-emerald-300">·</span><span>🔒 Secure Payment</span><span class="text-emerald-300">·</span><span>🚚 Fast Dispatch</span>
+                    <span>Product details</span><span class="text-emerald-300">·</span><span>Current size pricing</span><span class="text-emerald-300">·</span><span>Delivery estimate at checkout</span>
                 </div>
             </div>
         </div>
@@ -74,23 +88,23 @@
                     <div>
                         <p class="text-sm font-extrabold text-emerald-800">Reserve from the first harvest</p>
                         <p class="text-xs text-emerald-700 mt-0.5 leading-relaxed">
-                            {{ $product->preorder_note ?: 'Book today and we will prepare your jackfruit as soon as the new harvest is ready.' }}
-                            @if($product->available_from) Dispatch starts {{ $product->available_from->format('D, d M Y') }}.@endif
+                            Reserve your selection and we will confirm the dispatch date with you.
+                            @if($product->available_from?->isFuture()) Estimated dispatch starts {{ $product->available_from->format('D, d M Y') }}.@endif
                         </p>
                     </div>
                 </div>
             @endif
 
-            @if($product->is_preorder || $product->farm_location || $product->sweetness_level || $product->delivery_time || filled($product->buying_highlights))
+            @if($product->is_preorder || $product->farm_location || $product->sweetness_level || filled($product->buying_highlights))
                 <section aria-labelledby="product-highlights" class="mb-5 overflow-hidden rounded-2xl border border-emerald-200 bg-white shadow-sm">
                     <div class="border-b border-emerald-100 bg-emerald-50 px-4 py-3">
                         <p class="text-[10px] font-extrabold uppercase tracking-[0.18em] text-emerald-600">{{ $product->is_preorder ? 'Why pre-book this harvest' : 'Why buy from Merza' }}</p>
                         <h2 id="product-highlights" class="mt-0.5 text-base font-extrabold text-emerald-950">{{ $product->is_preorder ? 'Fresh from our farm, reserved for you' : 'What makes this product special' }}</h2>
                     </div>
 
-                    @if(($product->is_preorder && $product->harvest_date) || $product->farm_location || $product->sweetness_level || $product->delivery_time || $product->is_preorder)
+                    @if(($product->is_preorder && $product->harvest_date?->isFuture()) || $product->farm_location || $product->sweetness_level || $product->is_preorder)
                     <dl class="grid grid-cols-2 divide-x divide-y divide-emerald-100 sm:grid-cols-2">
-                        @if($product->is_preorder && $product->harvest_date)
+                        @if($product->is_preorder && $product->harvest_date?->isFuture())
                             <div class="min-w-0 p-3.5">
                                 <dt class="text-[10px] font-bold uppercase tracking-wider text-stone-400">Harvest</dt>
                                 <dd class="mt-1 text-sm font-extrabold text-stone-800">{{ $product->harvest_date->format('d M Y') }}</dd>
@@ -111,11 +125,11 @@
                             </div>
                         @endif
 
-                        @if($product->is_preorder || $product->delivery_time)
+                        @if($product->is_preorder)
                             <div class="min-w-0 p-3.5">
                                 <dt class="text-[10px] font-bold uppercase tracking-wider text-stone-400">Dispatch</dt>
                                 <dd class="mt-1 text-sm font-extrabold leading-snug text-stone-800">
-                                    {{ $product->delivery_time ?: ($product->available_from ? 'From '.$product->available_from->format('d M Y') : 'After harvest') }}
+                                    {{ $product->available_from?->isFuture() ? 'Estimated from '.$product->available_from->format('d M Y') : 'Date confirmed after booking' }}
                                 </dd>
                             </div>
                         @endif
@@ -183,7 +197,7 @@
                     @elseif($selectedVariant->stock_qty <= $selectedVariant->low_stock_threshold)
                         <div class="flex items-center gap-1.5 mt-2">
                             <span class="w-2 h-2 rounded-full bg-orange-500 pulse-dot"></span>
-                            <span class="text-sm font-semibold text-orange-600">Only {{ $selectedVariant->stock_qty }} left — order soon!</span>
+                            <span class="text-sm font-semibold text-orange-600">Limited stock</span>
                         </div>
                     @else
                         <div class="flex items-center gap-1.5 mt-2">
@@ -305,8 +319,34 @@
         </div>
     @endif
 
+    <section class="mt-8 bg-white rounded-3xl border border-amber-100 shadow-sm p-6" aria-labelledby="product-facts">
+        <h2 id="product-facts" class="font-extrabold text-stone-800">Product & Delivery Details</h2>
+        <dl class="mt-4 grid md:grid-cols-2 gap-4 text-sm">
+            @if($product->farm_location)
+                <div><dt class="font-bold text-stone-800">Origin</dt><dd class="mt-1 text-stone-600">{{ $product->farm_location }}</dd></div>
+            @endif
+            @if($product->storage_instructions)
+                <div><dt class="font-bold text-stone-800">Storage</dt><dd class="mt-1 text-stone-600">{{ $product->storage_instructions }}</dd></div>
+            @endif
+            @if($product->shelf_life)
+                <div><dt class="font-bold text-stone-800">Shelf life</dt><dd class="mt-1 text-stone-600">{{ $product->shelf_life }}</dd></div>
+            @endif
+            @if($product->nutrition_information)
+                <div><dt class="font-bold text-stone-800">Nutrition</dt><dd class="mt-1 text-stone-600">{{ $product->nutrition_information }}</dd></div>
+            @endif
+            @if($product->packaging_details)
+                <div><dt class="font-bold text-stone-800">Packaging</dt><dd class="mt-1 text-stone-600">{{ $product->packaging_details }}</dd></div>
+            @endif
+            <div><dt class="font-bold text-stone-800">Shipping</dt><dd class="mt-1 text-stone-600">Delivery charge and estimate are calculated from your address at checkout.</dd></div>
+        </dl>
+        <p class="mt-5 text-sm text-stone-600">Read more <a href="{{ route('about') }}" class="font-bold text-emerald-700 underline">about Merza in Bodinayakanur</a>.</p>
+        @if(preg_match('/^\d{14}$/', (string) config('storefront.fssai_license_number')))
+            <p class="mt-2 text-xs text-stone-500">FSSAI licence: {{ config('storefront.fssai_license_number') }}</p>
+        @endif
+    </section>
+
     {{-- Reviews --}}
-    <div class="mt-8 bg-white rounded-3xl border border-amber-100 shadow-sm overflow-hidden">
+    <div id="customer-reviews" class="mt-8 bg-white rounded-3xl border border-amber-100 shadow-sm overflow-hidden">
         <div class="bg-gradient-to-r from-amber-50 to-orange-50 border-b border-amber-100 px-6 py-4 flex items-center justify-between">
             <h2 class="font-extrabold text-stone-800">Customer Reviews</h2>
             @if($product->approvedReviews->isNotEmpty())

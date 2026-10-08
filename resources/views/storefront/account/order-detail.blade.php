@@ -32,6 +32,8 @@
             </div>
         </div>
 
+        @include('storefront.partials.review-links', ['order' => $order])
+
         {{-- Order Meta --}}
         <div class="bg-white border border-stone-100 rounded-2xl p-6 mb-5">
             <h2 class="text-base font-bold text-stone-800 mb-4">Order Details</h2>

@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Storefront;
 
 use App\Http\Controllers\Controller;
 use App\Models\Product;
+use App\Models\Category;
+use App\Support\RecipeData;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Cache;
 
@@ -25,7 +27,6 @@ class SeoController extends Controller
                 ['route' => 'wholesale', 'changefreq' => 'monthly', 'priority' => '0.6'],
                 ['route' => 'blog', 'changefreq' => 'weekly', 'priority' => '0.5'],
                 ['route' => 'careers', 'changefreq' => 'monthly', 'priority' => '0.3'],
-                ['route' => 'track.index', 'changefreq' => 'monthly', 'priority' => '0.3'],
                 ['route' => 'privacy', 'changefreq' => 'yearly', 'priority' => '0.2'],
                 ['route' => 'terms', 'changefreq' => 'yearly', 'priority' => '0.2'],
             ];
@@ -56,17 +57,38 @@ class SeoController extends Controller
                     }
                 });
 
+            Category::query()->where('is_active', true)
+                ->whereHas('products', fn ($query) => $query->where('is_active', true))
+                ->get(['slug', 'updated_at'])
+                ->each(function ($category) use (&$urls) {
+                    $urls[] = [
+                        'loc' => route('categories.show', $category->slug),
+                        'lastmod' => $category->updated_at->toAtomString(),
+                        'changefreq' => 'weekly',
+                        'priority' => '0.7',
+                    ];
+                });
+
+            foreach (RecipeData::all() as $slug => $recipe) {
+                $hasIngredient = Product::query()->where('is_active', true)
+                    ->whereRaw('LOWER(name) LIKE ?', ['%'.$recipe['product_search'].'%'])->exists();
+                if ($hasIngredient) {
+                    $urls[] = [
+                        'loc' => route('blog.recipe', $slug),
+                        'lastmod' => now()->toAtomString(),
+                        'changefreq' => 'monthly',
+                        'priority' => '0.5',
+                    ];
+                }
+            }
+
             return view('sitemap', ['urls' => $urls])->render();
         });
 
         return response($xml, 200)->header('Content-Type', 'application/xml; charset=UTF-8');
     }
 
-    /**
-     * llms.txt — an emerging convention (llmstxt.org) that gives AI crawlers and
-     * answer engines (ChatGPT, Perplexity, Claude, Gemini, AI Overviews) a concise,
-     * structured summary of the site so they can accurately cite and represent it.
-     */
+    /** Optional machine-readable site summary. This does not guarantee AI citations. */
     public function llmsTxt(): Response
     {
         $body = Cache::remember('seo:llms-txt', 3600, function () {

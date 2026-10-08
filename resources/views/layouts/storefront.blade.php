@@ -35,7 +35,7 @@
 
             {{-- Logo --}}
             <a href="{{ route('home') }}" class="flex items-center flex-shrink-0">
-                <img src="/images/logo.png" alt="Merza Natural Squash" class="h-9 w-auto">
+                <img src="/images/logo.png" alt="Merza logo" class="h-9 w-auto">
             </a>
 
             {{-- Desktop nav --}}

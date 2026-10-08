@@ -35,7 +35,7 @@ class TrackOrder extends Component
         $last10 = substr(preg_replace('/\D/', '', $this->phone), -10);
 
         $candidate = Order::where('order_number', trim($this->orderNumber))
-            ->with('items')
+            ->with('items.variant.product')
             ->first();
 
         if ($candidate && substr(preg_replace('/\D/', '', $candidate->customer_phone), -10) === $last10) {

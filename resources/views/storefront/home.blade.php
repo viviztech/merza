@@ -1,4 +1,4 @@
-<x-layouts.storefront title="Fresh Premium Tropical Fruits">
+<x-layouts.storefront title="Farm Produce & Fruit Snacks" description="Explore Merza's current range of fresh produce and fruit snacks from Bodinayakanur. See live sizes and prices, with delivery options at checkout.">
 
     {{-- ═══════════════════════════════════════════════════════════ --}}
     {{-- HERO --}}
@@ -20,7 +20,7 @@
 
                 <h1 class="text-4xl md:text-6xl font-extrabold leading-[1.1] text-white mb-4">
                     Farm Fresh Fruits.<br>
-                    <span class="text-white">Delivered Today.</span>
+                    <span class="text-white">From Bodinayakanur.</span>
                 </h1>
 
                 <div class="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-5 justify-center md:justify-start">
@@ -40,26 +40,14 @@
                     </a>
                 </div>
 
-                {{-- Social proof bar (real numbers only) --}}
+                {{-- Product and service facts --}}
                 <div class="mt-8 flex flex-wrap items-center gap-5 justify-center md:justify-start">
                     <div class="flex items-center gap-2">
-                        <div class="flex -space-x-2">
-                            @foreach(['🧑', '👩', '👨', '🧕'] as $face)
-                                <span class="w-8 h-8 rounded-full bg-amber-200 border-2 border-white flex items-center justify-center text-sm">{{ $face }}</span>
-                            @endforeach
-                        </div>
-                        <span class="text-xs text-emerald-200">3,500+ happy customers</span>
+                        <span class="text-xs text-emerald-200">Fresh produce and fruit snacks</span>
                     </div>
                     <div class="flex items-center gap-2">
-                        <span class="text-lg">🚚</span>
-                        <span class="text-xs text-emerald-200">2,000+ orders delivered</span>
+                        <span class="text-xs text-emerald-200">Delivery cost shown at checkout</span>
                     </div>
-                    @if($ordersToday > 0)
-                        <div class="flex items-center gap-2">
-                            <span class="w-2 h-2 rounded-full bg-amber-400 pulse-dot"></span>
-                            <span class="text-xs text-emerald-200">🔥 {{ $ordersToday }} {{ Str::plural('order', $ordersToday) }} placed today</span>
-                        </div>
-                    @endif
                 </div>
             </div>
 
@@ -73,7 +61,7 @@
                 @else
                     {{-- Main circle --}}
                     <div class="absolute inset-0 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 flex items-center justify-center text-9xl float-fruit shadow-2xl">
-                        🥭
+                        🌿
                     </div>
                 @endif
                 {{-- Orbiting fruits --}}
@@ -115,24 +103,18 @@
     </section>
 
     {{-- ═══════════════════════════════════════════════════════════ --}}
-    {{-- TODAY'S FRESH ARRIVAL --}}
+    {{-- CURRENT COLLECTION --}}
     {{-- ═══════════════════════════════════════════════════════════ --}}
     @if($todaysArrivals->isNotEmpty())
-    @php
-        $dispatchCutoffHour = 16; // 4 PM
-        $nextDispatch = now()->hour < $dispatchCutoffHour
-            ? 'Today, 4:00 PM'
-            : 'Tomorrow, 4:00 PM';
-    @endphp
     <section class="max-w-7xl mx-auto px-4 py-12">
         <div class="flex items-end justify-between mb-4 flex-wrap gap-3">
             <div>
                 <span class="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-700 uppercase tracking-widest">
                     <span class="w-2 h-2 rounded-full bg-green-500 pulse-dot"></span>
-                    ⏰ Available Today Only · {{ now()->format('d M') }}
+                    Current collection
                 </span>
-                <h2 class="text-3xl md:text-4xl font-extrabold text-brand-green-dark mt-1">Today's Fresh Arrival</h2>
-                <p class="text-stone-500 mt-1 text-sm">Picked and packed this morning — order before it's gone</p>
+                <h2 class="text-3xl md:text-4xl font-extrabold text-brand-green-dark mt-1">Explore Our Products</h2>
+                <p class="text-stone-500 mt-1 text-sm">See the latest sizes, prices and availability on each product page.</p>
             </div>
             <a href="{{ route('products.index') }}"
                class="hidden md:inline-flex items-center gap-1 text-sm font-bold text-amber-600 hover:text-amber-700 transition-colors">
@@ -141,11 +123,6 @@
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
                 </svg>
             </a>
-        </div>
-
-        <div class="inline-flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-xl px-4 py-2 mb-6">
-            <span class="text-sm">🚚</span>
-            <span class="text-xs font-bold text-amber-700">Next Dispatch: {{ $nextDispatch }}</span>
         </div>
 
         <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
@@ -165,12 +142,11 @@
                                  loading="lazy"
                                  class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                                  onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
-                            <div class="w-full h-full items-center justify-center text-6xl group-hover:scale-110 transition-transform duration-300" style="display:none">🥭</div>
+                             <img src="/images/placeholder-product.png" alt="" class="w-full h-full object-cover" style="display:none">
                         @else
-                            <div class="w-full h-full flex items-center justify-center text-6xl group-hover:scale-110 transition-transform duration-300">🥭</div>
+                             <img src="/images/placeholder-product.png" alt="" class="w-full h-full object-cover">
                         @endif
 
-                        <span class="absolute top-2 left-2 bg-emerald-600 text-white text-[9px] font-bold px-2 py-1 rounded-full shadow">🌞 Today</span>
                         @if($soldOut)
                             <span class="absolute top-2 right-2 bg-stone-700 text-white text-[9px] font-bold px-2 py-1 rounded-full shadow">Sold Out</span>
                         @endif
@@ -180,14 +156,11 @@
                         <h3 class="font-extrabold text-xs text-stone-800 leading-tight line-clamp-2 mb-1">{{ $product->name }}</h3>
                         <span class="text-amber-600 font-extrabold text-sm">
                             @if($product->activeVariants->isNotEmpty())
-                                From ₹{{ number_format($product->activeVariants->min('price'), 2) }}
+                                From ₹{{ number_format($product->lowestPricedVariant()->price, 2) }}
                             @else
-                                From ₹{{ number_format($product->base_price, 2) }}
+                                See sizes
                             @endif
                         </span>
-                        @if(! $soldOut)
-                            <p class="text-[10px] font-bold text-red-500 mt-1">📦 Only {{ $totalStock }} left</p>
-                        @endif
                     </div>
                 </a>
             @endforeach
@@ -200,82 +173,28 @@
     {{-- ═══════════════════════════════════════════════════════════ --}}
     <section class="max-w-7xl mx-auto px-4 py-12">
         <div class="text-center mb-8">
-            <span class="text-xs font-bold text-brand-green-dark uppercase tracking-widest">Mukkani & More</span>
-            <h2 class="text-3xl md:text-4xl font-extrabold text-brand-green-dark mt-1">Fruits & Farm Products</h2>
-            <p class="text-stone-500 mt-2">Grown on our own fields in Bodinayakanur — 100% natural, zero artificial ingredients</p>
+            <span class="text-xs font-bold text-brand-green-dark uppercase tracking-widest">Browse by category</span>
+            <h2 class="text-3xl md:text-4xl font-extrabold text-brand-green-dark mt-1">Farm Produce & Fruit Snacks</h2>
+            <p class="text-stone-500 mt-2">Find products that are currently listed in our shop.</p>
         </div>
 
         <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-            @foreach([
-                [
-                    'emoji' => '🥭',
-                    'name'  => 'Imam Pasand Mango',
-                    'sub'   => 'King of Mangoes',
-                    'from'  => '#fef9c3', 'to' => '#fef08a',
-                    'ring'  => 'ring-yellow-300',
-                    'badge' => 'bg-yellow-100 text-yellow-700',
-                    'label' => 'Mukkani',
-                ],
-                [
-                    'emoji' => '🍌',
-                    'name'  => 'Red Banana',
-                    'sub'   => 'Sweet & Nutritious',
-                    'from'  => '#fce7f3', 'to' => '#fbcfe8',
-                    'ring'  => 'ring-pink-300',
-                    'badge' => 'bg-pink-100 text-pink-700',
-                    'label' => 'Mukkani',
-                ],
-                [
-                    'emoji' => '🍈',
-                    'name'  => 'Vietnam Early Gold Jackfruit',
-                    'sub'   => 'Golden Flesh, Sweet Aroma',
-                    'from'  => '#d1fae5', 'to' => '#a7f3d0',
-                    'ring'  => 'ring-emerald-300',
-                    'badge' => 'bg-emerald-100 text-emerald-700',
-                    'label' => 'Mukkani',
-                ],
-                [
-                    'emoji' => '🍉',
-                    'name'  => 'Seasonal Fruits',
-                    'sub'   => 'Whatever\'s in season, fresh',
-                    'from'  => '#fee2e2', 'to' => '#fecaca',
-                    'ring'  => 'ring-red-300',
-                    'badge' => 'bg-red-100 text-red-700',
-                    'label' => 'Mukkani',
-                ],
-                [
-                    'emoji' => '🍊',
-                    'name'  => 'Orange Squash',
-                    'sub'   => 'No Artificial Colour',
-                    'from'  => '#ffedd5', 'to' => '#fed7aa',
-                    'ring'  => 'ring-orange-300',
-                    'badge' => 'bg-orange-100 text-orange-700',
-                    'label' => 'Farm Made',
-                ],
-                [
-                    'emoji' => '🍯',
-                    'name'  => 'Mango Jam',
-                    'sub'   => 'Pure Tropical Sweetness',
-                    'from'  => '#fef3c7', 'to' => '#fde68a',
-                    'ring'  => 'ring-amber-300',
-                    'badge' => 'bg-amber-100 text-amber-700',
-                    'label' => 'Farm Made',
-                ],
-            ] as $cat)
-                <a href="{{ route('products.index') }}"
-                   class="fruit-card group rounded-3xl overflow-hidden ring-2 {{ $cat['ring'] }} hover:ring-4 hover:scale-105 hover:shadow-xl transition-all duration-300 cursor-pointer"
-                   style="background: linear-gradient(145deg, {{ $cat['from'] }}, {{ $cat['to'] }})">
-                    <div class="p-5 text-center">
-                        <div class="text-5xl mb-3 group-hover:scale-110 transition-transform duration-300">{{ $cat['emoji'] }}</div>
-                        <span class="inline-block text-[10px] font-bold px-2 py-0.5 rounded-full mb-2 {{ $cat['badge'] }}">{{ $cat['label'] }}</span>
-                        <h3 class="font-extrabold text-sm text-stone-800 leading-tight">{{ $cat['name'] }}</h3>
-                        <p class="text-xs text-stone-500 mt-1">{{ $cat['sub'] }}</p>
-                        <div class="mt-3 text-xs font-semibold text-stone-600 flex items-center justify-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                            View all
-                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
-                            </svg>
-                        </div>
+            @foreach($categories as $cat)
+                @php
+                    $categoryProduct = $cat->products->first();
+                    $categoryImage = $categoryProduct?->getFirstMediaUrl('thumbnail', 'thumb') ?: $categoryProduct?->getFirstMediaUrl('images', 'thumb');
+                @endphp
+                <a href="{{ route('categories.show', $cat->slug) }}"
+                   class="fruit-card group rounded-3xl overflow-hidden border border-emerald-100 bg-white hover:shadow-xl transition-all duration-300">
+                    <div class="aspect-[4/3] bg-emerald-50 overflow-hidden">
+                        <img src="{{ $categoryImage ?: asset('images/placeholder-product.png') }}"
+                             alt="{{ $cat->name }} products" loading="lazy"
+                             class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300">
+                    </div>
+                    <div class="p-4 text-center">
+                        <h3 class="font-extrabold text-sm text-stone-800 leading-tight">{{ $cat->name }}</h3>
+                        <p class="text-xs text-stone-500 mt-1">{{ $cat->products->count() }} {{ Str::plural('product', $cat->products->count()) }}</p>
+                        <span class="mt-3 inline-block text-xs font-semibold text-emerald-700">Browse category →</span>
                     </div>
                 </a>
             @endforeach
@@ -303,9 +222,8 @@
 
         <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
             @foreach($featured as $product)
-                @php
-                    $lowStockVariant = $product->activeVariants->where('stock_qty', '>', 0)->where('stock_qty', '<=', 5)->first();
-                    $soldOut = $product->activeVariants->where('stock_qty', '>', 0)->isEmpty();
+                    @php
+                        $soldOut = $product->activeVariants->where('stock_qty', '>', 0)->isEmpty();
                     $thumbUrl = $product->getFirstMediaUrl('thumbnail', 'thumb') ?: $product->getFirstMediaUrl('images', 'thumb');
                 @endphp
                 <a href="{{ route('products.show', $product->slug) }}"
@@ -318,9 +236,9 @@
                                  loading="lazy"
                                  class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                                  onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
-                            <div class="w-full h-full items-center justify-center text-7xl group-hover:scale-110 transition-transform duration-300" style="display:none">🥭</div>
+                             <img src="/images/placeholder-product.png" alt="" class="w-full h-full object-cover" style="display:none">
                         @else
-                            <div class="w-full h-full flex items-center justify-center text-7xl group-hover:scale-110 transition-transform duration-300">🥭</div>
+                             <img src="/images/placeholder-product.png" alt="" class="w-full h-full object-cover">
                         @endif
 
                         {{-- Badges --}}
@@ -331,8 +249,6 @@
                             @endif
                             @if($soldOut)
                                 <span class="bg-stone-700 text-white text-[10px] font-bold px-2.5 py-1 rounded-full shadow">Sold Out</span>
-                            @elseif($lowStockVariant)
-                                <span class="bg-red-500 text-white text-[10px] font-bold px-2.5 py-1 rounded-full shadow animate-pulse">🔥 Only {{ $lowStockVariant->stock_qty }} left!</span>
                             @endif
                         </div>
                     </div>
@@ -341,7 +257,7 @@
                         <p class="text-[10px] text-amber-600 font-bold uppercase tracking-wider mb-1">{{ $product->category?->name }}</p>
                         <h3 class="font-extrabold text-sm text-stone-800 leading-tight line-clamp-2 mb-2">{{ $product->name }}</h3>
 
-                        @if($product->is_preorder && $product->available_from)
+                        @if($product->is_preorder && $product->available_from?->isFuture())
                             <div class="mb-2">
                                 <span class="text-[9px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full">Dispatches {{ $product->available_from->format('d M') }}</span>
                             </div>
@@ -349,12 +265,10 @@
 
                         <div class="mt-auto pt-2">
                             <span class="block text-amber-600 font-extrabold text-base mb-2">
-                                @if($product->min_price_per_kg)
-                                    ₹{{ number_format($product->min_price_per_kg, 2) }}/kg
-                                @elseif($product->activeVariants->isNotEmpty())
-                                    ₹{{ number_format($product->activeVariants->min('price'), 2) }}
+                                @if($product->activeVariants->isNotEmpty())
+                                    From ₹{{ number_format($product->lowestPricedVariant()->price, 2) }}
                                 @else
-                                    ₹{{ number_format($product->base_price, 2) }}
+                                    See sizes
                                 @endif
                             </span>
                             <span class="w-full inline-flex items-center justify-center gap-1 bg-amber-500 group-hover:bg-orange-500 text-white text-xs font-bold px-3 py-2 rounded-xl shadow transition-colors">
@@ -408,17 +322,6 @@
                 @endforeach
             </div>
 
-            {{-- Real stats --}}
-            <div class="flex flex-wrap items-center justify-center gap-8">
-                <div class="text-center">
-                    <p class="text-3xl font-extrabold text-emerald-700">3,500+</p>
-                    <p class="text-xs font-semibold text-stone-500 uppercase tracking-wide">Happy Customers</p>
-                </div>
-                <div class="text-center">
-                    <p class="text-3xl font-extrabold text-emerald-700">2,000+</p>
-                    <p class="text-xs font-semibold text-stone-500 uppercase tracking-wide">Orders Delivered</p>
-                </div>
-            </div>
         </div>
     </section>
 

@@ -32,6 +32,8 @@
             </div>
         </div>
 
+        @include('storefront.partials.review-links', ['order' => $order])
+
         <div class="bg-amber-50 border border-amber-100 rounded-2xl p-5 flex items-center justify-between">
             <div>
                 <p class="text-sm font-bold text-stone-800">Need help with this order?</p>

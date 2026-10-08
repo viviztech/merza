@@ -7,6 +7,7 @@ use App\Models\Product;
 use App\Models\ProductReview;
 use App\Services\AnalyticsTracker;
 use App\Services\CartService;
+use App\Support\EcommerceData;
 use App\Support\Seo;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
@@ -38,7 +39,7 @@ class ProductDetail extends Component
             ->with(['category', 'activeVariants', 'approvedReviews'])
             ->firstOrFail();
 
-        $first = $this->product->activeVariants->first();
+        $first = $this->product->lowestPricedVariant();
         if ($first) {
             $this->selectedVariantId = $first->id;
         }
@@ -53,16 +54,20 @@ class ProductDetail extends Component
         $seo = app(Seo::class);
 
         $description = $this->product->short_description
-            ?: \Illuminate\Support\Str::limit(strip_tags((string) $this->product->description), 160);
+            ?: \Illuminate\Support\Str::limit(strip_tags((string) $this->product->description), 120);
+        $description = trim($description) ?: "Shop {$this->product->name} from Merza in Bodinayakanur. Choose a size and see delivery charges at checkout.";
 
         $imageUrl = $this->product->getFirstMediaUrl('thumbnail', 'card')
             ?: $this->product->getFirstMediaUrl('images', 'card');
 
-        $seo->description($description)
+        $seo->description(\Illuminate\Support\Str::limit($description.' Shop online at Merza.', 160))
             ->ogImage($imageUrl ?: null)
             ->ogType('product');
 
-        $variants = $this->product->activeVariants;
+        $variants = $this->product->activeVariants->filter(fn ($variant) => $variant->stock_qty > 0);
+        if ($variants->isEmpty()) {
+            $variants = $this->product->activeVariants;
+        }
         $prices   = $variants->pluck('price')->map(fn ($p) => (float) $p);
 
         $availability = $this->product->is_preorder
@@ -104,6 +109,12 @@ class ProductDetail extends Component
                 'ratingValue' => round($reviews->avg('rating'), 1),
                 'reviewCount' => $reviews->count(),
             ] : null,
+            'review' => $reviews->filter(fn ($review) => filled($review->comment))->take(10)->map(fn ($review) => [
+                '@type' => 'Review',
+                'author' => ['@type' => 'Person', 'name' => $review->customer_name],
+                'reviewRating' => ['@type' => 'Rating', 'ratingValue' => $review->rating, 'bestRating' => 5],
+                'reviewBody' => $review->comment,
+            ])->values()->all() ?: null,
         ]);
 
         $seo->schema($productSchema);
@@ -134,7 +145,7 @@ class ProductDetail extends Component
 
     public function getTitle(): string
     {
-        return "{$this->product->name} — Merza";
+        return \Illuminate\Support\Str::limit("Buy {$this->product->name} Online", 58, '');
     }
 
     public function addToCart(): void
@@ -142,7 +153,18 @@ class ProductDetail extends Component
         $this->validateSelection();
 
         $cart = app(CartService::class);
+        $before = (int) ($cart->all()[$this->selectedVariantId]['qty'] ?? 0);
         $cart->add($this->selectedVariantId, $this->qty);
+
+        $added = (int) ($cart->all()[$this->selectedVariantId]['qty'] ?? 0) - $before;
+        if ($added > 0) {
+            $variant = $this->product->activeVariants->firstWhere('id', $this->selectedVariantId);
+            $this->dispatch('gtm-ecommerce', eventName: 'add_to_cart', ecommerce: [
+                'currency' => 'INR',
+                'value' => round((float) $variant->price * $added, 2),
+                'items' => [EcommerceData::product($this->product, $variant, $added)],
+            ]);
+        }
 
         app(AnalyticsTracker::class)->track('add_to_cart', $this->product->id);
 
@@ -161,6 +183,15 @@ class ProductDetail extends Component
         // from an earlier browsing session into checkout.
         $cart->clear();
         $cart->add($this->selectedVariantId, $this->qty);
+        $added = (int) ($cart->all()[$this->selectedVariantId]['qty'] ?? 0);
+        if ($added > 0) {
+            $variant = $this->product->activeVariants->firstWhere('id', $this->selectedVariantId);
+            $this->dispatch('gtm-ecommerce', eventName: 'add_to_cart', ecommerce: [
+                'currency' => 'INR',
+                'value' => round((float) $variant->price * $added, 2),
+                'items' => [EcommerceData::product($this->product, $variant, $added)],
+            ]);
+        }
         app(AnalyticsTracker::class)->track('add_to_cart', $this->product->id);
         $this->dispatch('cart-updated', count: $cart->count());
         $this->redirectRoute('checkout.index', navigate: true);
@@ -210,6 +241,6 @@ class ProductDetail extends Component
 
         return view('livewire.storefront.product-detail', [
             'selectedVariant' => $selectedVariant,
-        ]);
+        ])->title($this->getTitle());
     }
 }

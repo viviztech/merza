@@ -11,6 +11,7 @@ use App\Models\DeliveryZone;
 use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Services\CartService;
+use App\Support\EcommerceData;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
 use Livewire\Livewire;
@@ -25,6 +26,7 @@ class CheckoutWhatsAppConfirmationTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        config(['payments.gateway' => 'manual']);
 
         $category = Category::create(['name' => 'Fresh Fruits', 'slug' => 'fresh-fruits', 'is_active' => true]);
 
@@ -76,6 +78,7 @@ class CheckoutWhatsAppConfirmationTest extends TestCase
         $test->assertSet('orderPlaced', true);
 
         $test->assertDispatched('meta-purchase');
+        $test->assertDispatched('gtm-purchase');
 
         Queue::assertNotPushed(SendWhatsAppMessageJob::class);
 
@@ -90,6 +93,13 @@ class CheckoutWhatsAppConfirmationTest extends TestCase
         $this->assertSame('INR', $pixelPayload['currency']);
         $this->assertSame([(string) $this->variant->id], $pixelPayload['contentIds']);
         $this->assertSame(1, $pixelPayload['numItems']);
+
+        $ecommerce = EcommerceData::purchase($order);
+        $this->assertSame($order->order_number, $ecommerce['transaction_id']);
+        $this->assertSame('INR', $ecommerce['currency']);
+        $this->assertSame(500.0, $ecommerce['value']);
+        $this->assertSame('TM-5KG', $ecommerce['items'][0]['item_id']);
+        $this->assertSame(1, $ecommerce['items'][0]['quantity']);
     }
 
     public function test_opted_out_contact_does_not_get_a_confirmation_queued(): void

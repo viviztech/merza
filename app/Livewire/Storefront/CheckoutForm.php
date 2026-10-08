@@ -13,6 +13,7 @@ use App\Services\CartService;
 use App\Services\DeliveryCalculatorService;
 use App\Services\PincodeService;
 use App\Services\SabPaisaService;
+use App\Support\EcommerceData;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Livewire\Attributes\Layout;
@@ -395,6 +396,14 @@ class CheckoutForm extends Component
         session()->put("meta_purchase_events.{$order->id}", $metaPurchase);
         $this->dispatch('meta-purchase', ...$metaPurchase);
 
+        $ga4Purchase = EcommerceData::purchase($order);
+        if (! $isPreorderOnly && $this->gatewayActive()) {
+            // The gateway may still fail; report a purchase only after payment is verified.
+            session()->put("ga4_purchase_events.{$order->id}", $ga4Purchase);
+        } else {
+            $this->dispatch('gtm-purchase', ecommerce: $ga4Purchase);
+        }
+
         $this->sendWhatsAppConfirmation($order);
 
         if (! $isPreorderOnly && $this->gatewayActive()) {
@@ -417,9 +426,11 @@ class CheckoutForm extends Component
         $this->orderNumber       = $order->order_number;
         $this->orderIsPreorderOnly = $isPreorderOnly;
         $preorderDate = $order->items()->where('is_preorder', true)->max('available_from');
-        $dispatchBase = $preorderDate ? \Carbon\Carbon::parse($preorderDate) : now();
+        $futurePreorderDate = $preorderDate && \Carbon\Carbon::parse($preorderDate)->isFuture()
+            ? \Carbon\Carbon::parse($preorderDate) : null;
+        $dispatchBase = $futurePreorderDate ?: now();
         $this->expectedDelivery = $isPreorderOnly
-            ? ($preorderDate ? $dispatchBase->format('D, d M Y') : null)
+            ? $futurePreorderDate?->format('D, d M Y')
             : $dispatchBase->copy()->addDays($zone->eta_days ?? 2)->format('D, d M Y');
     }
 

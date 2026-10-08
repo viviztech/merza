@@ -9,6 +9,11 @@
             }, { once: true });
         </script>
     @endif
+    @if($ga4Purchase)
+        <script>
+            window.merzaPushPurchase?.(@json($ga4Purchase));
+        </script>
+    @endif
 
     <div id="checkout-thank-you"
          data-form-id="merza-checkout-form"

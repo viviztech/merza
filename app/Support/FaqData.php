@@ -11,7 +11,7 @@ class FaqData
     {
         return [
             ['Which areas do you deliver to?', 'We deliver across Tamil Nadu and to select cities nationwide — see the Delivery Information section on the homepage for zones and rates, or message us on WhatsApp to check your area.'],
-            ['What payment methods do you accept?', 'UPI (Google Pay, PhonePe, or any UPI app via QR code) and Cash on Delivery, where available. Card payments are coming soon.'],
+            ['What payment methods do you accept?', 'The available payment method is shown at checkout. Pre-bookings do not collect payment when the reservation is placed.'],
             ['Are your fruits naturally ripened?', 'Yes — all our fruits are grown on our own farm in Bodinayakanur and naturally ripened, with no artificial ripening agents or added colours.'],
             ['How do you pack the fruits to keep them fresh?', 'Each order is hand-packed in ventilated, cushioned boxes designed for fresh produce, to prevent bruising and keep the fruit fresh in transit.'],
             ['Is there a minimum order or bulk pricing?', 'No minimum order for regular orders. For bulk or B2B orders, message us on WhatsApp for wholesale pricing.'],

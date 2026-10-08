@@ -69,8 +69,11 @@ class PaymentReturnController extends Controller
         $metaPurchase = $order->payment_status === 'paid'
             ? session()->pull("meta_purchase_events.{$order->id}")
             : null;
+        $ga4Purchase = $order->payment_status === 'paid'
+            ? session()->pull("ga4_purchase_events.{$order->id}")
+            : null;
 
-        return view('storefront.checkout.confirmation', compact('order', 'status', 'metaPurchase'));
+        return view('storefront.checkout.confirmation', compact('order', 'status', 'metaPurchase', 'ga4Purchase'));
     }
 
     /**

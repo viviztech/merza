@@ -16,6 +16,7 @@ class Product extends Model implements HasMedia
     protected $fillable = [
         'category_id', 'name', 'slug', 'short_description', 'description',
         'harvest_date', 'farm_location', 'sweetness_level', 'delivery_time', 'buying_highlights',
+        'storage_instructions', 'shelf_life', 'nutrition_information', 'packaging_details',
         'base_price', 'gst_rate', 'unit', 'is_active', 'is_featured', 'is_available_today',
         'is_preorder', 'available_from', 'preorder_note', 'sort_order',
     ];
@@ -91,6 +92,15 @@ class Product extends Model implements HasMedia
         return $this->getFirstMediaUrl('thumbnail', 'thumb')
             ?: $this->getFirstMediaUrl('images', 'thumb')
             ?: asset('images/placeholder-product.png');
+    }
+
+    public function lowestPricedVariant(): ?ProductVariant
+    {
+        $variants = $this->activeVariants;
+
+        return $variants->filter(fn (ProductVariant $variant) => $variant->stock_qty > 0)
+            ->sortBy(fn (ProductVariant $variant) => (float) $variant->price)->first()
+            ?? $variants->sortBy(fn (ProductVariant $variant) => (float) $variant->price)->first();
     }
 
     public function getInStockAttribute(): bool

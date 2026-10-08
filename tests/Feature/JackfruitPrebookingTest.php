@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Livewire\Storefront\ProductDetail;
 use App\Livewire\Storefront\CheckoutForm;
+use App\Livewire\Storefront\CartPanel;
 use App\Models\Category;
 use App\Models\Order;
 use App\Models\Product;
@@ -79,6 +80,7 @@ class JackfruitPrebookingTest extends TestCase
         Livewire::test(ProductDetail::class, ['slug' => $this->product->slug])
             ->set('qty', 3)
             ->call('buyNow')
+            ->assertDispatched('gtm-ecommerce', eventName: 'add_to_cart')
             ->assertRedirect(route('checkout.index'));
 
         $item = app(CartService::class)->items()->first();
@@ -86,14 +88,27 @@ class JackfruitPrebookingTest extends TestCase
         $this->assertSame(3, $item->qty);
     }
 
+    public function test_cart_quantity_changes_dispatch_matching_ecommerce_events(): void
+    {
+        app(CartService::class)->add($this->variant->id, 2);
+
+        Livewire::test(CartPanel::class)
+            ->call('updateQty', $this->variant->id, 3)
+            ->assertDispatched('gtm-ecommerce', eventName: 'add_to_cart')
+            ->call('remove', $this->variant->id)
+            ->assertDispatched('gtm-ecommerce', eventName: 'remove_from_cart');
+    }
+
     public function test_prebooking_page_prioritizes_usp_points_and_hides_price_controls(): void
     {
+        $this->travelTo(\Carbon\Carbon::parse('2026-10-08'));
+
         Livewire::test(ProductDetail::class, ['slug' => $this->product->slug])
             ->assertSee('Why pre-book this harvest')
-            ->assertSee('18 Aug 2026')
+            ->assertDontSee('18 Aug 2026')
             ->assertSee('Bodinayakanur, Tamil Nadu')
             ->assertSee('Honey sweet')
-            ->assertSee('Delivered within 48 hours')
+            ->assertDontSee('Delivered within 48 hours')
             ->assertSee('Hand selected')
             ->assertSee('Packed fresh')
             ->assertSee('Pre-book now')
@@ -144,6 +159,7 @@ class JackfruitPrebookingTest extends TestCase
             ->assertDontSee('Download Invoice');
 
         $test->assertDispatched('meta-purchase');
+        $test->assertDispatched('gtm-purchase');
 
         $order = Order::latest('id')->firstOrFail();
 

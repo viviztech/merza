@@ -19,15 +19,43 @@ class CartPanel extends Component
     public function updateQty(int $variantId, int $qty): void
     {
         $cart = app(CartService::class);
+        $previous = $cart->all()[$variantId] ?? null;
         $cart->update($variantId, $qty);
+        $this->trackChange($previous, $qty);
         $this->dispatch('cart-updated', count: $cart->count());
     }
 
     public function remove(int $variantId): void
     {
         $cart = app(CartService::class);
+        $previous = $cart->all()[$variantId] ?? null;
         $cart->remove($variantId);
+        $this->trackChange($previous, 0);
         $this->dispatch('cart-updated', count: $cart->count());
+    }
+
+    private function trackChange(?array $previous, int $newQuantity): void
+    {
+        if (! $previous || $newQuantity === (int) $previous['qty']) {
+            return;
+        }
+
+        $difference = $newQuantity - (int) $previous['qty'];
+        $quantity = abs($difference);
+        $this->dispatch('gtm-ecommerce',
+            eventName: $difference > 0 ? 'add_to_cart' : 'remove_from_cart',
+            ecommerce: [
+                'currency' => 'INR',
+                'value' => round((float) $previous['price'] * $quantity, 2),
+                'items' => [[
+                    'item_id' => (string) ($previous['sku'] ?: $previous['variant_id']),
+                    'item_name' => $previous['product_name'],
+                    'item_variant' => $previous['variant_name'],
+                    'price' => (float) $previous['price'],
+                    'quantity' => $quantity,
+                ]],
+            ],
+        );
     }
 
     public function render()

@@ -3,12 +3,14 @@
 use App\Http\Controllers\OrderPdfController;
 use App\Http\Controllers\Storefront\AccountController;
 use App\Http\Controllers\Storefront\AuthController;
+use App\Http\Controllers\Storefront\CategoryController;
 use App\Http\Controllers\Storefront\HomeController;
 use App\Http\Controllers\Storefront\PagesController;
 use App\Http\Controllers\Storefront\PaymentReturnController;
 use App\Http\Controllers\Storefront\SeoController;
 use App\Http\Controllers\Webhook\MetaWebhookController;
 use App\Http\Controllers\Webhook\SabPaisaWebhookController;
+use App\Http\Middleware\RedirectCanonicalProductSlug;
 use App\Livewire\Storefront\CartPanel;
 use App\Livewire\Storefront\CheckoutForm;
 use App\Livewire\Storefront\ProductCatalogue;
@@ -28,17 +30,19 @@ Route::get('/sitemap.xml', [SeoController::class, 'sitemap'])->name('sitemap');
 Route::get('/llms.txt', [SeoController::class, 'llmsTxt'])->name('llms-txt');
 
 Route::get('/products', ProductCatalogue::class)->name('products.index');
-Route::get('/products/{slug}', ProductDetail::class)->name('products.show');
+Route::get('/categories/{slug}', [CategoryController::class, 'show'])->name('categories.show');
+Route::get('/products/{slug}', ProductDetail::class)->name('products.show')->middleware(RedirectCanonicalProductSlug::class);
 
 Route::get('/cart', CartPanel::class)->name('cart.index')->middleware('noindex');
 Route::get('/cart/count', fn () => response()->json(['count' => session('cart_count', 0)]))->name('cart.count');
 Route::get('/checkout', CheckoutForm::class)->name('checkout.index')->middleware('noindex');
 
-Route::get('/track', TrackOrder::class)->name('track.index');
+Route::get('/track', TrackOrder::class)->name('track.index')->middleware('noindex');
 
 // Static pages
 Route::get('/about',     [PagesController::class, 'about'])     ->name('about');
 Route::get('/blog',      [PagesController::class, 'blog'])      ->name('blog');
+Route::get('/blog/{slug}', [PagesController::class, 'recipe'])  ->name('blog.recipe');
 Route::get('/wholesale', [PagesController::class, 'wholesale']) ->name('wholesale');
 Route::get('/careers',   [PagesController::class, 'careers'])   ->name('careers');
 Route::get('/privacy',   [PagesController::class, 'privacy'])   ->name('privacy');

@@ -4,7 +4,7 @@ namespace App\Http\Controllers\Storefront;
 
 use App\Http\Controllers\Controller;
 use App\Models\DeliveryZone;
-use App\Models\Order;
+use App\Models\Category;
 use App\Models\Product;
 use App\Models\Testimonial;
 use App\Services\AnalyticsTracker;
@@ -31,8 +31,11 @@ class HomeController extends Controller
 
         $testimonials = Testimonial::active()->limit(6)->get();
         $deliveryZones = DeliveryZone::active()->get();
-        $ordersToday   = Order::whereDate('created_at', today())->count();
+        $categories = Category::query()->where('is_active', true)
+            ->whereHas('products', fn ($query) => $query->where('is_active', true))
+            ->with(['products' => fn ($query) => $query->where('is_active', true)->orderBy('sort_order')->with('media')])
+            ->orderBy('sort_order')->get();
 
-        return view('storefront.home', compact('featured', 'todaysArrivals', 'testimonials', 'deliveryZones', 'ordersToday'));
+        return view('storefront.home', compact('featured', 'todaysArrivals', 'testimonials', 'deliveryZones', 'categories'));
     }
 }

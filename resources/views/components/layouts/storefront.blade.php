@@ -1,12 +1,12 @@
 @php
     $seo = app(\App\Support\Seo::class);
 
-    $pageTitle       = isset($title) ? $title . ' | Merza' : 'Merza — Premium Tropical Fruits';
-    $defaultDesc     = 'Merza — Premium Tropical Fruits delivered fresh to your door. Mangoes, Jackfruit, Banana & more.';
+    $pageTitle       = isset($title) ? $title . ' | Merza' : 'Merza — Farm Produce & Fruit Snacks';
+    $defaultDesc     = 'Shop Merza farm produce and fruit snacks from Bodinayakanur. Browse current products, sizes and prices, with delivery costs shown at checkout.';
     $metaDescription = $seo->description ?? ($description ?? $defaultDesc);
     $metaRobots      = $robots ?? $seo->robots;
     $canonicalUrl    = url()->current();
-    $ogImageUrl      = $seo->ogImage ?? asset('images/icon-512.png');
+    $ogImageUrl      = $seo->ogImage ?? asset('images/og-merza.png');
 
     $businessRating = \Illuminate\Support\Facades\Cache::remember('seo:business-rating', 3600, function () {
         $count = \App\Models\Testimonial::where('is_active', true)->count();
@@ -74,6 +74,33 @@
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}" class="scroll-smooth">
 <head>
     @if($integrations->gtm_container_id)
+        <script>
+            window.dataLayer = window.dataLayer || [];
+            window.merzaPushEcommerce = function (eventName, ecommerce) {
+                if (!eventName || !ecommerce) return;
+                window.dataLayer.push({ ecommerce: null });
+                window.dataLayer.push({ event: eventName, ecommerce: ecommerce });
+            };
+            window.merzaPushPurchase = function (ecommerce) {
+                if (!ecommerce || !ecommerce.transaction_id) return;
+                const key = 'merza-ga4-purchase-' + ecommerce.transaction_id;
+                try {
+                    if (sessionStorage.getItem(key)) return;
+                } catch (error) {
+                    // Send the event even when browser storage is unavailable.
+                }
+                window.merzaPushEcommerce('purchase', ecommerce);
+                try { sessionStorage.setItem(key, '1'); } catch (error) {}
+            };
+            document.addEventListener('livewire:init', () => {
+                Livewire.on('gtm-ecommerce', ({ eventName, ecommerce }) => {
+                    window.merzaPushEcommerce(eventName, ecommerce);
+                });
+                Livewire.on('gtm-purchase', ({ ecommerce }) => {
+                    window.merzaPushPurchase(ecommerce);
+                });
+            });
+        </script>
         {{-- Google Tag Manager --}}
         <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
         new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
@@ -152,6 +179,11 @@
     <meta property="og:title" content="{{ $pageTitle }}">
     <meta property="og:description" content="{{ $metaDescription }}">
     <meta property="og:image" content="{{ $ogImageUrl }}">
+    <meta property="og:image:alt" content="{{ isset($title) ? $title : 'Merza farm produce and fruit snacks' }}">
+    @unless($seo->ogImage)
+        <meta property="og:image:width" content="1200">
+        <meta property="og:image:height" content="630">
+    @endunless
     <meta property="og:url" content="{{ $canonicalUrl }}">
     <meta property="og:site_name" content="Merza">
     <meta property="og:locale" content="en_IN">
@@ -215,7 +247,7 @@
     {{-- Announcement bar --}}
     <div x-data="{ show: !localStorage.getItem('merza_ann_v3') }" x-show="show" x-cloak
          class="relative bg-gradient-to-r from-amber-500 via-orange-500 to-amber-500 text-white text-center text-xs sm:text-sm py-2.5 px-10 font-semibold">
-        🥭 Kasa Lattu Mango Season is Here! &nbsp;·&nbsp;
+        Explore our current farm produce and fruit snacks &nbsp;·&nbsp;
         <a href="{{ route('products.index') }}" class="underline font-extrabold hover:text-amber-100 transition-colors">Shop Now →</a>
         <button @click="show=false; localStorage.setItem('merza_ann_v3','1')"
                 class="absolute right-3 top-1/2 -translate-y-1/2 text-white/70 hover:text-white transition-colors p-1">
@@ -470,32 +502,35 @@
                 {{-- Brand --}}
                 <div class="md:col-span-1">
                     <div class="flex items-center mb-3 bg-white rounded-xl p-2 w-fit">
-                        <img src="/images/logo.png" alt="Merza Natural Squash" loading="lazy" class="h-10 w-auto">
+                        <img src="/images/logo.png" alt="Merza logo" loading="lazy" class="h-10 w-auto">
                     </div>
                     <p class="text-emerald-300 text-sm leading-relaxed">
-                        Premium tropical fruits delivered fresh from the farm to your door. Quality you can taste.
+                        Farm produce and fruit snacks from Bodinayakanur. Browse our current selection online.
                     </p>
                     <div class="flex items-center gap-1 mt-4">
                         <span class="w-2 h-2 rounded-full bg-green-400 pulse-dot"></span>
                         <span class="text-xs text-emerald-400">Open Mon–Sat, 9am–6pm</span>
                     </div>
+                    @if(preg_match('/^\d{14}$/', (string) config('storefront.fssai_license_number')))
+                        <p class="mt-2 text-xs text-emerald-300">FSSAI licence: {{ config('storefront.fssai_license_number') }}</p>
+                    @endif
                 </div>
 
                 {{-- Products --}}
                 <div>
-                    <h4 class="font-bold text-sm text-emerald-100 mb-3 uppercase tracking-wider">Our Fruits</h4>
+                    <h4 class="font-bold text-sm text-emerald-100 mb-3 uppercase tracking-wider">Our Products</h4>
                     <ul class="space-y-2 text-sm">
-                        @php $footerProducts = \App\Models\Product::where('is_active', true)->orderBy('sort_order')->limit(5)->get(); @endphp
+                        @php $footerProducts = \App\Models\Product::where('is_active', true)->orderBy('sort_order')->get(); @endphp
                         @forelse($footerProducts as $fp)
                             <li>
-                                <a href="{{ route('products.show', $fp->slug) }}" class="text-emerald-300 hover:text-amber-400 transition-colors flex items-center gap-2">
-                                    <span>🥭</span> {{ $fp->name }}
+                                <a href="{{ route('products.show', $fp->slug) }}" class="text-emerald-300 hover:text-amber-400 transition-colors">
+                                    {{ $fp->name }}
                                 </a>
                             </li>
                         @empty
                             <li>
-                                <a href="{{ route('products.index') }}" class="text-emerald-300 hover:text-amber-400 transition-colors flex items-center gap-2">
-                                    <span>🥭</span> Shop All Fruits
+                                <a href="{{ route('products.index') }}" class="text-emerald-300 hover:text-amber-400 transition-colors">
+                                    Shop All Products
                                 </a>
                             </li>
                         @endforelse

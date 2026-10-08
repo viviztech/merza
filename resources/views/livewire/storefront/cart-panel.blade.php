@@ -1,4 +1,14 @@
 <div class="max-w-3xl mx-auto px-4 py-8">
+    @if($items->isNotEmpty())
+        @php
+            $viewCartEcommerce = \App\Support\EcommerceData::cart(app(\App\Services\CartService::class));
+        @endphp
+        @script
+        <script>
+            window.merzaPushEcommerce?.('view_cart', @json($viewCartEcommerce));
+        </script>
+        @endscript
+    @endif
 
     {{-- Header --}}
     <div class="flex items-center gap-3 mb-8">
@@ -23,7 +33,7 @@
             <p class="text-stone-400 text-sm mb-6 max-w-xs mx-auto">Looks like you haven't added any fruits yet. Browse our fresh selection!</p>
             <a href="{{ route('products.index') }}"
                class="inline-flex items-center gap-2 bg-gradient-to-r from-amber-500 to-orange-500 text-white font-extrabold px-8 py-4 rounded-2xl hover:from-amber-400 hover:to-orange-400 transition-all shadow-lg hover:-translate-y-0.5">
-                Browse Fruits
+                Browse Products
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
             </a>
         </div>
@@ -41,7 +51,7 @@
                                     <img src="{{ $thumbUrl }}" alt="{{ $product->name }}" loading="lazy"
                                          class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300">
                                 @else
-                                    <div class="w-full h-full flex items-center justify-center text-4xl">🥭</div>
+                                     <img src="/images/placeholder-product.png" alt="" class="w-full h-full object-cover">
                                 @endif
                             </div>
                             <div class="p-2.5">
@@ -74,7 +84,7 @@
                                 @if($item->thumbnail_url && !str_contains($item->thumbnail_url, 'placeholder'))
                                     <img src="{{ $item->thumbnail_url }}" alt="{{ $item->product_name }}" class="w-full h-full object-cover">
                                 @else
-                                    <div class="w-full h-full flex items-center justify-center text-3xl">🥭</div>
+                                     <img src="/images/placeholder-product.png" alt="" class="w-full h-full object-cover">
                                 @endif
                             </div>
 
@@ -83,7 +93,7 @@
                                 <h4 class="font-extrabold text-sm text-stone-800 truncate">{{ $item->product_name }}</h4>
                                 <p class="text-xs text-stone-400 mt-0.5">{{ $item->variant_name }}</p>
                                 @if($item->is_preorder ?? false)
-                                    <p class="text-[11px] font-bold text-emerald-700 mt-1">Pre-booking @if($item->available_from) · Dispatches {{ \Carbon\Carbon::parse($item->available_from)->format('d M Y') }} @endif</p>
+                                    <p class="text-[11px] font-bold text-emerald-700 mt-1">Pre-booking @if($item->available_from && \Carbon\Carbon::parse($item->available_from)->isFuture()) · Estimated dispatch from {{ \Carbon\Carbon::parse($item->available_from)->format('d M Y') }} @endif</p>
                                 @endif
                                 <p class="text-amber-600 font-extrabold text-sm mt-1">₹{{ number_format($item->price, 2) }} each</p>
                                 @if($item->free_gift_label ?? null)
