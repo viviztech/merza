@@ -128,20 +128,25 @@ class CheckoutForm extends Component
         // contact_id (it's only set for a minority of orders), so matching
         // on contact_id alone misses real returning customers. Match by
         // phone directly and treat contact_id as a secondary signal.
-        $lastOrder = Order::where('customer_phone', 'like', '%' . substr($digits, -4))
+        $matchingOrders = Order::where('customer_phone', 'like', '%' . substr($digits, -4))
             ->when($contact, fn ($query) => $query->orWhere('contact_id', $contact->id))
             ->latest()
             ->get()
-            ->first(fn (Order $order) => ($contact && $order->contact_id === $contact->id)
+            ->filter(fn (Order $order) => ($contact && $order->contact_id === $contact->id)
                 || $this->normalizedPhone($order->customer_phone) === $digits);
+
+        $lastOrder = $matchingOrders->first();
 
         if (! $lastOrder) {
             return;
         }
 
         $this->returningCustomerName = $contact?->name ?: $lastOrder->customer_name;
-        $this->hasPreviousAddress    = filled($lastOrder->delivery_address);
-        $this->lastOrderForPhone     = $lastOrder;
+        // Pre-bookings have a placeholder address and nullable location fields.
+        // Prefer an older complete address rather than trying to hydrate null
+        // into the checkout's non-nullable Livewire string properties.
+        $this->lastOrderForPhone = $matchingOrders->first(fn (Order $order) => $this->hasUsableDeliveryAddress($order));
+        $this->hasPreviousAddress = $this->lastOrderForPhone !== null;
 
         if (blank($this->customer_name)) {
             $this->customer_name = $lastOrder->customer_name;
@@ -178,20 +183,30 @@ class CheckoutForm extends Component
 
     public function useSameAddress(): void
     {
-        if (! $this->lastOrderForPhone) {
+        if (! $this->lastOrderForPhone || ! $this->hasUsableDeliveryAddress($this->lastOrderForPhone)) {
             return;
         }
 
-        $this->delivery_address = $this->lastOrderForPhone->delivery_address;
-        $this->city             = $this->lastOrderForPhone->city;
-        $this->state            = $this->lastOrderForPhone->state;
-        $this->postcode         = $this->lastOrderForPhone->postcode;
-        $this->landmark         = $this->lastOrderForPhone->landmark ?? '';
+        $this->delivery_address = (string) $this->lastOrderForPhone->delivery_address;
+        $this->city             = (string) $this->lastOrderForPhone->city;
+        $this->state            = (string) $this->lastOrderForPhone->state;
+        $this->postcode         = preg_replace('/\D/', '', (string) $this->lastOrderForPhone->postcode) ?? '';
+        $this->landmark         = (string) ($this->lastOrderForPhone->landmark ?? '');
 
         $this->previousAddressApplied = true;
         $this->pincodeAutoFilled       = true;
         $this->pincodeLookupFailed     = false;
         $this->resetErrorBag(['delivery_address', 'postcode', 'city', 'state']);
+    }
+
+    private function hasUsableDeliveryAddress(Order $order): bool
+    {
+        $postcode = preg_replace('/\D/', '', (string) $order->postcode) ?? '';
+
+        return filled($order->delivery_address)
+            && filled($order->city)
+            && filled($order->state)
+            && preg_match('/^\d{6}$/', $postcode) === 1;
     }
 
     public function changeAddress(): void

@@ -87,6 +87,76 @@ class CheckoutRepeatCustomerTest extends TestCase
             ->assertSet('hasPreviousAddress', false);
     }
 
+    public function test_prebooking_with_no_delivery_location_does_not_crash_phone_lookup(): void
+    {
+        Order::create([
+            'channel' => 'website',
+            'customer_name' => 'Prebooking Customer',
+            'customer_phone' => '9333300003',
+            'delivery_address' => 'Pre-order — address to be confirmed',
+            'city' => null,
+            'state' => null,
+            'postcode' => null,
+            'subtotal' => 100,
+            'delivery_fee' => 0,
+            'total' => 100,
+            'payment_method' => 'whatsapp',
+        ]);
+
+        app(CartService::class)->add($this->variant->id, 1);
+
+        Livewire::test(CheckoutForm::class)
+            ->set('customer_phone', '9333300003')
+            ->assertSet('returningCustomerName', 'Prebooking Customer')
+            ->assertSet('hasPreviousAddress', false)
+            ->assertSet('previousAddressApplied', false)
+            ->assertSet('delivery_address', '')
+            ->assertSet('city', '')
+            ->assertSet('state', '')
+            ->assertSet('postcode', '');
+    }
+
+    public function test_prebooking_uses_an_older_complete_address(): void
+    {
+        Order::create([
+            'channel' => 'website',
+            'customer_name' => 'Returning Customer',
+            'customer_phone' => '9333300004',
+            'delivery_address' => '77 Market Road',
+            'city' => 'Theni',
+            'state' => 'Tamil Nadu',
+            'postcode' => '625513',
+            'subtotal' => 100,
+            'delivery_fee' => 10,
+            'total' => 110,
+            'payment_method' => 'upi',
+        ]);
+        Order::create([
+            'channel' => 'website',
+            'customer_name' => 'Returning Customer',
+            'customer_phone' => '9333300004',
+            'delivery_address' => 'Pre-order — address to be confirmed',
+            'city' => null,
+            'state' => null,
+            'postcode' => null,
+            'subtotal' => 100,
+            'delivery_fee' => 0,
+            'total' => 100,
+            'payment_method' => 'whatsapp',
+        ]);
+
+        app(CartService::class)->add($this->variant->id, 1);
+
+        Livewire::test(CheckoutForm::class)
+            ->set('customer_phone', '9333300004')
+            ->assertSet('hasPreviousAddress', true)
+            ->assertSet('previousAddressApplied', true)
+            ->assertSet('delivery_address', '77 Market Road')
+            ->assertSet('city', 'Theni')
+            ->assertSet('state', 'Tamil Nadu')
+            ->assertSet('postcode', '625513');
+    }
+
     public function test_phone_error_clears_after_customer_enters_a_number(): void
     {
         app(CartService::class)->add($this->variant->id, 1);

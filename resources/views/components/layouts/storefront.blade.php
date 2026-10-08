@@ -624,10 +624,10 @@
         </script>
     @endif
 
-    @if(request()->routeIs('checkout.index'))
         <script>
             // Livewire's default 419 handler shows a browser confirm and loses entered details.
-            // A 419 means the action was rejected, so one fresh checkout load is safe.
+            // Register on every storefront page: Buy Now can enter checkout via
+            // Livewire navigation after the livewire:init event has already fired.
             document.addEventListener('livewire:init', () => {
                 const formId = 'merza-checkout-form';
                 const draftKey = 'merza-checkout-expired-draft';
@@ -643,7 +643,7 @@
                     state: 'checkout-state',
                 };
 
-                document.addEventListener('livewire:initialized', () => {
+                const restoreDraft = () => {
                     const form = document.getElementById(formId);
                     if (!form) return;
 
@@ -663,9 +663,17 @@
                     } catch (error) {
                         // Checkout still works when sessionStorage is unavailable.
                     }
-                });
+                };
 
-                Livewire.hook('request', ({ fail }) => {
+                document.addEventListener('livewire:initialized', restoreDraft);
+                document.addEventListener('livewire:navigated', restoreDraft);
+
+                Livewire.hook('request', ({ fail, succeed }) => {
+                    succeed(() => {
+                        if (!document.getElementById(formId)) return;
+                        try { sessionStorage.removeItem(retryKey); } catch (error) { /* Storage may be disabled. */ }
+                    });
+
                     fail(({ status, preventDefault }) => {
                         if (status !== 419 || !document.getElementById(formId)) return;
                         preventDefault();
@@ -702,7 +710,6 @@
                 });
             });
         </script>
-    @endif
     @livewireScripts
 </body>
 </html>

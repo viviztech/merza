@@ -194,7 +194,9 @@ class ProductDetail extends Component
         }
         app(AnalyticsTracker::class)->track('add_to_cart', $this->product->id);
         $this->dispatch('cart-updated', count: $cart->count());
-        $this->redirectRoute('checkout.index', navigate: true);
+        // Checkout must start with a fresh document and CSRF token. Livewire
+        // navigation keeps the product page's JavaScript runtime alive.
+        $this->redirectRoute('checkout.index');
     }
 
     private function validateSelection(): void
