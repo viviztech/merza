@@ -82,19 +82,6 @@
                 <p class="text-stone-500 text-sm mb-5 leading-relaxed">{{ $product->short_description }}</p>
             @endif
 
-            @if($product->is_preorder)
-                <div class="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 mb-5 flex gap-3">
-                    <span class="w-9 h-9 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0">✓</span>
-                    <div>
-                        <p class="text-sm font-extrabold text-emerald-800">Reserve from the first harvest</p>
-                        <p class="text-xs text-emerald-700 mt-0.5 leading-relaxed">
-                            Reserve your selection and we will confirm the dispatch date with you.
-                            @if($product->available_from?->isFuture()) Estimated dispatch starts {{ $product->available_from->format('D, d M Y') }}.@endif
-                        </p>
-                    </div>
-                </div>
-            @endif
-
             @if($product->is_preorder || $product->farm_location || $product->sweetness_level || filled($product->buying_highlights))
                 <section aria-labelledby="product-highlights" class="mb-5 overflow-hidden rounded-2xl border border-emerald-200 bg-white shadow-sm">
                     <div class="border-b border-emerald-100 bg-emerald-50 px-4 py-3">
