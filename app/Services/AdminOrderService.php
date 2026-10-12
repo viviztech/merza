@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Jobs\SendOrderWebhookJob;
 use App\Models\Contact;
 use App\Models\Lead;
 use App\Models\Order;
@@ -69,6 +70,7 @@ class AdminOrderService
         }
 
         $order->recalculateTotals();
+        SendOrderWebhookJob::dispatch($order->id, 'order.created');
 
         if ($contact) {
             $contact->update(['is_customer' => true]);

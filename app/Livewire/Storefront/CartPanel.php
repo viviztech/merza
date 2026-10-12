@@ -56,6 +56,10 @@ class CartPanel extends Component
                 ]],
             ],
         );
+
+        if ($difference > 0) {
+            app(\App\Services\WebhookDispatcher::class)->dispatchCartAdded();
+        }
     }
 
     public function render()

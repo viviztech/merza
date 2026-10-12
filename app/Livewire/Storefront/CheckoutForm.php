@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Storefront;
 
+use App\Jobs\SendOrderWebhookJob;
 use App\Jobs\SendWhatsAppMessageJob;
 use App\Models\Contact;
 use App\Models\Conversation;
@@ -56,6 +57,7 @@ class CheckoutForm extends Component
     public function mount(): void
     {
         app(AnalyticsTracker::class)->track('checkout_start');
+        app(\App\Services\WebhookDispatcher::class)->dispatchCheckoutStarted();
     }
 
     /**
@@ -390,6 +392,8 @@ class CheckoutForm extends Component
                     ),
                 ]);
             }
+
+            SendOrderWebhookJob::dispatch($order->id, 'order.created');
         } catch (\Throwable $e) {
             Log::error('CheckoutForm: order placement failed', ['error' => $e->getMessage()]);
             $this->addError('cart', "Something went wrong placing your order — nothing was charged. Please try again, or message us on WhatsApp and we'll help right away.");

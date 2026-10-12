@@ -44,6 +44,17 @@ class Contact extends Model
         'wa_opted_out_at'    => 'datetime',
     ];
 
+    protected static function booted(): void
+    {
+        static::created(function (Contact $contact): void {
+            app(\App\Services\WebhookDispatcher::class)->dispatchCustomer('customer.created', $contact);
+        });
+
+        static::updated(function (Contact $contact): void {
+            app(\App\Services\WebhookDispatcher::class)->dispatchCustomer('customer.updated', $contact);
+        });
+    }
+
     public function optOutWhatsApp(): void
     {
         $this->whatsAppConsents()->whereNull('revoked_at')->update(['revoked_at' => now()]);

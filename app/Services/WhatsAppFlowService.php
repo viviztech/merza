@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Jobs\SendOrderWebhookJob;
 use App\Models\BotActivityLog;
 use App\Models\BotSetting;
 use App\Models\Category;
@@ -1032,6 +1033,7 @@ class WhatsAppFlowService
             ]);
         }
 
+        SendOrderWebhookJob::dispatch($order->id, 'order.created');
         $this->sendInvoicePdf($contact, $order);
         $this->sendUpiQr($contact, $session, $order);
     }

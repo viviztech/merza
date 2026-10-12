@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Jobs\SendOrderWebhookJob;
 use App\Services\OrderNotificationService;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -41,6 +42,8 @@ class Order extends Model
         });
 
         static::updated(function (Order $order) {
+            SendOrderWebhookJob::dispatch($order->id, 'order.updated');
+
             if (empty($order->customer_phone)) {
                 return;
             }

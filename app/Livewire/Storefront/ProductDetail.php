@@ -164,6 +164,7 @@ class ProductDetail extends Component
                 'value' => round((float) $variant->price * $added, 2),
                 'items' => [EcommerceData::product($this->product, $variant, $added)],
             ]);
+            app(\App\Services\WebhookDispatcher::class)->dispatchCartAdded();
         }
 
         app(AnalyticsTracker::class)->track('add_to_cart', $this->product->id);
@@ -191,6 +192,7 @@ class ProductDetail extends Component
                 'value' => round((float) $variant->price * $added, 2),
                 'items' => [EcommerceData::product($this->product, $variant, $added)],
             ]);
+            app(\App\Services\WebhookDispatcher::class)->dispatchCartAdded();
         }
         app(AnalyticsTracker::class)->track('add_to_cart', $this->product->id);
         $this->dispatch('cart-updated', count: $cart->count());

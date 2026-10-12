@@ -82,7 +82,28 @@ class IntegrationSettingsPage extends Page
 
     public function save(): void
     {
-        IntegrationSetting::current()->update($this->data);
+        $settings = IntegrationSetting::current();
+        $validated = validator($this->data, [
+            'order_webhook_url' => ['nullable', 'url', 'starts_with:https://'],
+            'order_webhook_secret' => ['nullable', 'string', 'max:255'],
+        ])->validate();
+
+        $newSecret = $validated['order_webhook_secret'] ?? null;
+        $webhookUrl = $validated['order_webhook_url'] ?? null;
+
+        if (filled($webhookUrl) && blank($newSecret) && blank($settings->order_webhook_secret)) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'data.order_webhook_secret' => 'A signing secret is required when the order webhook is enabled.',
+            ]);
+        }
+
+        $this->resetValidation();
+        $this->data['order_webhook_url'] = $webhookUrl;
+        $this->data['order_webhook_secret'] = filled($webhookUrl)
+            ? ($newSecret ?: $settings->order_webhook_secret)
+            : null;
+
+        $settings->update($this->data);
 
         Notification::make()
             ->title('Integration settings saved')
