@@ -432,7 +432,7 @@ class WhatsAppFlowService
         if (! $zone) {
             $this->sendTrackedText(
                 $contact->phone,
-                "😔 Sorry, we don't currently deliver to *{$city}, {$state}*.\n\nMessage us at +91 86676 96278 for help, or try a different location.\n\nType *menu* to go back."
+                "😔 Sorry, we don't currently deliver to *{$city}, {$state}*.\n\nMessage us at +91 74186 73398 for help, or try a different location.\n\nType *menu* to go back."
             );
 
             return;
@@ -706,7 +706,7 @@ class WhatsAppFlowService
 
         $this->sendTrackedText(
             $contact->phone,
-            "Sure! 😊 You're now chatting with our *automated assistant*.\n\nAsk me anything about products, delivery, pricing, or orders and I'll help right away!\n\n📞 *Need a real person?*\nCall us: +91 86676 96278\nEmail: merzabodinayakanur@gmail.com\nHours: Mon–Sat, 9 AM – 6 PM\n\nType *menu* anytime to go back.\n\n— Merza Automated Assistant 🥭"
+            "Sure! 😊 You're now chatting with our *automated assistant*.\n\nAsk me anything about products, delivery, pricing, or orders and I'll help right away!\n\n📞 *Need a real person?*\nCall us: +91 74186 73398\nEmail: merzabodinayakanur@gmail.com\nHours: Mon–Sat, 9 AM – 6 PM\n\nType *menu* anytime to go back.\n\n— Merza Automated Assistant 🥭"
         );
     }
 
@@ -1033,7 +1033,7 @@ class WhatsAppFlowService
             ]);
         }
 
-        SendOrderWebhookJob::dispatch($order->id, 'order.created');
+        SendOrderWebhookJob::dispatch($order->id, 'order.created')->afterCommit();
         $this->sendInvoicePdf($contact, $order);
         $this->sendUpiQr($contact, $session, $order);
     }

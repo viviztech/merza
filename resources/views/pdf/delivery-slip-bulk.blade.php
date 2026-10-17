@@ -55,7 +55,7 @@
       <div class="party-address address-lg">
         Bodinayakanur, Theni District - 625513
       </div>
-      <div class="party-mobile">Mobile : 8667696278</div>
+      <div class="party-mobile">Mobile : 7418673398</div>
     </div>
   </div>
 

@@ -393,7 +393,7 @@ class CheckoutForm extends Component
                 ]);
             }
 
-            SendOrderWebhookJob::dispatch($order->id, 'order.created');
+            SendOrderWebhookJob::dispatch($order->id, 'order.created')->afterCommit();
         } catch (\Throwable $e) {
             Log::error('CheckoutForm: order placement failed', ['error' => $e->getMessage()]);
             $this->addError('cart', "Something went wrong placing your order — nothing was charged. Please try again, or message us on WhatsApp and we'll help right away.");

@@ -4,7 +4,6 @@ namespace App\Services;
 
 use App\Models\Contact;
 use App\Models\Order;
-use App\Services\CartService;
 
 class WebhookPayloadFactory
 {
@@ -17,9 +16,14 @@ class WebhookPayloadFactory
                 'id' => $order->id,
                 'order_number' => $order->order_number,
                 'channel' => $order->channel,
+                'currency' => 'INR',
                 'customer' => [
                     'name' => $order->customer_name,
-                    'phone' => $order->customer_phone,
+                    // Webhook consumers such as GoWhats need an international
+                    // number. Preserve the captured value as well for auditing.
+                    'phone' => $this->phoneWithCountryCode($order->customer_phone),
+                    'phone_e164' => $this->phoneWithCountryCode($order->customer_phone),
+                    'phone_raw' => $order->customer_phone,
                     'email' => $order->customer_email,
                 ],
                 'delivery' => [
@@ -29,11 +33,11 @@ class WebhookPayloadFactory
                     'postcode' => $order->postcode,
                     'landmark' => $order->landmark,
                 ],
-                'subtotal' => $order->subtotal,
-                'gst_total' => $order->gst_total,
-                'delivery_fee' => $order->delivery_fee,
-                'packaging_fee' => $order->packaging_fee,
-                'total' => $order->total,
+                'subtotal' => (float) $order->subtotal,
+                'gst_total' => (float) $order->gst_total,
+                'delivery_fee' => (float) $order->delivery_fee,
+                'packaging_fee' => (float) $order->packaging_fee,
+                'total' => (float) $order->total,
                 'status' => $order->status,
                 'payment_method' => $order->payment_method,
                 'payment_status' => $order->payment_status,
@@ -44,12 +48,15 @@ class WebhookPayloadFactory
                 'updated_at' => $order->updated_at?->toIso8601String(),
             ],
             'items' => $order->items->map(fn ($item): array => [
+                'id' => $item->id,
+                'product_variant_id' => $item->product_variant_id,
                 'product_name' => $item->product_name,
                 'variant_name' => $item->variant_name,
                 'sku' => $item->sku,
-                'quantity' => $item->quantity,
-                'unit_price' => $item->unit_price,
-                'subtotal' => $item->subtotal,
+                'quantity' => (int) $item->quantity,
+                'unit_price' => (float) $item->unit_price,
+                'subtotal' => (float) $item->subtotal,
+                'currency' => 'INR',
             ])->all(),
         ];
     }
@@ -58,6 +65,8 @@ class WebhookPayloadFactory
     {
         return [
             'cart' => [
+                'id' => session()->getId(),
+                'currency' => 'INR',
                 'item_count' => $cart->count(),
                 'subtotal' => round($cart->subtotal(), 2),
                 'items' => $cart->items()->map(fn ($item): array => [
@@ -80,7 +89,9 @@ class WebhookPayloadFactory
             'customer' => [
                 'id' => $contact->id,
                 'name' => $contact->name,
-                'phone' => $contact->phone,
+                'phone' => $this->phoneWithCountryCode($contact->phone),
+                'phone_e164' => $this->phoneWithCountryCode($contact->phone),
+                'phone_raw' => $contact->phone,
                 'email' => $contact->email,
                 'source' => $contact->source,
                 'category' => $contact->customer_category,
@@ -100,5 +111,26 @@ class WebhookPayloadFactory
         }
 
         return filled($value) ? (string) $value : null;
+    }
+
+    private function phoneWithCountryCode(?string $phone): ?string
+    {
+        $digits = preg_replace('/\D/', '', (string) $phone) ?? '';
+
+        if ($digits === '') {
+            return null;
+        }
+
+        if (str_starts_with($digits, '00')) {
+            $digits = substr($digits, 2);
+        }
+
+        // Merza storefront numbers are Indian 10-digit numbers. Numbers that
+        // already include their country code are left intact.
+        if (strlen($digits) === 10) {
+            $digits = '91'.$digits;
+        }
+
+        return '+'.$digits;
     }
 }

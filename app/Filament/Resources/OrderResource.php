@@ -3,8 +3,10 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\OrderResource\Pages;
+use App\Jobs\SendOrderWebhookJob;
 use App\Models\BotSetting;
 use App\Models\Order;
+use App\Models\OrderItem;
 use App\Models\ProductVariant;
 use App\Services\OrderNotificationService;
 use App\Services\OrderTrackingService;
@@ -16,18 +18,21 @@ use Filament\Infolists\Components\RepeatableEntry;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
-use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section as SchemaSection;
-use Filament\Schemas\Schema;
 use Filament\Schemas\Components\Utilities\Set;
+use Filament\Schemas\Schema;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Illuminate\Validation\ValidationException;
 
 class OrderResource extends Resource
 {
     protected static ?string $model = Order::class;
+
     protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-shopping-bag';
+
     protected static string|\UnitEnum|null $navigationGroup = 'Orders & Delivery';
+
     protected static ?int $navigationSort = 1;
 
     public static function form(Schema $schema): Schema
@@ -39,37 +44,37 @@ class OrderResource extends Resource
 
                 Forms\Components\TextInput::make('channel')
                     ->formatStateUsing(fn ($state) => match ($state) {
-                        'website'  => 'Website',
+                        'website' => 'Website',
                         'whatsapp' => 'WhatsApp',
-                        'manual'   => 'Manual',
-                        default    => $state,
+                        'manual' => 'Manual',
+                        default => $state,
                     })
                     ->disabled()->dehydrated(false),
 
                 Forms\Components\Select::make('status')
                     ->options([
-                        'pending'    => 'Pending',
-                        'confirmed'  => 'Confirmed',
-                        'preparing'  => 'Preparing',
+                        'pending' => 'Pending',
+                        'confirmed' => 'Confirmed',
+                        'preparing' => 'Preparing',
                         'delivering' => 'Delivering',
-                        'delivered'  => 'Delivered',
-                        'cancelled'  => 'Cancelled',
+                        'delivered' => 'Delivered',
+                        'cancelled' => 'Cancelled',
                     ])
                     ->required(),
 
                 Forms\Components\Select::make('payment_method')
                     ->options([
-                        'cod'           => 'Cash on Delivery',
-                        'upi'           => 'UPI Payment',
+                        'cod' => 'Cash on Delivery',
+                        'upi' => 'UPI Payment',
                         'bank_transfer' => 'Bank Transfer',
-                        'whatsapp'      => 'WhatsApp Order',
+                        'whatsapp' => 'WhatsApp Order',
                     ])
                     ->required(),
 
                 Forms\Components\Select::make('payment_status')
                     ->options([
-                        'unpaid'   => 'Unpaid',
-                        'paid'     => 'Paid',
+                        'unpaid' => 'Unpaid',
+                        'paid' => 'Paid',
                         'refunded' => 'Refunded',
                     ])
                     ->required(),
@@ -170,16 +175,16 @@ class OrderResource extends Resource
         $qty = max(1, (int) ($data['quantity'] ?? 1));
 
         return array_merge($data, [
-            'product_name'         => $variant->product->name,
-            'variant_name'         => $variant->name,
-            'free_gift_label'      => $variant->free_gift_label,
-            'free_gift_weight_kg'  => $variant->free_gift_weight_kg,
-            'sku'                  => $variant->sku,
-            'quantity'             => $qty,
-            'unit_price'           => $variant->price,
-            'subtotal'             => (float) $variant->price * $qty,
-            'gst_rate'             => (float) $variant->product->gst_rate,
-            'gst_amount'           => \App\Models\OrderItem::gstIncludedIn(
+            'product_name' => $variant->product->name,
+            'variant_name' => $variant->name,
+            'free_gift_label' => $variant->free_gift_label,
+            'free_gift_weight_kg' => $variant->free_gift_weight_kg,
+            'sku' => $variant->sku,
+            'quantity' => $qty,
+            'unit_price' => $variant->price,
+            'subtotal' => (float) $variant->price * $qty,
+            'gst_rate' => (float) $variant->product->gst_rate,
+            'gst_amount' => OrderItem::gstIncludedIn(
                 (float) $variant->price * $qty,
                 (float) $variant->product->gst_rate,
             ),
@@ -195,7 +200,7 @@ class OrderResource extends Resource
                         ->hiddenLabel()
                         ->state(fn (Order $r) => $r->nextAction()
                             ? "Next: {$r->nextAction()['label']}"
-                            : 'No further action needed — order is ' . $r->status . '.')
+                            : 'No further action needed — order is '.$r->status.'.')
                         ->size('lg')
                         ->weight('bold')
                         ->color(fn (Order $r) => $r->nextAction()['color'] ?? 'gray'),
@@ -207,43 +212,43 @@ class OrderResource extends Resource
                 TextEntry::make('channel')
                     ->badge()
                     ->color(fn ($state) => match ($state) {
-                        'website'  => 'gray',
+                        'website' => 'gray',
                         'whatsapp' => 'success',
-                        'manual'   => 'info',
-                        default    => 'gray',
+                        'manual' => 'info',
+                        default => 'gray',
                     })
                     ->formatStateUsing(fn ($state) => match ($state) {
-                        'website'  => 'Website',
+                        'website' => 'Website',
                         'whatsapp' => 'WhatsApp',
-                        'manual'   => 'Manual',
-                        default    => $state,
+                        'manual' => 'Manual',
+                        default => $state,
                     }),
                 TextEntry::make('status')
                     ->badge()
                     ->color(fn ($state) => match ($state) {
-                        'pending'    => 'warning',
-                        'confirmed'  => 'info',
-                        'preparing'  => 'primary',
+                        'pending' => 'warning',
+                        'confirmed' => 'info',
+                        'preparing' => 'primary',
                         'delivering' => 'success',
-                        'delivered'  => 'success',
-                        'cancelled'  => 'danger',
-                        default      => 'gray',
+                        'delivered' => 'success',
+                        'cancelled' => 'danger',
+                        default => 'gray',
                     }),
                 TextEntry::make('payment_method')
                     ->formatStateUsing(fn ($state) => match ($state) {
-                        'cod'           => 'Cash on Delivery',
-                        'upi'           => 'UPI Payment',
+                        'cod' => 'Cash on Delivery',
+                        'upi' => 'UPI Payment',
                         'bank_transfer' => 'Bank Transfer',
-                        'whatsapp'      => 'WhatsApp Order',
-                        default         => $state,
+                        'whatsapp' => 'WhatsApp Order',
+                        default => $state,
                     }),
                 TextEntry::make('payment_status')
                     ->badge()
                     ->color(fn ($state) => match ($state) {
-                        'paid'     => 'success',
-                        'unpaid'   => 'warning',
+                        'paid' => 'success',
+                        'unpaid' => 'warning',
                         'refunded' => 'danger',
-                        default    => 'gray',
+                        default => 'gray',
                     }),
                 TextEntry::make('payment_reference')
                     ->label('Payment Reference / UTR')
@@ -255,18 +260,18 @@ class OrderResource extends Resource
                     ->visible(fn (Order $r) => ! empty($r->payment_verification_status))
                     ->badge()
                     ->formatStateUsing(fn ($state) => match ($state) {
-                        'ai_matched'         => 'AI Matched',
-                        'ai_mismatch'        => 'AI: Mismatch — Review',
-                        'ai_unclear'         => 'AI: Unclear — Review',
+                        'ai_matched' => 'AI Matched',
+                        'ai_mismatch' => 'AI: Mismatch — Review',
+                        'ai_unclear' => 'AI: Unclear — Review',
                         'manually_confirmed' => 'Manually Confirmed',
-                        'pending'            => 'Verifying...',
-                        default              => $state,
+                        'pending' => 'Verifying...',
+                        default => $state,
                     })
                     ->color(fn ($state) => match ($state) {
                         'ai_matched', 'manually_confirmed' => 'success',
-                        'ai_mismatch', 'ai_unclear'         => 'danger',
-                        'pending'                           => 'warning',
-                        default                             => 'gray',
+                        'ai_mismatch', 'ai_unclear' => 'danger',
+                        'pending' => 'warning',
+                        default => 'gray',
                     }),
                 TextEntry::make('payment_verified_amount')
                     ->label('AI-Read Amount')
@@ -359,16 +364,16 @@ class OrderResource extends Resource
                 Tables\Columns\TextColumn::make('channel')
                     ->badge()
                     ->color(fn ($state) => match ($state) {
-                        'website'  => 'gray',
+                        'website' => 'gray',
                         'whatsapp' => 'success',
-                        'manual'   => 'info',
-                        default    => 'gray',
+                        'manual' => 'info',
+                        default => 'gray',
                     })
                     ->formatStateUsing(fn ($state) => match ($state) {
-                        'website'  => 'Website',
+                        'website' => 'Website',
                         'whatsapp' => 'WhatsApp',
-                        'manual'   => 'Manual',
-                        default    => $state,
+                        'manual' => 'Manual',
+                        default => $state,
                     }),
 
                 Tables\Columns\TextColumn::make('customer_name')
@@ -403,33 +408,33 @@ class OrderResource extends Resource
                 Tables\Columns\TextColumn::make('status')
                     ->badge()
                     ->color(fn ($state) => match ($state) {
-                        'pending'    => 'warning',
-                        'confirmed'  => 'info',
-                        'preparing'  => 'primary',
+                        'pending' => 'warning',
+                        'confirmed' => 'info',
+                        'preparing' => 'primary',
                         'delivering' => 'success',
-                        'delivered'  => 'success',
-                        'cancelled'  => 'danger',
-                        default      => 'gray',
+                        'delivered' => 'success',
+                        'cancelled' => 'danger',
+                        default => 'gray',
                     }),
 
                 Tables\Columns\TextColumn::make('payment_method')
                     ->label('Payment')
                     ->formatStateUsing(fn ($state) => match ($state) {
-                        'cod'           => 'COD',
-                        'upi'           => 'UPI',
+                        'cod' => 'COD',
+                        'upi' => 'UPI',
                         'bank_transfer' => 'Bank Transfer',
-                        'whatsapp'      => 'WhatsApp',
-                        default         => $state,
+                        'whatsapp' => 'WhatsApp',
+                        default => $state,
                     })
                     ->toggleable(),
 
                 Tables\Columns\TextColumn::make('payment_status')
                     ->badge()
                     ->color(fn ($state) => match ($state) {
-                        'paid'     => 'success',
-                        'unpaid'   => 'warning',
+                        'paid' => 'success',
+                        'unpaid' => 'warning',
                         'refunded' => 'danger',
-                        default    => 'gray',
+                        default => 'gray',
                     }),
 
                 Tables\Columns\TextColumn::make('payment_verification_status')
@@ -437,18 +442,18 @@ class OrderResource extends Resource
                     ->badge()
                     ->placeholder('—')
                     ->formatStateUsing(fn ($state) => match ($state) {
-                        'ai_matched'         => 'AI Matched',
-                        'ai_mismatch'        => 'Mismatch',
-                        'ai_unclear'         => 'Unclear',
+                        'ai_matched' => 'AI Matched',
+                        'ai_mismatch' => 'Mismatch',
+                        'ai_unclear' => 'Unclear',
                         'manually_confirmed' => 'Confirmed',
-                        'pending'            => 'Verifying',
-                        default              => $state,
+                        'pending' => 'Verifying',
+                        default => $state,
                     })
                     ->color(fn ($state) => match ($state) {
                         'ai_matched', 'manually_confirmed' => 'success',
-                        'ai_mismatch', 'ai_unclear'         => 'danger',
-                        'pending'                           => 'warning',
-                        default                             => 'gray',
+                        'ai_mismatch', 'ai_unclear' => 'danger',
+                        'pending' => 'warning',
+                        default => 'gray',
                     })
                     ->toggleable(),
 
@@ -464,32 +469,32 @@ class OrderResource extends Resource
 
                 Tables\Filters\SelectFilter::make('channel')
                     ->options([
-                        'website'  => 'Website',
+                        'website' => 'Website',
                         'whatsapp' => 'WhatsApp',
-                        'manual'   => 'Manual',
+                        'manual' => 'Manual',
                     ]),
                 Tables\Filters\SelectFilter::make('status')
                     ->options([
-                        'pending'    => 'Pending',
-                        'confirmed'  => 'Confirmed',
-                        'preparing'  => 'Preparing',
+                        'pending' => 'Pending',
+                        'confirmed' => 'Confirmed',
+                        'preparing' => 'Preparing',
                         'delivering' => 'Delivering',
-                        'delivered'  => 'Delivered',
-                        'cancelled'  => 'Cancelled',
+                        'delivered' => 'Delivered',
+                        'cancelled' => 'Cancelled',
                     ]),
                 Tables\Filters\SelectFilter::make('payment_status')
                     ->options([
-                        'unpaid'   => 'Unpaid',
-                        'paid'     => 'Paid',
+                        'unpaid' => 'Unpaid',
+                        'paid' => 'Paid',
                         'refunded' => 'Refunded',
                     ]),
                 Tables\Filters\SelectFilter::make('payment_method')
                     ->label('Payment Method')
                     ->options([
-                        'cod'           => 'Cash on Delivery',
-                        'upi'           => 'UPI Payment',
+                        'cod' => 'Cash on Delivery',
+                        'upi' => 'UPI Payment',
                         'bank_transfer' => 'Bank Transfer',
-                        'whatsapp'      => 'WhatsApp Order',
+                        'whatsapp' => 'WhatsApp Order',
                     ]),
                 Tables\Filters\Filter::make('today')
                     ->label('Today\'s Orders')
@@ -546,7 +551,7 @@ class OrderResource extends Resource
                     ->label('')
                     ->icon('heroicon-o-x-circle')
                     ->color('danger')
-                    ->visible(fn (Order $r) => !in_array($r->status, ['delivered', 'cancelled']))
+                    ->visible(fn (Order $r) => ! in_array($r->status, ['delivered', 'cancelled']))
                     ->requiresConfirmation()
                     ->modalHeading('Cancel Order')
                     ->modalDescription('Are you sure you want to cancel this order?')
@@ -567,10 +572,10 @@ class OrderResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index'  => Pages\ListOrders::route('/'),
+            'index' => Pages\ListOrders::route('/'),
             'create' => Pages\CreateOrder::route('/create'),
-            'view'   => Pages\ViewOrder::route('/{record}'),
-            'edit'   => Pages\EditOrder::route('/{record}/edit'),
+            'view' => Pages\ViewOrder::route('/{record}'),
+            'edit' => Pages\EditOrder::route('/{record}/edit'),
         ];
     }
 
@@ -627,6 +632,10 @@ class OrderResource extends Resource
                 }
 
                 Order::withoutEvents(fn () => $r->update($updates));
+                // This action intentionally suppresses model events so it can
+                // send one tailored WhatsApp update below. Queue the external
+                // webhook explicitly so order.updated is never skipped.
+                SendOrderWebhookJob::dispatch($r->id, 'order.updated')->afterCommit();
                 $queued = app(OrderNotificationService::class)->sendStatusUpdate($r);
 
                 $body = ($next['trackingForm'] ?? false)
@@ -661,7 +670,7 @@ class OrderResource extends Resource
                     } elseif ($parsed['tracking_url']) {
                         $set('tracking_url', $parsed['tracking_url']);
                     }
-                } catch (\Illuminate\Validation\ValidationException $exception) {
+                } catch (ValidationException $exception) {
                     Notification::make()
                         ->title('Tracking QR could not be used')
                         ->body(collect($exception->errors())->flatten()->first())
@@ -679,8 +688,8 @@ class OrderResource extends Resource
         if (($next['key'] ?? null) === 'markPaid') {
             $upi = BotSetting::current();
 
-            return "Order total: \u{20B9}{$r->total}. Customer reference: " . ($r->payment_reference ?: '—')
-                . '. Check against your UPI/GPay (' . ($upi->upi_id ?: 'not set') . ') before confirming.';
+            return "Order total: \u{20B9}{$r->total}. Customer reference: ".($r->payment_reference ?: '—')
+                .'. Check against your UPI/GPay ('.($upi->upi_id ?: 'not set').') before confirming.';
         }
 
         return "Order {$r->order_number} for {$r->customer_name}.";

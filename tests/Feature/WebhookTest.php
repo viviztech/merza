@@ -7,6 +7,8 @@ use App\Jobs\SendWebhookJob;
 use App\Models\Contact;
 use App\Models\User;
 use App\Models\Webhook;
+use App\Models\WebhookDelivery;
+use App\Services\WebhookDeliveryService;
 use App\Services\WebhookDispatcher;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Request as ClientRequest;
@@ -67,7 +69,7 @@ class WebhookTest extends TestCase
         $data = ['cart' => ['item_count' => 1, 'subtotal' => 299]];
 
         (new SendWebhookJob($webhook->id, 'cart.added', $data))
-            ->handle(app(\App\Services\WebhookDeliveryService::class));
+            ->handle(app(WebhookDeliveryService::class));
 
         Http::assertSent(function (ClientRequest $request) use ($data): bool {
             $body = $request->body();
@@ -77,7 +79,9 @@ class WebhookTest extends TestCase
             return $request->url() === 'https://platform.example.com/hooks/cart'
                 && ($request->header('X-Merza-Event')[0] ?? null) === 'cart.added'
                 && ($request->header('X-Merza-Signature')[0] ?? null) === 'sha256='
-                    . hash_hmac('sha256', $timestamp . '.' . $body, 'cart-webhook-secret')
+                    .hash_hmac('sha256', $timestamp.'.'.$body, 'cart-webhook-secret')
+                && str_starts_with($payload['event_id'] ?? '', 'evt_')
+                && ($request->header('X-Merza-Event-ID')[0] ?? null) === ($payload['event_id'] ?? null)
                 && ($payload['data'] ?? null) === $data;
         });
 
@@ -90,6 +94,66 @@ class WebhookTest extends TestCase
 
         $this->assertSame('cart-webhook-secret', $webhook->fresh()->secret);
         $this->assertNotSame('cart-webhook-secret', $webhook->fresh()->getRawOriginal('secret'));
+    }
+
+    public function test_same_event_id_is_delivered_once_and_the_exact_body_is_logged(): void
+    {
+        Http::fake([
+            'https://platform.example.com/hooks/idempotent' => Http::response(['accepted' => true], 202),
+        ]);
+
+        $webhook = Webhook::create([
+            'name' => 'Idempotent destination',
+            'status' => 'active',
+            'topic' => 'cart.added',
+            'delivery_url' => 'https://platform.example.com/hooks/idempotent',
+            'secret' => 'idempotent-webhook-secret',
+        ]);
+        $eventId = 'evt_3a37eaa0-3f20-4ad9-9aec-bdc0f4b12924';
+        $job = new SendWebhookJob($webhook->id, 'cart.added', ['cart' => ['item_count' => 1]], $eventId, '2026-10-17T10:00:00+05:30');
+
+        $job->handle(app(WebhookDeliveryService::class));
+        $job->handle(app(WebhookDeliveryService::class));
+
+        Http::assertSentCount(1);
+
+        $delivery = WebhookDelivery::where('webhook_id', $webhook->id)->where('event_id', $eventId)->firstOrFail();
+        $this->assertSame('success', $delivery->status);
+        $this->assertSame(1, $delivery->attempts);
+        $this->assertSame(hash('sha256', $delivery->request_body), $delivery->payload_hash);
+        $this->assertSame('{"accepted":true}', $delivery->response_body);
+    }
+
+    public function test_failed_delivery_records_receiver_response_for_queue_retry(): void
+    {
+        Http::fake([
+            'https://platform.example.com/hooks/failing' => Http::response('Try again', 503),
+        ]);
+
+        $webhook = Webhook::create([
+            'name' => 'Failing destination',
+            'status' => 'active',
+            'topic' => 'customer.updated',
+            'delivery_url' => 'https://platform.example.com/hooks/failing',
+            'secret' => 'retry-webhook-secret',
+        ]);
+        $eventId = 'evt_611cb4c2-1326-4ed2-acfe-a8eb0e9c6dd3';
+
+        try {
+            (new SendWebhookJob($webhook->id, 'customer.updated', ['customer' => ['id' => 1]], $eventId))
+                ->handle(app(WebhookDeliveryService::class));
+            $this->fail('A non-2xx webhook response must be retried by the queue.');
+        } catch (\RuntimeException) {
+            // Expected: the queue will make the next attempt according to backoff.
+        }
+
+        $this->assertDatabaseHas('webhook_deliveries', [
+            'webhook_id' => $webhook->id,
+            'event_id' => $eventId,
+            'status' => 'retrying',
+            'response_status' => 503,
+            'response_body' => 'Try again',
+        ]);
     }
 
     public function test_dispatcher_queues_only_active_webhooks_for_a_topic(): void
@@ -114,8 +178,7 @@ class WebhookTest extends TestCase
 
         app(WebhookDispatcher::class)->dispatch('checkout.started', ['cart' => []]);
 
-        Queue::assertPushed(SendWebhookJob::class, fn (SendWebhookJob $job): bool =>
-            $job->webhookId === $active->id
+        Queue::assertPushed(SendWebhookJob::class, fn (SendWebhookJob $job): bool => $job->webhookId === $active->id
             && $job->topic === 'checkout.started'
         );
         Queue::assertPushed(SendWebhookJob::class, 1);
@@ -140,8 +203,7 @@ class WebhookTest extends TestCase
             'source' => 'website',
         ]);
 
-        Queue::assertPushed(SendWebhookJob::class, fn (SendWebhookJob $job): bool =>
-            $job->webhookId === $webhook->id
+        Queue::assertPushed(SendWebhookJob::class, fn (SendWebhookJob $job): bool => $job->webhookId === $webhook->id
             && $job->topic === 'customer.created'
             && ($job->data['customer']['email'] ?? null) === 'customer@example.com'
         );

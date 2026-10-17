@@ -4,7 +4,7 @@
             <p class="text-sm font-bold uppercase tracking-widest text-amber-700">For businesses</p>
             <h1 class="mt-2 text-4xl font-extrabold text-emerald-950">Wholesale & Bulk Enquiries</h1>
             <p class="mt-5 text-stone-600 leading-relaxed">Tell us which products and quantities you need. We will confirm availability, pricing, packing and delivery terms for your order before you commit.</p>
-            <a href="https://wa.me/918667696278?text=Hi%2C+I%27m+interested+in+wholesale+pricing+from+Merza." target="_blank" rel="noopener noreferrer" class="mt-6 inline-block rounded-xl bg-emerald-700 px-6 py-3 font-bold text-white hover:bg-emerald-800">Ask for a quote on WhatsApp</a>
+            <a href="https://wa.me/917418673398?text=Hi%2C+I%27m+interested+in+wholesale+pricing+from+Merza." target="_blank" rel="noopener noreferrer" class="mt-6 inline-block rounded-xl bg-emerald-700 px-6 py-3 font-bold text-white hover:bg-emerald-800">Ask for a quote on WhatsApp</a>
         </header>
 
         <section class="mt-14" aria-labelledby="wholesale-products">

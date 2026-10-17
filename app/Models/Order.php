@@ -42,7 +42,7 @@ class Order extends Model
         });
 
         static::updated(function (Order $order) {
-            SendOrderWebhookJob::dispatch($order->id, 'order.updated');
+            SendOrderWebhookJob::dispatch($order->id, 'order.updated')->afterCommit();
 
             if (empty($order->customer_phone)) {
                 return;
