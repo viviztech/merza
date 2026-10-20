@@ -12,6 +12,7 @@ use App\Models\ProductVariant;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class ApiController extends Controller
 {
@@ -136,7 +137,7 @@ class ApiController extends Controller
             'delivery_address' => ['required', 'string', 'max:1000'],
             'city'             => ['nullable', 'string', 'max:100'],
             'state'            => ['nullable', 'string', 'max:100'],
-            'postcode'         => ['nullable', 'string', 'max:20'],
+            'postcode'         => ['nullable', 'string', 'max:10'],
             'landmark'         => ['nullable', 'string', 'max:255'],
             'notes'            => ['nullable', 'string', 'max:2000'],
             'payment_method'   => ['nullable', 'string', 'in:cod,upi,bank_transfer,whatsapp'],
@@ -144,6 +145,7 @@ class ApiController extends Controller
             'delivery_fee'     => ['nullable', 'numeric', 'min:0'],
             'packaging_fee'    => ['nullable', 'numeric', 'min:0'],
             'items'            => ['required', 'array', 'min:1'],
+            'items.*'          => ['required', 'array'],
             'items.*.product_variant_id' => ['nullable', 'integer', 'exists:product_variants,id'],
             'items.*.sku'                => ['nullable', 'string', 'max:100'],
             'items.*.quantity'           => ['required', 'integer', 'min:1'],
@@ -153,6 +155,53 @@ class ApiController extends Controller
         ]);
 
         $order = DB::transaction(function () use ($validated) {
+            $variantIds = collect($validated['items'])->pluck('product_variant_id')->filter(fn ($id) => $id !== null)->all();
+            $skus = collect($validated['items'])->pluck('sku')->filter(fn ($sku) => $sku !== null)->all();
+            $variants = ProductVariant::with('product')
+                ->whereIn('id', $variantIds)
+                ->orWhereIn('sku', $skus)
+                ->get();
+
+            $resolvedVariants = [];
+            $errors = [];
+
+            foreach ($validated['items'] as $index => $itemData) {
+                $variantById = isset($itemData['product_variant_id'])
+                    ? $variants->firstWhere('id', (int) $itemData['product_variant_id'])
+                    : null;
+                $variantBySku = isset($itemData['sku'])
+                    ? $variants->first(fn (ProductVariant $variant): bool => $variant->sku === $itemData['sku'])
+                    : null;
+
+                if (isset($itemData['product_variant_id']) && ! $variantById) {
+                    $errors["items.{$index}.product_variant_id"] = 'The selected product variant is invalid.';
+                }
+
+                if (isset($itemData['sku']) && ! $variantBySku) {
+                    $errors["items.{$index}.sku"] = 'The selected SKU is invalid.';
+                }
+
+                if ($variantById && $variantBySku && $variantById->id !== $variantBySku->id) {
+                    $errors["items.{$index}.sku"] = 'The SKU must match the selected product variant.';
+                }
+
+                if (! isset($itemData['product_variant_id']) && ! isset($itemData['sku'])) {
+                    if (blank($itemData['product_name'] ?? null)) {
+                        $errors["items.{$index}.product_name"] = 'A product name is required for a custom item.';
+                    }
+
+                    if (! isset($itemData['unit_price'])) {
+                        $errors["items.{$index}.unit_price"] = 'A unit price is required for a custom item.';
+                    }
+                }
+
+                $resolvedVariants[$index] = $variantById ?? $variantBySku;
+            }
+
+            if ($errors !== []) {
+                throw ValidationException::withMessages($errors);
+            }
+
             $customerData = [
                 'customer_name'    => $validated['customer_name'],
                 'customer_phone'   => $validated['customer_phone'],
@@ -178,27 +227,8 @@ class ApiController extends Controller
 
             $order = Order::create(array_merge($customerData, $orderData));
 
-            $variantIds = collect($validated['items'])->pluck('product_variant_id')->filter()->all();
-            $skus = collect($validated['items'])->pluck('sku')->filter()->all();
-
-            $variants = ProductVariant::with('product')
-                ->where(function ($query) use ($variantIds, $skus) {
-                    if (! empty($variantIds)) {
-                        $query->whereIn('id', $variantIds);
-                    }
-                    if (! empty($skus)) {
-                        $query->orWhereIn('sku', $skus);
-                    }
-                })
-                ->get();
-
-            foreach ($validated['items'] as $itemData) {
-                $variant = null;
-                if (! empty($itemData['product_variant_id'])) {
-                    $variant = $variants->firstWhere('id', (int) $itemData['product_variant_id']);
-                } elseif (! empty($itemData['sku'])) {
-                    $variant = $variants->firstWhere('sku', $itemData['sku']);
-                }
+            foreach ($validated['items'] as $index => $itemData) {
+                $variant = $resolvedVariants[$index];
 
                 $qty = max(1, (int) $itemData['quantity']);
                 $unitPrice = isset($itemData['unit_price'])
@@ -219,6 +249,8 @@ class ApiController extends Controller
                     'variant_name'        => $variantName,
                     'free_gift_label'     => $variant?->free_gift_label,
                     'free_gift_weight_kg' => $variant?->free_gift_weight_kg,
+                    'is_preorder'         => $variant?->product?->is_preorder ?? false,
+                    'available_from'      => $variant?->product?->available_from,
                     'sku'                 => $sku,
                     'quantity'            => $qty,
                     'unit_price'          => $unitPrice,
@@ -257,11 +289,11 @@ class ApiController extends Controller
         }
 
         $validated = $request->validate([
-            'status'            => ['nullable', 'string', 'in:pending,confirmed,preparing,delivering,delivered,cancelled'],
-            'payment_status'    => ['nullable', 'string', 'in:unpaid,paid,refunded'],
+            'status'            => ['sometimes', 'required', 'string', 'in:pending,confirmed,preparing,delivering,delivered,cancelled'],
+            'payment_status'    => ['sometimes', 'required', 'string', 'in:unpaid,paid,refunded'],
             'payment_reference' => ['nullable', 'string', 'max:255'],
             'tracking_number'   => ['nullable', 'string', 'max:255'],
-            'courier_name'      => ['nullable', 'string', 'max:255'],
+            'courier_name'      => ['nullable', 'string', 'max:80'],
             'tracking_url'      => ['nullable', 'string', 'max:500'],
             'notes'             => ['nullable', 'string', 'max:2000'],
             'admin_notes'       => ['nullable', 'string', 'max:2000'],

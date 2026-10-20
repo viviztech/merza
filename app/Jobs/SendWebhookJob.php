@@ -4,6 +4,7 @@ namespace App\Jobs;
 
 use App\Models\Webhook;
 use App\Services\WebhookDeliveryService;
+use Carbon\CarbonImmutable;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -43,11 +44,15 @@ class SendWebhookJob implements ShouldBeUnique, ShouldQueue
 
     public function uniqueId(): string
     {
+        $this->initializeEventMetadata();
+
         return $this->webhookId.':'.$this->eventId;
     }
 
     public function handle(WebhookDeliveryService $deliveryService): void
     {
+        $this->initializeEventMetadata();
+
         $webhook = Webhook::query()->find($this->webhookId);
 
         if (! $webhook || ! $webhook->isActive()) {
@@ -67,6 +72,28 @@ class SendWebhookJob implements ShouldBeUnique, ShouldQueue
 
     public function failed(\Throwable $exception): void
     {
+        $this->initializeEventMetadata();
+
         app(WebhookDeliveryService::class)->markFailed($this->webhookId, $this->eventId, $exception);
+    }
+
+    private function initializeEventMetadata(): void
+    {
+        // Jobs queued before event metadata was added are restored without
+        // running the constructor. The queue envelope survives every retry.
+        $payload = $this->job?->payload() ?? [];
+
+        if (! isset($this->eventId)) {
+            $identity = $payload['uuid'] ?? substr(hash('sha256', serialize([
+                $this->webhookId, $this->topic, $this->data,
+            ])), 0, 40);
+            $this->eventId = 'evt_'.$identity;
+        }
+
+        if (! isset($this->occurredAt)) {
+            $this->occurredAt = CarbonImmutable::createFromTimestampUTC(
+                $payload['createdAt'] ?? now()->timestamp,
+            )->toIso8601String();
+        }
     }
 }

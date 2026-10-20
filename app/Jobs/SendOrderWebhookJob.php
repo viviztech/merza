@@ -8,6 +8,7 @@ use App\Models\Webhook;
 use App\Services\WebhookDeliveryService;
 use App\Services\WebhookDispatcher;
 use App\Services\WebhookPayloadFactory;
+use Carbon\CarbonImmutable;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -44,6 +45,8 @@ class SendOrderWebhookJob implements ShouldQueue
         ?WebhookPayloadFactory $payloadFactory = null,
         ?WebhookDeliveryService $deliveryService = null,
     ): void {
+        $this->initializeEventMetadata();
+
         $dispatcher ??= app(WebhookDispatcher::class);
         $payloadFactory ??= app(WebhookPayloadFactory::class);
         $deliveryService ??= app(WebhookDeliveryService::class);
@@ -84,5 +87,25 @@ class SendOrderWebhookJob implements ShouldQueue
             $this->eventId,
             $this->occurredAt,
         );
+    }
+
+    private function initializeEventMetadata(): void
+    {
+        // Use the original queue envelope for jobs produced by the previous
+        // release, rather than assigning a different event ID on each retry.
+        $payload = $this->job?->payload() ?? [];
+
+        if (! isset($this->eventId)) {
+            $identity = $payload['uuid'] ?? substr(hash('sha256', serialize([
+                $this->orderId, $this->event,
+            ])), 0, 40);
+            $this->eventId = 'evt_'.$identity;
+        }
+
+        if (! isset($this->occurredAt)) {
+            $this->occurredAt = CarbonImmutable::createFromTimestampUTC(
+                $payload['createdAt'] ?? now()->timestamp,
+            )->toIso8601String();
+        }
     }
 }
