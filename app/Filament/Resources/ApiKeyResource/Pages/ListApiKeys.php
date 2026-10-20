@@ -51,11 +51,8 @@ class ListApiKeys extends ListRecords
 
                     Forms\Components\CheckboxList::make('abilities')
                         ->label('Permissions')
-                        ->options([
-                            'catalog:read' => 'Read product catalog and categories',
-                            '*' => 'All current and future API access',
-                        ])
-                        ->default(['catalog:read'])
+                        ->options(ApiKey::availableAbilities())
+                        ->default(['orders:read', 'orders:write'])
                         ->required()
                         ->columns(1)
                         ->visible(fn (): bool => blank($this->generatedSecret)),
@@ -83,7 +80,7 @@ class ListApiKeys extends ListRecords
                     'name' => $data['name'],
                     'key_prefix' => ApiKey::prefixFor($secret),
                     'key_hash' => ApiKey::hashSecret($secret),
-                    'abilities' => $data['abilities'] ?? ['catalog:read'],
+                    'abilities' => !empty($data['abilities']) ? $data['abilities'] : ['orders:read', 'orders:write'],
                     'expires_at' => $data['expires_at'] ?? null,
                 ]);
 

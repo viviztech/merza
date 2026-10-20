@@ -70,7 +70,7 @@ class AdminOrderService
         }
 
         $order->recalculateTotals();
-        SendOrderWebhookJob::dispatch($order->id, 'order.created');
+        SendOrderWebhookJob::dispatch($order->id, 'order.created')->afterCommit();
 
         if ($contact) {
             $contact->update(['is_customer' => true]);

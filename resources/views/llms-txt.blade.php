@@ -7,7 +7,7 @@
 - Name: Merza Natural Squash
 - Address: HP Petrol Bunk, Pankajam School Opposite, Thevaram Road, Bodinayakanur, Tamil Nadu 625513, India
 - Hours: Monday–Saturday, 9:00 AM–6:00 PM IST
-- Contact: +91 86676 96278; merzabodinayakanur@gmail.com
+- Contact: +91 74186 73398; merzabodinayakanur@gmail.com
 @if(filled(config('storefront.operator_name')))
 - Operator: {{ config('storefront.operator_name') }}
 @endif

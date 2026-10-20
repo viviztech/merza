@@ -86,7 +86,7 @@
                     Download Invoice
                 </a>
                 @endunless
-                <a href="https://wa.me/918667696278?text=Hi%2C+my+order+number+is+{{ $orderNumber }}.+Can+you+confirm+delivery+details?"
+                <a href="https://wa.me/917418673398?text=Hi%2C+my+order+number+is+{{ $orderNumber }}.+Can+you+confirm+delivery+details?"
                    target="_blank"
                    class="inline-flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold px-6 py-4 rounded-2xl transition-all shadow-lg">
                     <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
@@ -168,7 +168,7 @@
 
                             <div>
                                 <label for="checkout-mobile" class="block text-xs font-extrabold text-stone-600 mb-1.5 uppercase tracking-wide">Mobile Number *</label>
-                                <input id="checkout-mobile" wire:model.live.debounce.600ms="customer_phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="86676 96278"
+                                <input id="checkout-mobile" wire:model.live.debounce.600ms="customer_phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="74186 73398"
                                        class="w-full border-2 {{ $errors->has('customer_phone') ? 'border-red-300 bg-red-50' : 'border-stone-200 focus:border-amber-400' }} rounded-xl px-4 py-3 text-base focus:outline-none transition-colors bg-white placeholder-stone-300">
                                 @error('customer_phone') <p class="text-red-500 text-xs mt-1 font-medium">{{ $message }}</p> @enderror
                                 <p class="text-[11px] text-stone-400 mt-1.5">Used to find saved addresses and contact you about delivery when needed.</p>
@@ -480,9 +480,9 @@
                                             <p class="text-xs text-stone-500 mb-1.5">Send payment to our UPI number:</p>
                                             <div x-data="{ copied: false }" class="flex items-center gap-2 flex-wrap">
                                                 <button type="button"
-                                                        @click="navigator.clipboard.writeText('8667696278'); copied = true; setTimeout(() => copied = false, 2000)"
+                                                        @click="navigator.clipboard.writeText('7418673398'); copied = true; setTimeout(() => copied = false, 2000)"
                                                         class="group inline-flex items-center gap-2 font-mono font-bold text-lg text-stone-800 bg-stone-50 rounded-xl px-4 py-2.5 border-2 border-amber-200 hover:border-amber-400 transition-colors">
-                                                    <span>86676 96278</span>
+                                                    <span>74186 73398</span>
                                                     <svg x-show="!copied" class="w-4 h-4 text-stone-400 group-hover:text-amber-600 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
                                                     </svg>

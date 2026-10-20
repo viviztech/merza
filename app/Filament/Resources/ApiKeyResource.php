@@ -47,11 +47,8 @@ class ApiKeyResource extends Resource
 
                     Forms\Components\CheckboxList::make('abilities')
                         ->label('Permissions')
-                        ->options([
-                            'catalog:read' => 'Read product catalog and categories',
-                            '*' => 'All current and future API access',
-                        ])
-                        ->default(['catalog:read'])
+                        ->options(ApiKey::availableAbilities())
+                        ->default(['orders:read', 'orders:write'])
                         ->required()
                         ->columns(1)
                         ->helperText('Use the smallest permission set required by the other platform.')

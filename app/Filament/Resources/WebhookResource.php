@@ -3,6 +3,7 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\WebhookResource\Pages;
+use App\Filament\Resources\WebhookResource\RelationManagers\DeliveriesRelationManager;
 use App\Models\Webhook;
 use Filament\Actions;
 use Filament\Forms;
@@ -90,11 +91,11 @@ class WebhookResource extends Resource
                 ])->columns(2),
 
             SchemaSection::make('Request format')
-                ->description('Requests are POST JSON. Headers include X-Merza-Event, X-Merza-Timestamp, X-Merza-API-Version, and X-Merza-Signature. The signature is sha256=HMAC-SHA256(secret, timestamp + "." + exact request body).')
+                ->description('Requests are POST JSON. Headers include X-Merza-Event, X-Merza-Event-ID, X-Merza-Timestamp, X-Merza-API-Version, and X-Merza-Signature. The signature is sha256=HMAC-SHA256(secret, timestamp + "." + exact request body). Receivers should deduplicate using the event ID.')
                 ->schema([
                     Forms\Components\Placeholder::make('payload_format')
                         ->label('Payload')
-                        ->content('{ "event": "cart.added", "created_at": "2026-10-12T10:00:00+05:30", "data": { ... } }')
+                        ->content('{ "event_id": "evt_...", "event": "cart.added", "timestamp": "2026-10-12T10:00:00+05:30", "data": { ... } }')
                         ->columnSpanFull(),
                 ]),
         ]);
@@ -167,6 +168,13 @@ class WebhookResource extends Resource
             'index' => Pages\ListWebhooks::route('/'),
             'create' => Pages\CreateWebhook::route('/create'),
             'edit' => Pages\EditWebhook::route('/{record}/edit'),
+        ];
+    }
+
+    public static function getRelations(): array
+    {
+        return [
+            DeliveriesRelationManager::class,
         ];
     }
 }
