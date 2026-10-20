@@ -22,8 +22,12 @@ class AuthenticateApiKey
                 'message' => 'An API key is required. Pass via Authorization: Bearer <key>, X-API-Key header, or ?api_key=<key> query parameter.',
                 'endpoints' => [
                     'GET /api/v1' => 'API Status & Key Information',
-                    'GET /api/v1/products' => 'Product Catalog & Categories',
-                    'GET /api/v1/categories' => 'Category List',
+                    'GET /api/v1/products' => 'Product Catalog & Categories (requires catalog:read)',
+                    'GET /api/v1/categories' => 'Category List (requires catalog:read)',
+                    'GET /api/v1/orders' => 'List Orders (requires orders:read)',
+                    'GET /api/v1/orders/{id}' => 'View Order (requires orders:read)',
+                    'POST /api/v1/orders' => 'Create Order (requires orders:write)',
+                    'PATCH /api/v1/orders/{id}' => 'Update Order (requires orders:write)',
                 ],
             ], 401);
         }

@@ -7,6 +7,21 @@ use Illuminate\Database\Eloquent\Model;
 
 class ApiKey extends Model
 {
+    public const ABILITY_ALL = '*';
+    public const ABILITY_CATALOG_READ = 'catalog:read';
+    public const ABILITY_ORDERS_READ = 'orders:read';
+    public const ABILITY_ORDERS_WRITE = 'orders:write';
+
+    public static function availableAbilities(): array
+    {
+        return [
+            self::ABILITY_CATALOG_READ => 'Read product catalog and categories',
+            self::ABILITY_ORDERS_READ  => 'Read orders (read permission)',
+            self::ABILITY_ORDERS_WRITE => 'Write orders (create & update permission)',
+            self::ABILITY_ALL          => 'All current and future API access',
+        ];
+    }
+
     protected $fillable = [
         'created_by',
         'name',
