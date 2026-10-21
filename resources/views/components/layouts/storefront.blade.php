@@ -69,6 +69,13 @@
     ];
 
     $integrations = \App\Models\IntegrationSetting::current();
+    // Prefer deployment configuration for the shared Dataset/Pixel ID. The
+    // database value remains a backwards-compatible fallback for existing
+    // installations until META_DATASET_ID is added to their environment.
+    $metaPixelId = (string) (config('services.meta.dataset_id') ?: $integrations->meta_pixel_id);
+    $metaTrackingEnabled = config('services.meta.tracking_enabled') && ctype_digit($metaPixelId);
+    $metaRequireConsent = (bool) config('services.meta.require_consent');
+    $metaBrowserEvents = session()->pull('meta_browser_events', []);
 @endphp
 <!DOCTYPE html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}" class="scroll-smooth">
@@ -110,24 +117,53 @@
         {{-- End Google Tag Manager --}}
     @endif
 
-    @if($integrations->meta_pixel_id)
-        {{-- Meta Pixel Code --}}
+    @if($metaTrackingEnabled)
+        {{-- Meta Pixel: loaded only after the visitor's marketing consent. --}}
         <script>
-        !function(f,b,e,v,n,t,s)
-        {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
-        n.callMethod.apply(n,arguments):n.queue.push(arguments)};
-        if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
-        n.queue=[];t=b.createElement(e);t.async=!0;
-        t.src=v;s=b.getElementsByTagName(e)[0];
-        s.parentNode.insertBefore(t,s)}(window, document,'script',
-        'https://connect.facebook.net/en_US/fbevents.js');
-        fbq('init', '{{ $integrations->meta_pixel_id }}');
-        fbq('track', 'PageView');
+            window.merzaMeta = (() => {
+                const pixelId = @json($metaPixelId);
+                const requiresConsent = @json($metaRequireConsent);
+                let loaded = false;
+
+                const consent = () => document.cookie.split('; ').some((entry) => entry === 'merza_meta_consent=granted');
+                const allowed = () => !requiresConsent || consent();
+
+                const load = () => {
+                    if (!allowed() || loaded || typeof window.fbq === 'function') return;
+                    !function(f,b,e,v,n,t,s)
+                    {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+                    n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+                    if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+                    n.queue=[];t=b.createElement(e);t.async=!0;
+                    t.src=v;s=b.getElementsByTagName(e)[0];
+                    s.parentNode.insertBefore(t,s)}(window, document,'script',
+                    'https://connect.facebook.net/en_US/fbevents.js');
+                    window.fbq('init', pixelId);
+                    window.fbq('track', 'PageView');
+                    loaded = true;
+                };
+
+                const track = (payload) => {
+                    if (!payload || !payload.eventName || !allowed()) return;
+                    load();
+                    if (typeof window.fbq !== 'function') return;
+                    window.fbq('track', payload.eventName, payload.customData || {}, {
+                        eventID: payload.eventId,
+                    });
+                };
+
+                return { allowed, load, track };
+            })();
+
+            window.merzaTrackMetaEvent = window.merzaMeta.track;
+            window.merzaMeta.load();
+
+            document.addEventListener('livewire:init', () => {
+                Livewire.on('meta-event', (payload) => {
+                    window.merzaTrackMetaEvent(Array.isArray(payload) ? payload[0] : payload);
+                });
+            });
         </script>
-        <noscript><img height="1" width="1" style="display:none"
-        src="https://www.facebook.com/tr?id={{ $integrations->meta_pixel_id }}&ev=PageView&noscript=1"
-        /></noscript>
-        {{-- End Meta Pixel Code --}}
     @endif
 
     <meta charset="utf-8">
@@ -215,6 +251,20 @@
 </head>
 <style>[x-cloak]{display:none!important}</style>
 <body class="bg-white font-sans antialiased text-stone-900">
+    @if($metaTrackingEnabled && $metaRequireConsent)
+        <section id="merza-meta-consent" hidden class="fixed inset-x-0 bottom-0 z-[100] border-t border-stone-200 bg-white p-4 shadow-2xl" aria-label="Privacy choices">
+            <div class="mx-auto flex max-w-5xl flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <p class="max-w-3xl text-sm leading-6 text-stone-600">
+                    With your permission, Merza uses Meta advertising measurement to understand visits and purchases. See our
+                    <a href="{{ route('privacy') }}" class="font-semibold text-amber-700 underline">Privacy Policy</a>.
+                </p>
+                <div class="flex shrink-0 gap-2">
+                    <button type="button" data-meta-consent="denied" class="rounded-xl border border-stone-300 px-4 py-2 text-sm font-bold text-stone-700">Decline</button>
+                    <button type="button" data-meta-consent="granted" class="rounded-xl bg-emerald-700 px-4 py-2 text-sm font-bold text-white">Allow</button>
+                </div>
+            </div>
+        </section>
+    @endif
     @if($integrations->gtm_container_id)
         {{-- Google Tag Manager (noscript) --}}
         <noscript><iframe src="https://www.googletagmanager.com/ns.html?id={{ $integrations->gtm_container_id }}"
@@ -549,6 +599,9 @@
                         <li><a href="{{ route('wholesale') }}" class="text-emerald-300 hover:text-amber-400 transition-colors">B2B Wholesale</a></li>
                         <li><a href="{{ route('careers') }}" class="text-emerald-300 hover:text-amber-400 transition-colors">Careers</a></li>
                         <li><a href="{{ route('privacy') }}" class="text-emerald-300 hover:text-amber-400 transition-colors">Privacy Policy</a></li>
+                        @if($metaTrackingEnabled && $metaRequireConsent)
+                            <li><button type="button" data-meta-open-consent class="text-emerald-300 hover:text-amber-400 transition-colors">Privacy Choices</button></li>
+                        @endif
                         <li><a href="{{ route('terms') }}" class="text-emerald-300 hover:text-amber-400 transition-colors">Terms &amp; Conditions</a></li>
                     </ul>
                 </div>
@@ -591,36 +644,39 @@
     </a>
     @endunless
 
-    @if($integrations->meta_pixel_id)
+    @if($metaTrackingEnabled && $metaRequireConsent)
         <script>
-            window.merzaTrackMetaPurchase = function (payload) {
-                if (!payload || typeof window.fbq !== 'function') return;
+            (() => {
+                const panel = document.getElementById('merza-meta-consent');
+                if (!panel) return;
 
-                const storageKey = `merza-meta-purchase-${payload.orderId}`;
+                const show = () => { panel.hidden = false; };
+                const hide = () => { panel.hidden = true; };
+                const setConsent = (value) => {
+                    const secure = window.location.protocol === 'https:' ? '; Secure' : '';
+                    document.cookie = `merza_meta_consent=${value}; Path=/; Max-Age=15552000; SameSite=Lax${secure}`;
+                    hide();
+                    if (value === 'granted') window.merzaMeta.load();
+                };
 
-                try {
-                    if (sessionStorage.getItem(storageKey)) return;
-                    sessionStorage.setItem(storageKey, '1');
-                } catch (error) {
-                    // Tracking should still work when storage is unavailable.
-                }
-
-                window.fbq('track', 'Purchase', {
-                    value: Number(payload.value || 0),
-                    currency: payload.currency || 'INR',
-                    content_ids: payload.contentIds || [],
-                    content_type: 'product',
-                    num_items: Number(payload.numItems || 0),
-                }, {
-                    eventID: `merza-order-${payload.orderId}`,
+                if (!document.cookie.split('; ').some((entry) => entry.startsWith('merza_meta_consent='))) show();
+                document.querySelectorAll('[data-meta-consent]').forEach((button) => {
+                    button.addEventListener('click', () => setConsent(button.dataset.metaConsent));
                 });
-            };
-
-            document.addEventListener('livewire:init', () => {
-                Livewire.on('meta-purchase', (payload) => {
-                    window.merzaTrackMetaPurchase(Array.isArray(payload) ? payload[0] : payload);
+                document.querySelectorAll('[data-meta-open-consent]').forEach((button) => {
+                    button.addEventListener('click', show);
                 });
-            });
+            })();
+        </script>
+    @endif
+
+    @if($metaTrackingEnabled && $metaBrowserEvents)
+        <script>
+            window.addEventListener('load', () => {
+                @foreach($metaBrowserEvents as $metaBrowserEvent)
+                    window.merzaTrackMetaEvent?.(@json($metaBrowserEvent));
+                @endforeach
+            }, { once: true });
         </script>
     @endif
 

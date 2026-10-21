@@ -1,5 +1,7 @@
 <?php
 
+use App\Http\Middleware\AuthenticateApiKey;
+use App\Http\Middleware\NoindexPage;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -13,9 +15,12 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->trustProxies(at: '*');
+        // Browser-owned consent and Meta cookies must not be decrypted by
+        // Laravel; they are read only for consented CAPI matching.
+        $middleware->encryptCookies(except: ['merza_meta_consent', '_fbp', '_fbc']);
         $middleware->alias([
-            'noindex' => \App\Http\Middleware\NoindexPage::class,
-            'api.key' => \App\Http\Middleware\AuthenticateApiKey::class,
+            'noindex' => NoindexPage::class,
+            'api.key' => AuthenticateApiKey::class,
         ]);
         $middleware->validateCsrfTokens(except: [
             'webhook/*',

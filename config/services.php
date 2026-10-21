@@ -36,12 +36,25 @@ return [
     ],
 
     'meta' => [
-        'app_id'     => env('META_APP_ID'),
+        'app_id' => env('META_APP_ID'),
         'app_secret' => env('META_APP_SECRET'),
+        // The Dataset ID is also the Pixel ID used by the browser and the
+        // Conversions API endpoint. The access token is intentionally kept
+        // server-side and must never be exposed through Vite or Blade.
+        'tracking_enabled' => env('META_TRACKING_ENABLED', true),
+        'dataset_id' => env('META_DATASET_ID'),
+        'require_consent' => env('META_REQUIRE_CONSENT', true),
+        'conversions_api' => [
+            'enabled' => env('META_CONVERSIONS_API_ENABLED', true),
+            'access_token' => env('META_CONVERSIONS_API_ACCESS_TOKEN'),
+            'graph_api_version' => env('META_GRAPH_API_VERSION', 'v26.0'),
+            // Set only while using Meta Events Manager's Test Events tool.
+            'test_event_code' => env('META_TEST_EVENT_CODE'),
+        ],
     ],
 
     'whatsapp' => [
-        'otp_template'          => env('WHATSAPP_OTP_TEMPLATE_NAME', 'merza_otp'),
+        'otp_template' => env('WHATSAPP_OTP_TEMPLATE_NAME', 'merza_otp'),
         'otp_template_language' => env('WHATSAPP_OTP_TEMPLATE_LANGUAGE', 'en'),
     ],
 
@@ -50,11 +63,11 @@ return [
     ],
 
     'sabpaisa' => [
-        'api_key'        => env('SABPAISA_API_KEY'),
-        'secret_key'     => env('SABPAISA_SECRET_KEY'),
+        'api_key' => env('SABPAISA_API_KEY'),
+        'secret_key' => env('SABPAISA_SECRET_KEY'),
         'webhook_secret' => env('SABPAISA_WEBHOOK_SECRET'),
-        'merchant_id'    => env('SABPAISA_MERCHANT_ID'),
-        'base_url'       => env('SABPAISA_BASE_URL', 'https://staging-sb-merchant-api.sabpaisa.in'),
+        'merchant_id' => env('SABPAISA_MERCHANT_ID'),
+        'base_url' => env('SABPAISA_BASE_URL', 'https://staging-sb-merchant-api.sabpaisa.in'),
         'fallback_email' => env('SABPAISA_FALLBACK_EMAIL') ?: env('MAIL_FROM_ADDRESS'),
     ],
 

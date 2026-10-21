@@ -8,6 +8,7 @@ use App\Models\Category;
 use App\Models\Contact;
 use App\Models\Conversation;
 use App\Models\DeliveryZone;
+use App\Models\Order;
 use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Services\CartService;
@@ -32,31 +33,31 @@ class CheckoutWhatsAppConfirmationTest extends TestCase
 
         $product = Product::create([
             'category_id' => $category->id,
-            'name'        => 'Test Mango',
-            'slug'        => 'test-mango',
-            'base_price'  => 100,
-            'unit'        => 'kg',
-            'is_active'   => true,
+            'name' => 'Test Mango',
+            'slug' => 'test-mango',
+            'base_price' => 100,
+            'unit' => 'kg',
+            'is_active' => true,
         ]);
 
         $this->variant = ProductVariant::create([
             'product_id' => $product->id,
-            'name'       => '5 kg',
-            'sku'        => 'TM-5KG',
-            'price'      => 500,
+            'name' => '5 kg',
+            'sku' => 'TM-5KG',
+            'price' => 500,
             'weight_value' => 5,
-            'weight_unit'  => 'kg',
-            'stock_qty'    => 10,
-            'is_active'    => true,
+            'weight_unit' => 'kg',
+            'stock_qty' => 10,
+            'is_active' => true,
         ]);
 
         DeliveryZone::create([
-            'name'         => 'Tamil Nadu',
-            'match_type'   => 'state',
+            'name' => 'Tamil Nadu',
+            'match_type' => 'state',
             'match_values' => ['Tamil Nadu'],
-            'rate_per_kg'  => 20,
-            'eta_days'     => 2,
-            'is_active'    => true,
+            'rate_per_kg' => 20,
+            'eta_days' => 2,
+            'is_active' => true,
         ]);
     }
 
@@ -77,7 +78,7 @@ class CheckoutWhatsAppConfirmationTest extends TestCase
 
         $test->assertSet('orderPlaced', true);
 
-        $test->assertDispatched('meta-purchase');
+        $test->assertNotDispatched('meta-purchase');
         $test->assertDispatched('gtm-purchase');
 
         Queue::assertNotPushed(SendWhatsAppMessageJob::class);
@@ -87,13 +88,7 @@ class CheckoutWhatsAppConfirmationTest extends TestCase
 
         $this->assertFalse(Conversation::where('contact_id', $contact->id)->where('direction', 'outbound')->exists());
 
-        $order = \App\Models\Order::where('order_number', $test->get('orderNumber'))->firstOrFail();
-        $pixelPayload = session("meta_purchase_events.{$order->id}");
-        $this->assertSame($order->order_number, $pixelPayload['orderId']);
-        $this->assertSame('INR', $pixelPayload['currency']);
-        $this->assertSame([(string) $this->variant->id], $pixelPayload['contentIds']);
-        $this->assertSame(1, $pixelPayload['numItems']);
-
+        $order = Order::where('order_number', $test->get('orderNumber'))->firstOrFail();
         $ecommerce = EcommerceData::purchase($order);
         $this->assertSame($order->order_number, $ecommerce['transaction_id']);
         $this->assertSame('INR', $ecommerce['currency']);
@@ -107,8 +102,8 @@ class CheckoutWhatsAppConfirmationTest extends TestCase
         Queue::fake();
 
         Contact::create([
-            'name'         => 'Opted Out User',
-            'phone'        => '9123456781',
+            'name' => 'Opted Out User',
+            'phone' => '9123456781',
             'wa_opted_out' => true,
         ]);
 

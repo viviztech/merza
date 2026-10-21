@@ -2,14 +2,15 @@
 
 namespace Tests\Feature;
 
-use App\Livewire\Storefront\ProductDetail;
-use App\Livewire\Storefront\CheckoutForm;
 use App\Livewire\Storefront\CartPanel;
+use App\Livewire\Storefront\CheckoutForm;
+use App\Livewire\Storefront\ProductDetail;
 use App\Models\Category;
 use App\Models\Order;
 use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Services\CartService;
+use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
 use Livewire\Livewire;
@@ -20,6 +21,7 @@ class JackfruitPrebookingTest extends TestCase
     use RefreshDatabase;
 
     private Product $product;
+
     private ProductVariant $variant;
 
     protected function setUp(): void
@@ -101,7 +103,7 @@ class JackfruitPrebookingTest extends TestCase
 
     public function test_prebooking_page_prioritizes_usp_points_and_hides_price_controls(): void
     {
-        $this->travelTo(\Carbon\Carbon::parse('2026-10-08'));
+        $this->travelTo(Carbon::parse('2026-10-08'));
 
         Livewire::test(ProductDetail::class, ['slug' => $this->product->slug])
             ->assertSee('Why pre-book this harvest')
@@ -158,7 +160,7 @@ class JackfruitPrebookingTest extends TestCase
             ->assertSeeHtml('data-form-id="merza-checkout-form"')
             ->assertDontSee('Download Invoice');
 
-        $test->assertDispatched('meta-purchase');
+        $test->assertNotDispatched('meta-purchase');
         $test->assertDispatched('gtm-purchase');
 
         $order = Order::latest('id')->firstOrFail();
@@ -169,12 +171,6 @@ class JackfruitPrebookingTest extends TestCase
         $this->assertNull($order->postcode);
         $this->assertSame('Pre-order — address to be confirmed', $order->delivery_address);
 
-        $pixelPayload = session("meta_purchase_events.{$order->id}");
-        $this->assertSame($order->order_number, $pixelPayload['orderId']);
-        $this->assertSame('INR', $pixelPayload['currency']);
-        $this->assertSame([(string) $this->variant->id], $pixelPayload['contentIds']);
-        $this->assertSame(1, $pixelPayload['numItems']);
-        $this->assertSame(499.0, $pixelPayload['value']);
     }
 
     public function test_out_of_stock_product_cannot_be_added(): void
