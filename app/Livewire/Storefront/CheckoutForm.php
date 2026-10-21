@@ -12,9 +12,13 @@ use App\Models\OrderItem;
 use App\Services\AnalyticsTracker;
 use App\Services\CartService;
 use App\Services\DeliveryCalculatorService;
+use App\Services\MetaConversionsService;
 use App\Services\PincodeService;
 use App\Services\SabPaisaService;
+use App\Services\WebhookDispatcher;
+use App\Services\WhatsAppMessagePolicy;
 use App\Support\EcommerceData;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Livewire\Attributes\Layout;
@@ -28,36 +32,72 @@ class CheckoutForm extends Component
 {
     use WithFileUploads;
 
-    public string $customer_name    = '';
-    public string $customer_phone   = '';
-    public string $customer_email   = '';
+    public string $customer_name = '';
+
+    public string $customer_phone = '';
+
+    public string $customer_email = '';
+
     public string $delivery_address = '';
-    public string $postcode         = '';
-    public string $city             = '';
-    public string $state            = '';
-    public string $landmark         = '';
-    public bool   $pincodeAutoFilled = false;
-    public bool   $pincodeLookupFailed = false;
-    public bool   $locationLookupFailed = false;
+
+    public string $postcode = '';
+
+    public string $city = '';
+
+    public string $state = '';
+
+    public string $landmark = '';
+
+    public bool $pincodeAutoFilled = false;
+
+    public bool $pincodeLookupFailed = false;
+
+    public bool $locationLookupFailed = false;
 
     public ?string $returningCustomerName = null;
-    public bool     $hasPreviousAddress   = false;
-    public bool     $previousAddressApplied = false;
-    public ?Order   $lastOrderForPhone    = null;
 
-    public bool   $orderPlaced        = false;
-    public ?int   $orderId            = null;
-    public string $orderNumber        = '';
-    public ?string $expectedDelivery  = null;
-    public bool   $orderIsPreorderOnly = false;
+    public bool $hasPreviousAddress = false;
 
-    public $paymentScreenshot        = null;
-    public bool $screenshotUploaded  = false;
+    public bool $previousAddressApplied = false;
+
+    public ?Order $lastOrderForPhone = null;
+
+    public bool $orderPlaced = false;
+
+    public ?int $orderId = null;
+
+    public string $orderNumber = '';
+
+    public ?string $expectedDelivery = null;
+
+    public bool $orderIsPreorderOnly = false;
+
+    public $paymentScreenshot = null;
+
+    public bool $screenshotUploaded = false;
 
     public function mount(): void
     {
         app(AnalyticsTracker::class)->track('checkout_start');
-        app(\App\Services\WebhookDispatcher::class)->dispatchCheckoutStarted();
+        app(WebhookDispatcher::class)->dispatchCheckoutStarted();
+
+        $cart = app(CartService::class);
+        $eventId = MetaConversionsService::eventId('InitiateCheckout');
+        $customData = [
+            'currency' => 'INR',
+            'value' => (float) $cart->subtotal(),
+            'content_type' => 'product',
+            'content_ids' => $cart->items()->pluck('variant_id')->map(fn ($id) => (string) $id)->values()->all(),
+            'num_items' => (int) $cart->items()->sum('qty'),
+        ];
+
+        app(MetaConversionsService::class)->trackFromRequest(
+            'InitiateCheckout',
+            customData: $customData,
+            eventId: $eventId,
+            eventSourceUrl: route('checkout.index'),
+        );
+        $this->dispatch('meta-event', eventName: 'InitiateCheckout', eventId: $eventId, customData: $customData);
     }
 
     /**
@@ -76,14 +116,14 @@ class CheckoutForm extends Component
         $preorderOnly = $this->isPreorderOnlyCart();
 
         return [
-            'customer_name'      => 'required|string|max:120',
-            'customer_phone'     => 'required|string|max:20',
-            'customer_email'     => 'nullable|email|max:255',
-            'delivery_address'   => ($preorderOnly ? 'nullable' : 'required').'|string|max:500',
-            'postcode'           => $preorderOnly ? ['nullable'] : ['required', 'regex:/^\d{6}$/'],
-            'city'               => ($preorderOnly ? 'nullable' : 'required').'|string|max:80',
-            'state'              => ($preorderOnly ? 'nullable' : 'required').'|string|max:80',
-            'landmark'           => 'nullable|string|max:150',
+            'customer_name' => 'required|string|max:120',
+            'customer_phone' => 'required|string|max:20',
+            'customer_email' => 'nullable|email|max:255',
+            'delivery_address' => ($preorderOnly ? 'nullable' : 'required').'|string|max:500',
+            'postcode' => $preorderOnly ? ['nullable'] : ['required', 'regex:/^\d{6}$/'],
+            'city' => ($preorderOnly ? 'nullable' : 'required').'|string|max:80',
+            'state' => ($preorderOnly ? 'nullable' : 'required').'|string|max:80',
+            'landmark' => 'nullable|string|max:150',
         ];
     }
 
@@ -97,14 +137,14 @@ class CheckoutForm extends Component
     protected function messages(): array
     {
         return [
-            'customer_name.required'    => "Please tell us your name so we know who's ordering.",
-            'customer_phone.required'   => "We need a phone number to reach you about delivery.",
-            'customer_email.email'      => 'Please enter a valid email address.',
+            'customer_name.required' => "Please tell us your name so we know who's ordering.",
+            'customer_phone.required' => 'We need a phone number to reach you about delivery.',
+            'customer_email.email' => 'Please enter a valid email address.',
             'delivery_address.required' => 'Please enter the full address where we should deliver.',
-            'postcode.required'         => 'Please enter your area pincode.',
-            'postcode.regex'            => 'Please enter a valid 6-digit pincode.',
-            'city.required'             => 'Please enter your district/city.',
-            'state.required'            => 'Please select your state.',
+            'postcode.required' => 'Please enter your area pincode.',
+            'postcode.regex' => 'Please enter a valid 6-digit pincode.',
+            'city.required' => 'Please enter your district/city.',
+            'state.required' => 'Please select your state.',
         ];
     }
 
@@ -112,10 +152,10 @@ class CheckoutForm extends Component
     {
         $this->resetErrorBag('customer_phone');
 
-        $this->returningCustomerName   = null;
-        $this->hasPreviousAddress      = false;
-        $this->previousAddressApplied  = false;
-        $this->lastOrderForPhone       = null;
+        $this->returningCustomerName = null;
+        $this->hasPreviousAddress = false;
+        $this->previousAddressApplied = false;
+        $this->lastOrderForPhone = null;
 
         $digits = preg_replace('/\D/', '', $this->customer_phone) ?? '';
 
@@ -130,7 +170,7 @@ class CheckoutForm extends Component
         // contact_id (it's only set for a minority of orders), so matching
         // on contact_id alone misses real returning customers. Match by
         // phone directly and treat contact_id as a secondary signal.
-        $matchingOrders = Order::where('customer_phone', 'like', '%' . substr($digits, -4))
+        $matchingOrders = Order::where('customer_phone', 'like', '%'.substr($digits, -4))
             ->when($contact, fn ($query) => $query->orWhere('contact_id', $contact->id))
             ->latest()
             ->get()
@@ -173,7 +213,7 @@ class CheckoutForm extends Component
      */
     private function findContactByPhone(string $last10Digits): ?Contact
     {
-        return Contact::where('phone', 'like', '%' . substr($last10Digits, -4))
+        return Contact::where('phone', 'like', '%'.substr($last10Digits, -4))
             ->get()
             ->first(fn (Contact $contact) => $this->normalizedPhone($contact->phone) === $last10Digits);
     }
@@ -190,14 +230,14 @@ class CheckoutForm extends Component
         }
 
         $this->delivery_address = (string) $this->lastOrderForPhone->delivery_address;
-        $this->city             = (string) $this->lastOrderForPhone->city;
-        $this->state            = (string) $this->lastOrderForPhone->state;
-        $this->postcode         = preg_replace('/\D/', '', (string) $this->lastOrderForPhone->postcode) ?? '';
-        $this->landmark         = (string) ($this->lastOrderForPhone->landmark ?? '');
+        $this->city = (string) $this->lastOrderForPhone->city;
+        $this->state = (string) $this->lastOrderForPhone->state;
+        $this->postcode = preg_replace('/\D/', '', (string) $this->lastOrderForPhone->postcode) ?? '';
+        $this->landmark = (string) ($this->lastOrderForPhone->landmark ?? '');
 
         $this->previousAddressApplied = true;
-        $this->pincodeAutoFilled       = true;
-        $this->pincodeLookupFailed     = false;
+        $this->pincodeAutoFilled = true;
+        $this->pincodeLookupFailed = false;
         $this->resetErrorBag(['delivery_address', 'postcode', 'city', 'state']);
     }
 
@@ -218,7 +258,7 @@ class CheckoutForm extends Component
 
     public function updatedPostcode(): void
     {
-        $this->pincodeAutoFilled   = false;
+        $this->pincodeAutoFilled = false;
         $this->pincodeLookupFailed = false;
 
         // Mobile keyboards and browser autofill may insert spaces or dashes.
@@ -231,20 +271,22 @@ class CheckoutForm extends Component
             if (! empty($this->postcode)) {
                 $this->validateOnly('postcode');
             }
+
             return;
         }
 
         $this->resetErrorBag('postcode');
 
-        $result = (new PincodeService())->lookup($this->postcode);
+        $result = (new PincodeService)->lookup($this->postcode);
 
         if (! $result || empty($result['district']) || empty($result['state'])) {
             $this->pincodeLookupFailed = true;
+
             return;
         }
 
-        $this->city              = $result['district'];
-        $this->state             = $result['state'];
+        $this->city = $result['district'];
+        $this->state = $result['state'];
         $this->pincodeAutoFilled = true;
     }
 
@@ -254,6 +296,7 @@ class CheckoutForm extends Component
 
         if ($latitude < -90 || $latitude > 90 || $longitude < -180 || $longitude > 180) {
             $this->locationLookupFailed = true;
+
             return;
         }
 
@@ -301,7 +344,7 @@ class CheckoutForm extends Component
             return null;
         }
 
-        return (new DeliveryCalculatorService())->findZone($this->city, $this->state);
+        return (new DeliveryCalculatorService)->findZone($this->city, $this->state);
     }
 
     private function getDeliveryBreakdown(): ?array
@@ -312,9 +355,9 @@ class CheckoutForm extends Component
             return null;
         }
 
-        $cart       = app(CartService::class);
-        $weightKg   = $cart->totalWeightKg();
-        $calculator = new DeliveryCalculatorService();
+        $cart = app(CartService::class);
+        $weightKg = $cart->totalWeightKg();
+        $calculator = new DeliveryCalculatorService;
 
         return $calculator->calculateForZone($zone, $weightKg);
     }
@@ -333,60 +376,67 @@ class CheckoutForm extends Component
 
         if ($cart->count() === 0) {
             $this->addError('cart', 'Your cart is empty.');
+
             return;
         }
 
         $zone = $isPreorderOnly ? null : $this->resolveZone();
-        $breakdown = $zone ? (new DeliveryCalculatorService())->calculateForZone($zone, $cart->totalWeightKg()) : null;
+        $breakdown = $zone ? (new DeliveryCalculatorService)->calculateForZone($zone, $cart->totalWeightKg()) : null;
 
         // No courier charge could be calculated for this area — do not let the
         // customer proceed to payment/order confirmation without a real charge.
         if (! $isPreorderOnly && ! $breakdown) {
             $this->addError('city', "Sorry, we don't currently deliver to {$this->city}, {$this->state}. Please double-check the pincode, or contact us on WhatsApp for help arranging delivery.");
+
             return;
         }
 
-        $subtotal    = $cart->subtotal();
-        $gstTotal    = $cart->gstTotal();
+        $subtotal = $cart->subtotal();
+        $gstTotal = $cart->gstTotal();
         $deliveryFee = $isPreorderOnly ? 0 : $breakdown['total_fee'];
-        $total       = $subtotal + $deliveryFee;
-        $items       = $cart->items();
+        $total = $subtotal + $deliveryFee;
+        $items = $cart->items();
 
         try {
+            $meta = app(MetaConversionsService::class);
+            $hasMetaConsent = $meta->consentGranted();
             $order = Order::create([
-                'channel'                  => 'website',
-                'user_id'                  => auth()->id(),
-                'customer_name'            => $this->customer_name,
-                'customer_phone'           => $this->customer_phone,
-                'delivery_address'         => $isPreorderOnly ? 'Pre-order — address to be confirmed' : $this->delivery_address,
-                'city'                     => $isPreorderOnly ? null : $this->city,
-                'postcode'                 => $isPreorderOnly ? null : $this->postcode,
-                'state'                    => $isPreorderOnly ? null : $this->state,
-                'landmark'                 => $isPreorderOnly ? null : ($this->landmark ?: null),
-                'customer_email'           => $this->customer_email ?: null,
-                'subtotal'                 => $subtotal,
-                'gst_total'                => $gstTotal,
-                'delivery_fee'             => $deliveryFee,
-                'total'                    => $total,
-                'payment_method'           => $isPreorderOnly ? 'whatsapp' : 'upi',
+                'channel' => 'website',
+                'user_id' => auth()->id(),
+                'customer_name' => $this->customer_name,
+                'customer_phone' => $this->customer_phone,
+                'delivery_address' => $isPreorderOnly ? 'Pre-order — address to be confirmed' : $this->delivery_address,
+                'city' => $isPreorderOnly ? null : $this->city,
+                'postcode' => $isPreorderOnly ? null : $this->postcode,
+                'state' => $isPreorderOnly ? null : $this->state,
+                'landmark' => $isPreorderOnly ? null : ($this->landmark ?: null),
+                'customer_email' => $this->customer_email ?: null,
+                'subtotal' => $subtotal,
+                'gst_total' => $gstTotal,
+                'delivery_fee' => $deliveryFee,
+                'total' => $total,
+                'payment_method' => $isPreorderOnly ? 'whatsapp' : 'upi',
+                'meta_tracking_consent' => $hasMetaConsent,
+                'meta_tracking_consent_at' => $hasMetaConsent ? now() : null,
+                'meta_event_context' => $hasMetaConsent ? $meta->purchaseContextFromRequest() : null,
             ]);
 
             foreach ($cart->items() as $item) {
                 OrderItem::create([
-                    'order_id'             => $order->id,
-                    'product_variant_id'   => $item->variant_id,
-                    'product_name'         => $item->product_name,
-                    'variant_name'         => $item->variant_name,
-                    'free_gift_label'      => $item->free_gift_label ?? null,
-                    'free_gift_weight_kg'  => $item->free_gift_weight_kg ?? null,
-                    'sku'                  => $item->sku,
-                    'is_preorder'          => $item->is_preorder ?? false,
-                    'available_from'       => $item->available_from ?? null,
-                    'quantity'             => $item->qty,
-                    'unit_price'           => $item->price,
-                    'subtotal'             => $item->price * $item->qty,
-                    'gst_rate'             => $item->gst_rate ?? 0,
-                    'gst_amount'           => OrderItem::gstIncludedIn(
+                    'order_id' => $order->id,
+                    'product_variant_id' => $item->variant_id,
+                    'product_name' => $item->product_name,
+                    'variant_name' => $item->variant_name,
+                    'free_gift_label' => $item->free_gift_label ?? null,
+                    'free_gift_weight_kg' => $item->free_gift_weight_kg ?? null,
+                    'sku' => $item->sku,
+                    'is_preorder' => $item->is_preorder ?? false,
+                    'available_from' => $item->available_from ?? null,
+                    'quantity' => $item->qty,
+                    'unit_price' => $item->price,
+                    'subtotal' => $item->price * $item->qty,
+                    'gst_rate' => $item->gst_rate ?? 0,
+                    'gst_amount' => OrderItem::gstIncludedIn(
                         $item->price * $item->qty,
                         $item->gst_rate ?? 0,
                     ),
@@ -397,6 +447,7 @@ class CheckoutForm extends Component
         } catch (\Throwable $e) {
             Log::error('CheckoutForm: order placement failed', ['error' => $e->getMessage()]);
             $this->addError('cart', "Something went wrong placing your order — nothing was charged. Please try again, or message us on WhatsApp and we'll help right away.");
+
             return;
         }
 
@@ -404,16 +455,6 @@ class CheckoutForm extends Component
         $this->dispatch('cart-updated', count: 0);
 
         app(AnalyticsTracker::class)->track('order_placed', null, $order->id);
-
-        $metaPurchase = [
-            'orderId' => $order->order_number,
-            'value' => (float) $order->total,
-            'currency' => 'INR',
-            'contentIds' => $items->pluck('variant_id')->map(fn ($id) => (string) $id)->values()->all(),
-            'numItems' => (int) $items->sum('qty'),
-        ];
-        session()->put("meta_purchase_events.{$order->id}", $metaPurchase);
-        $this->dispatch('meta-purchase', ...$metaPurchase);
 
         $ga4Purchase = EcommerceData::purchase($order);
         if (! $isPreorderOnly && $this->gatewayActive()) {
@@ -429,7 +470,8 @@ class CheckoutForm extends Component
             $session = app(SabPaisaService::class)->createPaymentSession($order, route('payment.return'));
 
             if ($session && filled($session['checkoutUrl']) && filled($session['clientSecret'])) {
-                $this->redirect($session['checkoutUrl'] . '?clientSecret=' . urlencode($session['clientSecret']));
+                $this->redirect($session['checkoutUrl'].'?clientSecret='.urlencode($session['clientSecret']));
+
                 return;
             }
 
@@ -440,13 +482,13 @@ class CheckoutForm extends Component
             Log::error('CheckoutForm: SabPaisa session creation failed', ['order_id' => $order->id]);
         }
 
-        $this->orderPlaced       = true;
-        $this->orderId           = $order->id;
-        $this->orderNumber       = $order->order_number;
+        $this->orderPlaced = true;
+        $this->orderId = $order->id;
+        $this->orderNumber = $order->order_number;
         $this->orderIsPreorderOnly = $isPreorderOnly;
         $preorderDate = $order->items()->where('is_preorder', true)->max('available_from');
-        $futurePreorderDate = $preorderDate && \Carbon\Carbon::parse($preorderDate)->isFuture()
-            ? \Carbon\Carbon::parse($preorderDate) : null;
+        $futurePreorderDate = $preorderDate && Carbon::parse($preorderDate)->isFuture()
+            ? Carbon::parse($preorderDate) : null;
         $dispatchBase = $futurePreorderDate ?: now();
         $this->expectedDelivery = $isPreorderOnly
             ? $futurePreorderDate?->format('D, d M Y')
@@ -462,17 +504,17 @@ class CheckoutForm extends Component
     private function sendWhatsAppConfirmation(Order $order): void
     {
         try {
-            $phone   = preg_replace('/[^0-9+]/', '', $order->customer_phone);
-            $digits  = $this->normalizedPhone($phone);
+            $phone = preg_replace('/[^0-9+]/', '', $order->customer_phone);
+            $digits = $this->normalizedPhone($phone);
             $contact = strlen($digits) === 10
                 ? $this->findContactByPhone($digits)
                 : null;
 
             if (! $contact) {
                 $contact = Contact::create([
-                    'name'        => $order->customer_name,
-                    'phone'       => $phone,
-                    'source'      => 'website',
+                    'name' => $order->customer_name,
+                    'phone' => $phone,
+                    'source' => 'website',
                     'is_customer' => true,
                 ]);
             }
@@ -483,24 +525,24 @@ class CheckoutForm extends Component
 
             // This confirmation is free-form text. Outside a customer-initiated
             // service window it would require an approved utility template.
-            if (! app(\App\Services\WhatsAppMessagePolicy::class)->canSendFreeform($contact)) {
+            if (! app(WhatsAppMessagePolicy::class)->canSendFreeform($contact)) {
                 return;
             }
 
             $conversation = Conversation::create([
                 'contact_id' => $contact->id,
-                'channel'    => 'whatsapp',
-                'direction'  => 'outbound',
-                'message'    => "Hi {$order->customer_name}! 🥭 Your Merza order *{$order->order_number}* has been placed successfully. We'll confirm your delivery details here shortly. Thank you for choosing Merza Bodi!",
-                'is_bot'     => false,
-                'status'     => 'sent',
+                'channel' => 'whatsapp',
+                'direction' => 'outbound',
+                'message' => "Hi {$order->customer_name}! 🥭 Your Merza order *{$order->order_number}* has been placed successfully. We'll confirm your delivery details here shortly. Thank you for choosing Merza Bodi!",
+                'is_bot' => false,
+                'status' => 'sent',
             ]);
 
             SendWhatsAppMessageJob::dispatch($conversation->id);
         } catch (\Throwable $e) {
             Log::error('CheckoutForm: failed to queue WhatsApp order confirmation', [
                 'order_id' => $order->id,
-                'error'    => $e->getMessage(),
+                'error' => $e->getMessage(),
             ]);
         }
     }
@@ -520,28 +562,28 @@ class CheckoutForm extends Component
         $disk = config('media-library.disk_name', 'r2');
         $path = $this->paymentScreenshot->storeAs(
             'payment-screenshots',
-            $order->order_number . '.' . $this->paymentScreenshot->getClientOriginalExtension(),
+            $order->order_number.'.'.$this->paymentScreenshot->getClientOriginalExtension(),
             $disk
         );
 
         $order->update(['payment_screenshot_path' => $path]);
 
-        $this->paymentScreenshot   = null;
-        $this->screenshotUploaded  = true;
+        $this->paymentScreenshot = null;
+        $this->screenshotUploaded = true;
     }
 
     public function render()
     {
-        $cart              = app(CartService::class);
-        $items             = $cart->items();
-        $subtotal          = $cart->subtotal();
-        $gstTotal          = $cart->gstTotal();
-        $weightKg          = $cart->totalWeightKg();
-        $giftWeightKg      = $cart->totalFreeGiftWeightKg();
-        $breakdown         = $this->getDeliveryBreakdown();
+        $cart = app(CartService::class);
+        $items = $cart->items();
+        $subtotal = $cart->subtotal();
+        $gstTotal = $cart->gstTotal();
+        $weightKg = $cart->totalWeightKg();
+        $giftWeightKg = $cart->totalFreeGiftWeightKg();
+        $breakdown = $this->getDeliveryBreakdown();
 
         $deliveryFee = $breakdown ? $breakdown['total_fee'] : null;
-        $total       = $subtotal + ($deliveryFee ?? 0);
+        $total = $subtotal + ($deliveryFee ?? 0);
         $isPreorderOnly = $items->isNotEmpty() && $items->every(fn ($item) => $item->is_preorder ?? false);
 
         // Only states we actually have a delivery zone for — keeps customers

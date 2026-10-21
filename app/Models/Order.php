@@ -2,11 +2,13 @@
 
 namespace App\Models;
 
+use App\Jobs\SendMetaPurchaseEvent;
 use App\Jobs\SendOrderWebhookJob;
 use App\Services\OrderNotificationService;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\Storage;
 
 class Order extends Model
 {
@@ -17,39 +19,49 @@ class Order extends Model
         'subtotal', 'gst_total', 'delivery_fee', 'packaging_fee', 'total',
         'status', 'payment_method', 'payment_status', 'payment_reference', 'payment_screenshot_path',
         'payment_verification_status', 'payment_verified_amount', 'payment_verification_notes',
+        'meta_tracking_consent', 'meta_tracking_consent_at', 'meta_event_context',
         'notes', 'admin_notes', 'tracking_number', 'courier_name', 'tracking_url',
         'confirmed_at', 'dispatched_at', 'delivered_at',
     ];
 
     protected $casts = [
-        'subtotal'                 => 'decimal:2',
-        'gst_total'                => 'decimal:2',
-        'delivery_fee'             => 'decimal:2',
-        'packaging_fee'            => 'decimal:2',
-        'total'                    => 'decimal:2',
-        'payment_verified_amount'  => 'decimal:2',
-        'confirmed_at'             => 'datetime',
-        'dispatched_at'            => 'datetime',
-        'delivered_at'             => 'datetime',
+        'subtotal' => 'decimal:2',
+        'gst_total' => 'decimal:2',
+        'delivery_fee' => 'decimal:2',
+        'packaging_fee' => 'decimal:2',
+        'total' => 'decimal:2',
+        'payment_verified_amount' => 'decimal:2',
+        'meta_tracking_consent' => 'boolean',
+        'meta_tracking_consent_at' => 'datetime',
+        'meta_event_context' => 'encrypted:array',
+        'confirmed_at' => 'datetime',
+        'dispatched_at' => 'datetime',
+        'delivered_at' => 'datetime',
     ];
 
     protected static function booted(): void
     {
         static::creating(function (Order $order) {
             if (empty($order->order_number)) {
-                $order->order_number = 'MRZ-' . strtoupper(substr(uniqid(), -6));
+                $order->order_number = 'MRZ-'.strtoupper(substr(uniqid(), -6));
             }
         });
 
         static::updated(function (Order $order) {
             SendOrderWebhookJob::dispatch($order->id, 'order.updated')->afterCommit();
 
+            $statusChanged = $order->wasChanged('status') && $order->status !== 'cancelled';
+            $paymentReceived = $order->wasChanged('payment_status') && $order->payment_status === 'paid';
+
+            // Every verified payment path ends by setting payment_status to
+            // paid. Queue the purchase only at that verified transition.
+            if ($paymentReceived) {
+                SendMetaPurchaseEvent::dispatch($order->id)->afterCommit();
+            }
+
             if (empty($order->customer_phone)) {
                 return;
             }
-
-            $statusChanged  = $order->wasChanged('status') && $order->status !== 'cancelled';
-            $paymentReceived = $order->wasChanged('payment_status') && $order->payment_status === 'paid';
 
             if ($statusChanged || $paymentReceived) {
                 app(OrderNotificationService::class)->sendStatusUpdate($order);
@@ -71,43 +83,43 @@ class Order extends Model
 
         return match (true) {
             $this->status === 'pending' => [
-                'key'      => 'confirm',
-                'label'    => 'Confirm Order',
-                'icon'     => 'heroicon-o-check-circle',
-                'color'    => 'info',
-                'confirm'  => true,
-                'updates'  => ['status' => 'confirmed', 'confirmed_at' => now()],
+                'key' => 'confirm',
+                'label' => 'Confirm Order',
+                'icon' => 'heroicon-o-check-circle',
+                'color' => 'info',
+                'confirm' => true,
+                'updates' => ['status' => 'confirmed', 'confirmed_at' => now()],
             ],
             $this->status === 'confirmed' => [
-                'key'     => 'prepare',
-                'label'   => 'Start Packing',
-                'icon'    => 'heroicon-o-cube',
-                'color'   => 'primary',
+                'key' => 'prepare',
+                'label' => 'Start Packing',
+                'icon' => 'heroicon-o-cube',
+                'color' => 'primary',
                 'confirm' => false,
                 'updates' => ['status' => 'preparing'],
             ],
             $this->status === 'preparing' && $this->payment_status === 'unpaid' => [
-                'key'     => 'markPaid',
-                'label'   => 'Mark Payment Received',
-                'icon'    => 'heroicon-o-banknotes',
-                'color'   => 'warning',
+                'key' => 'markPaid',
+                'label' => 'Mark Payment Received',
+                'icon' => 'heroicon-o-banknotes',
+                'color' => 'warning',
                 'confirm' => true,
                 'updates' => ['payment_status' => 'paid'],
             ],
             $this->status === 'preparing' && $this->payment_status === 'paid' => [
-                'key'            => 'dispatch',
-                'label'          => 'Dispatch Order',
-                'icon'           => 'heroicon-o-truck',
-                'color'          => 'success',
-                'confirm'        => false,
-                'trackingForm'   => true,
-                'updates'        => ['status' => 'delivering', 'dispatched_at' => now()],
+                'key' => 'dispatch',
+                'label' => 'Dispatch Order',
+                'icon' => 'heroicon-o-truck',
+                'color' => 'success',
+                'confirm' => false,
+                'trackingForm' => true,
+                'updates' => ['status' => 'delivering', 'dispatched_at' => now()],
             ],
             $this->status === 'delivering' => [
-                'key'     => 'deliver',
-                'label'   => 'Mark Delivered',
-                'icon'    => 'heroicon-o-check-badge',
-                'color'   => 'success',
+                'key' => 'deliver',
+                'label' => 'Mark Delivered',
+                'icon' => 'heroicon-o-check-badge',
+                'color' => 'success',
                 'confirm' => true,
                 'updates' => ['status' => 'delivered', 'delivered_at' => now()],
             ],
@@ -155,34 +167,34 @@ class Order extends Model
         $gstTotal = $this->items()->sum('gst_amount');
 
         $this->forceFill([
-            'subtotal'  => $subtotal,
+            'subtotal' => $subtotal,
             'gst_total' => $gstTotal,
             // Product prices are GST-inclusive, so tax is disclosed rather
             // than added again to the amount the customer already saw.
-            'total'     => $subtotal + $this->delivery_fee + $this->packaging_fee,
+            'total' => $subtotal + $this->delivery_fee + $this->packaging_fee,
         ])->saveQuietly();
     }
 
     public function getStatusBadgeColorAttribute(): string
     {
         return match ($this->status) {
-            'pending'    => 'warning',
-            'confirmed'  => 'info',
-            'preparing'  => 'primary',
+            'pending' => 'warning',
+            'confirmed' => 'info',
+            'preparing' => 'primary',
             'delivering' => 'success',
-            'delivered'  => 'success',
-            'cancelled'  => 'danger',
-            default      => 'gray',
+            'delivered' => 'success',
+            'cancelled' => 'danger',
+            default => 'gray',
         };
     }
 
     public function getChannelBadgeColorAttribute(): string
     {
         return match ($this->channel) {
-            'website'  => 'gray',
+            'website' => 'gray',
             'whatsapp' => 'success',
-            'manual'   => 'info',
-            default    => 'gray',
+            'manual' => 'info',
+            default => 'gray',
         };
     }
 
@@ -192,7 +204,7 @@ class Order extends Model
             return null;
         }
 
-        return \Illuminate\Support\Facades\Storage::disk(config('media-library.disk_name', 'r2'))
+        return Storage::disk(config('media-library.disk_name', 'r2'))
             ->url($this->payment_screenshot_path);
     }
 
@@ -208,9 +220,9 @@ class Order extends Model
         // dialer treats it as international (+91…), not a literal 12-digit
         // number if it already happened to start with "91" some other way.
         if (strlen($digits) === 10) {
-            $digits = '91' . $digits;
+            $digits = '91'.$digits;
         }
 
-        return 'tel:+' . $digits;
+        return 'tel:+'.$digits;
     }
 }

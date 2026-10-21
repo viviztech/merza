@@ -7,11 +7,13 @@ use App\Models\Product;
 use App\Models\ProductReview;
 use App\Services\AnalyticsTracker;
 use App\Services\CartService;
+use App\Services\MetaConversionsService;
+use App\Services\WebhookDispatcher;
 use App\Support\EcommerceData;
 use App\Support\Seo;
+use Illuminate\Support\Str;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
-use Livewire\Attributes\Title;
 use Livewire\Component;
 use Livewire\WithFileUploads;
 
@@ -21,16 +23,24 @@ class ProductDetail extends Component
     use WithFileUploads;
 
     public Product $product;
+
     public int $selectedVariantId = 0;
+
     public int $qty = 1;
+
     public string $addedMessage = '';
+
     public int $addedCount = 0;
 
-    public string $reviewName    = '';
-    public int    $reviewRating  = 5;
+    public string $reviewName = '';
+
+    public int $reviewRating = 5;
+
     public string $reviewComment = '';
-    public $reviewPhoto          = null;
-    public bool   $reviewSubmitted = false;
+
+    public $reviewPhoto = null;
+
+    public bool $reviewSubmitted = false;
 
     public function mount(string $slug): void
     {
@@ -46,6 +56,18 @@ class ProductDetail extends Component
 
         app(AnalyticsTracker::class)->track('product_view', $this->product->id);
 
+        if ($first) {
+            $eventId = MetaConversionsService::eventId('ViewContent');
+            $customData = $this->metaProductData($first, 1);
+            app(MetaConversionsService::class)->trackFromRequest(
+                'ViewContent',
+                customData: $customData,
+                eventId: $eventId,
+                eventSourceUrl: route('products.show', $this->product->slug),
+            );
+            $this->dispatch('meta-event', eventName: 'ViewContent', eventId: $eventId, customData: $customData);
+        }
+
         $this->registerSeo();
     }
 
@@ -54,13 +76,13 @@ class ProductDetail extends Component
         $seo = app(Seo::class);
 
         $description = $this->product->short_description
-            ?: \Illuminate\Support\Str::limit(strip_tags((string) $this->product->description), 120);
+            ?: Str::limit(strip_tags((string) $this->product->description), 120);
         $description = trim($description) ?: "Shop {$this->product->name} from Merza in Bodinayakanur. Choose a size and see delivery charges at checkout.";
 
         $imageUrl = $this->product->getFirstMediaUrl('thumbnail', 'card')
             ?: $this->product->getFirstMediaUrl('images', 'card');
 
-        $seo->description(\Illuminate\Support\Str::limit($description.' Shop online at Merza.', 160))
+        $seo->description(Str::limit($description.' Shop online at Merza.', 160))
             ->ogImage($imageUrl ?: null)
             ->ogType('product');
 
@@ -68,44 +90,44 @@ class ProductDetail extends Component
         if ($variants->isEmpty()) {
             $variants = $this->product->activeVariants;
         }
-        $prices   = $variants->pluck('price')->map(fn ($p) => (float) $p);
+        $prices = $variants->pluck('price')->map(fn ($p) => (float) $p);
 
         $availability = $this->product->is_preorder
             ? 'https://schema.org/PreOrder'
             : ($variants->sum('stock_qty') > 0 ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock');
 
         $offer = $prices->isEmpty() ? null : ($prices->unique()->count() > 1 ? [
-            '@type'         => 'AggregateOffer',
+            '@type' => 'AggregateOffer',
             'priceCurrency' => 'INR',
-            'lowPrice'      => $prices->min(),
-            'highPrice'     => $prices->max(),
-            'offerCount'    => $variants->count(),
-            'availability'  => $availability,
-            'url'           => route('products.show', $this->product->slug),
+            'lowPrice' => $prices->min(),
+            'highPrice' => $prices->max(),
+            'offerCount' => $variants->count(),
+            'availability' => $availability,
+            'url' => route('products.show', $this->product->slug),
         ] : [
-            '@type'         => 'Offer',
+            '@type' => 'Offer',
             'priceCurrency' => 'INR',
-            'price'         => $prices->first(),
-            'availability'  => $availability,
-            'url'           => route('products.show', $this->product->slug),
+            'price' => $prices->first(),
+            'availability' => $availability,
+            'url' => route('products.show', $this->product->slug),
         ]);
 
         $reviews = $this->product->approvedReviews;
 
         $productSchema = array_filter([
-            '@context'    => 'https://schema.org',
-            '@type'       => 'Product',
-            'name'        => $this->product->name,
+            '@context' => 'https://schema.org',
+            '@type' => 'Product',
+            'name' => $this->product->name,
             'description' => $description,
-            'image'       => $imageUrl ?: null,
-            'sku'         => (string) $this->product->id,
-            'brand'       => [
+            'image' => $imageUrl ?: null,
+            'sku' => (string) $this->product->id,
+            'brand' => [
                 '@type' => 'Brand',
-                'name'  => 'Merza',
+                'name' => 'Merza',
             ],
             'offers' => $offer,
             'aggregateRating' => $reviews->isNotEmpty() ? [
-                '@type'       => 'AggregateRating',
+                '@type' => 'AggregateRating',
                 'ratingValue' => round($reviews->avg('rating'), 1),
                 'reviewCount' => $reviews->count(),
             ] : null,
@@ -120,8 +142,8 @@ class ProductDetail extends Component
         $seo->schema($productSchema);
 
         $breadcrumbSchema = [
-            '@context'        => 'https://schema.org',
-            '@type'           => 'BreadcrumbList',
+            '@context' => 'https://schema.org',
+            '@type' => 'BreadcrumbList',
             'itemListElement' => [
                 ['@type' => 'ListItem', 'position' => 1, 'name' => 'Home', 'item' => route('home')],
                 ['@type' => 'ListItem', 'position' => 2, 'name' => 'Products', 'item' => route('products.index')],
@@ -145,7 +167,7 @@ class ProductDetail extends Component
 
     public function getTitle(): string
     {
-        return \Illuminate\Support\Str::limit("Buy {$this->product->name} Online", 58, '');
+        return Str::limit("Buy {$this->product->name} Online", 58, '');
     }
 
     public function addToCart(): void
@@ -164,7 +186,8 @@ class ProductDetail extends Component
                 'value' => round((float) $variant->price * $added, 2),
                 'items' => [EcommerceData::product($this->product, $variant, $added)],
             ]);
-            app(\App\Services\WebhookDispatcher::class)->dispatchCartAdded();
+            $this->trackMetaAddToCart($variant, $added);
+            app(WebhookDispatcher::class)->dispatchCartAdded();
         }
 
         app(AnalyticsTracker::class)->track('add_to_cart', $this->product->id);
@@ -192,7 +215,8 @@ class ProductDetail extends Component
                 'value' => round((float) $variant->price * $added, 2),
                 'items' => [EcommerceData::product($this->product, $variant, $added)],
             ]);
-            app(\App\Services\WebhookDispatcher::class)->dispatchCartAdded();
+            $this->trackMetaAddToCart($variant, $added);
+            app(WebhookDispatcher::class)->dispatchCartAdded();
         }
         app(AnalyticsTracker::class)->track('add_to_cart', $this->product->id);
         $this->dispatch('cart-updated', count: $cart->count());
@@ -204,38 +228,68 @@ class ProductDetail extends Component
     private function validateSelection(): void
     {
         $this->validate([
-            'selectedVariantId' => 'required|exists:product_variants,id,product_id,' . $this->product->id,
-            'qty'               => 'required|integer|min:1|max:100',
+            'selectedVariantId' => 'required|exists:product_variants,id,product_id,'.$this->product->id,
+            'qty' => 'required|integer|min:1|max:100',
         ]);
+    }
+
+    private function trackMetaAddToCart(object $variant, int $quantity): void
+    {
+        $eventId = MetaConversionsService::eventId('AddToCart');
+        $customData = $this->metaProductData($variant, $quantity);
+
+        app(MetaConversionsService::class)->trackFromRequest(
+            'AddToCart',
+            customData: $customData,
+            eventId: $eventId,
+            eventSourceUrl: route('products.show', $this->product->slug),
+        );
+        $this->dispatch('meta-event', eventName: 'AddToCart', eventId: $eventId, customData: $customData);
+    }
+
+    private function metaProductData(object $variant, int $quantity): array
+    {
+        return [
+            'content_name' => $this->product->name,
+            'content_type' => 'product',
+            'content_ids' => [(string) $variant->id],
+            'currency' => 'INR',
+            'value' => round((float) $variant->price * $quantity, 2),
+            'contents' => [[
+                'id' => (string) $variant->id,
+                'quantity' => $quantity,
+                'item_price' => (float) $variant->price,
+            ]],
+        ];
     }
 
     public function submitReview(): void
     {
         $this->validate([
-            'reviewName'    => 'required|string|max:100',
-            'reviewRating'  => 'required|integer|min:1|max:5',
+            'reviewName' => 'required|string|max:100',
+            'reviewRating' => 'required|integer|min:1|max:5',
             'reviewComment' => 'nullable|string|max:1000',
-            'reviewPhoto'   => 'nullable|image|max:5120',
+            'reviewPhoto' => 'nullable|image|max:5120',
         ]);
 
         $photoPath = null;
         if ($this->reviewPhoto) {
-            $disk      = config('media-library.disk_name', 'r2');
+            $disk = config('media-library.disk_name', 'r2');
             $photoPath = $this->reviewPhoto->store('product-review-photos', $disk);
         }
 
         ProductReview::create([
-            'product_id'    => $this->product->id,
+            'product_id' => $this->product->id,
             'customer_name' => $this->reviewName,
-            'rating'        => $this->reviewRating,
-            'comment'       => $this->reviewComment ?: null,
-            'photo_path'    => $photoPath,
-            'is_approved'   => false,
+            'rating' => $this->reviewRating,
+            'comment' => $this->reviewComment ?: null,
+            'photo_path' => $photoPath,
+            'is_approved' => false,
         ]);
 
         $this->reset('reviewName', 'reviewRating', 'reviewComment', 'reviewPhoto');
-        $this->reviewRating     = 5;
-        $this->reviewSubmitted  = true;
+        $this->reviewRating = 5;
+        $this->reviewSubmitted = true;
     }
 
     public function render()

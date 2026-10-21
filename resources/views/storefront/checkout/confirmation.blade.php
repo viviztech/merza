@@ -5,7 +5,7 @@
     @if($metaPurchase)
         <script>
             window.addEventListener('load', () => {
-                window.merzaTrackMetaPurchase?.(@json($metaPurchase));
+                window.merzaTrackMetaEvent?.(@json($metaPurchase));
             }, { once: true });
         </script>
     @endif

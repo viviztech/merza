@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Storefront;
 
 use App\Http\Controllers\Controller;
 use App\Models\Order;
+use App\Services\MetaConversionsService;
 use App\Services\SabPaisaService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -58,7 +59,7 @@ class PaymentReturnController extends Controller
      * emails/SMS's the customer). No login required, same guest-access
      * pattern as the signed customer invoice route.
      */
-    public function confirmation(Request $request, Order $order, SabPaisaService $sabPaisa): View
+    public function confirmation(Request $request, Order $order, SabPaisaService $sabPaisa, MetaConversionsService $meta): View
     {
         $this->confirmIfPaid($order, $sabPaisa);
         $order->refresh();
@@ -67,7 +68,9 @@ class PaymentReturnController extends Controller
             ? 'SUCCESS'
             : ($request->query('status') === 'SUCCESS' ? 'PENDING' : $request->query('status', 'UNKNOWN'));
         $metaPurchase = $order->payment_status === 'paid'
-            ? session()->pull("meta_purchase_events.{$order->id}")
+            && $order->meta_tracking_consent
+            && $meta->consentGranted()
+            ? $meta->purchaseBrowserEvent($order)
             : null;
         $ga4Purchase = $order->payment_status === 'paid'
             ? session()->pull("ga4_purchase_events.{$order->id}")
@@ -90,7 +93,7 @@ class PaymentReturnController extends Controller
 
         if ($sabPaisa->enquiryConfirmsOrder($order, $result)) {
             $order->update([
-                'payment_status'    => 'paid',
+                'payment_status' => 'paid',
                 'payment_reference' => $result['txnId'] ?? $order->payment_reference,
             ]);
         } elseif (($result['status'] ?? null) === 'SUCCESS') {
