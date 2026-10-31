@@ -18,8 +18,13 @@ class Order extends Model
         'delivery_address', 'city', 'postcode', 'state', 'landmark',
         'subtotal', 'gst_total', 'delivery_fee', 'packaging_fee', 'total',
         'status', 'payment_method', 'payment_status', 'payment_reference', 'payment_screenshot_path',
+        'razorpay_order_id', 'razorpay_payment_id', 'razorpay_payment_status', 'payment_verified_at',
         'payment_verification_status', 'payment_verified_amount', 'payment_verification_notes',
         'meta_tracking_consent', 'meta_tracking_consent_at', 'meta_event_context',
+        'attribution_origin', 'attribution_source_type', 'attribution_source', 'attribution_medium',
+        'attribution_campaign', 'attribution_term', 'attribution_content', 'attribution_click_id',
+        'attribution_device_type', 'attribution_referrer_url', 'attribution_landing_url', 'attribution_user_agent',
+        'attribution_data',
         'notes', 'admin_notes', 'tracking_number', 'courier_name', 'tracking_url',
         'confirmed_at', 'dispatched_at', 'delivered_at',
     ];
@@ -31,9 +36,11 @@ class Order extends Model
         'packaging_fee' => 'decimal:2',
         'total' => 'decimal:2',
         'payment_verified_amount' => 'decimal:2',
+        'payment_verified_at' => 'datetime',
         'meta_tracking_consent' => 'boolean',
         'meta_tracking_consent_at' => 'datetime',
         'meta_event_context' => 'encrypted:array',
+        'attribution_data' => 'array',
         'confirmed_at' => 'datetime',
         'dispatched_at' => 'datetime',
         'delivered_at' => 'datetime',
@@ -44,6 +51,12 @@ class Order extends Model
         static::creating(function (Order $order) {
             if (empty($order->order_number)) {
                 $order->order_number = 'MRZ-'.strtoupper(substr(uniqid(), -6));
+            }
+        });
+
+        static::created(function (Order $order) {
+            if ($order->payment_status === 'paid') {
+                SendMetaPurchaseEvent::dispatch($order->id)->afterCommit();
             }
         });
 
@@ -224,5 +237,74 @@ class Order extends Model
         }
 
         return 'tel:+'.$digits;
+    }
+
+    public function firstTouch(): ?array
+    {
+        return $this->attribution_data['first_touch'] ?? null;
+    }
+
+    public function lastTouch(): ?array
+    {
+        return $this->attribution_data['last_touch'] ?? null;
+    }
+
+    public function firstTouchSummary(): string
+    {
+        $touch = $this->firstTouch();
+
+        if (! is_array($touch) || empty($touch['origin'])) {
+            return $this->attribution_origin ?: '—';
+        }
+
+        $parts = [$touch['origin']];
+
+        if (! empty($touch['campaign'])) {
+            $parts[] = "Campaign: {$touch['campaign']}";
+        }
+
+        if (! empty($touch['timestamp'])) {
+            $parts[] = '(' . \Carbon\Carbon::parse($touch['timestamp'])->format('d M Y, h:i A') . ')';
+        }
+
+        return implode(' · ', $parts);
+    }
+
+    public function lastTouchSummary(): string
+    {
+        $touch = $this->lastTouch();
+
+        if (! is_array($touch) || empty($touch['origin'])) {
+            return $this->attribution_origin ?: '—';
+        }
+
+        $parts = [$touch['origin']];
+
+        if (! empty($touch['campaign'])) {
+            $parts[] = "Campaign: {$touch['campaign']}";
+        }
+
+        if (! empty($touch['timestamp'])) {
+            $parts[] = '(' . \Carbon\Carbon::parse($touch['timestamp'])->format('d M Y, h:i A') . ')';
+        }
+
+        return implode(' · ', $parts);
+    }
+
+    public function getAttributionBadgeColor(): string
+    {
+        $origin = (string) ($this->attribution_origin ?: ($this->channel === 'whatsapp' ? 'Source: WhatsApp' : ($this->channel === 'manual' ? 'Admin / Manual' : 'Direct')));
+
+        return match (true) {
+            str_starts_with($origin, 'Paid') => 'success',
+            str_starts_with($origin, 'Organic') => 'info',
+            str_starts_with($origin, 'Source: Instagram') => 'danger',
+            str_starts_with($origin, 'Source: Facebook') => 'primary',
+            str_starts_with($origin, 'Source: WhatsApp') => 'success',
+            str_starts_with($origin, 'Source: YouTube') => 'danger',
+            str_starts_with($origin, 'Referral') => 'warning',
+            $origin === 'Direct' => 'gray',
+            default => 'gray',
+        };
     }
 }

@@ -2,8 +2,11 @@
 
 namespace App\Services;
 
+use App\Models\Contact;
+use App\Models\Lead;
 use App\Models\Order;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
@@ -22,6 +25,7 @@ class MetaConversionsService
         'AddToCart',
         'InitiateCheckout',
         'Lead',
+        'Contact',
         'CompleteRegistration',
         'Purchase',
     ];
@@ -52,9 +56,114 @@ class MetaConversionsService
         return 'merza-'.Str::kebab($eventName).'-'.Str::uuid();
     }
 
+    public static function leadEventId(Lead $lead): string
+    {
+        return 'merza-lead-'.$lead->id;
+    }
+
+    public static function contactEventId(Contact $contact): string
+    {
+        return 'merza-contact-'.$contact->id;
+    }
+
     public static function purchaseEventId(Order $order): string
     {
         return 'merza-purchase-'.$order->order_number;
+    }
+
+    /**
+     * Track a Lead conversion event directly from backend.
+     */
+    public function trackLead(Lead $lead, array $customData = [], ?string $eventId = null): bool
+    {
+        $lead->loadMissing('contact');
+        $contact = $lead->contact;
+
+        $eventId = $eventId ?? self::leadEventId($lead);
+
+        // Deduplication guard
+        $cacheKey = 'meta_capi_event_'.$eventId;
+        if (Cache::has($cacheKey)) {
+            return true;
+        }
+
+        $userData = [
+            'email' => $contact?->email,
+            'phone' => $contact?->phone,
+            'first_name' => $contact?->name,
+            'city' => $contact?->city,
+            'state' => $contact?->state,
+            'country' => 'in',
+            'external_id' => (string) ($contact?->id ?? $lead->id),
+        ];
+
+        $mergedCustomData = array_merge([
+            'content_name' => $lead->product_interest ?: 'Lead Enquiry',
+            'content_category' => 'lead',
+            'lead_type' => $lead->source ?: 'website',
+            'currency' => 'INR',
+            'value' => (float) ($lead->estimated_value ?: 0),
+        ], $customData);
+
+        $success = $this->track(
+            eventName: 'Lead',
+            userData: $this->normaliseUserData($userData),
+            customData: $mergedCustomData,
+            eventId: $eventId,
+            eventSourceUrl: rtrim((string) config('app.url'), '/').'/contact',
+            eventTime: $lead->created_at?->timestamp ?: now()->timestamp,
+        );
+
+        if ($success) {
+            Cache::put($cacheKey, true, now()->addDays(2));
+        }
+
+        return $success;
+    }
+
+    /**
+     * Track a Contact conversion event directly from backend.
+     */
+    public function trackContact(Contact $contact, array $customData = [], ?string $eventId = null): bool
+    {
+        $eventId = $eventId ?? self::contactEventId($contact);
+
+        // Deduplication guard
+        $cacheKey = 'meta_capi_event_'.$eventId;
+        if (Cache::has($cacheKey)) {
+            return true;
+        }
+
+        $userData = [
+            'email' => $contact->email,
+            'phone' => $contact->phone,
+            'first_name' => $contact->name,
+            'city' => $contact->city,
+            'state' => $contact->state,
+            'country' => 'in',
+            'external_id' => (string) $contact->id,
+        ];
+
+        $mergedCustomData = array_merge([
+            'content_name' => 'Contact: '.$contact->name,
+            'content_category' => 'contact',
+            'contact_source' => $contact->source ?: 'website',
+        ], $customData);
+
+        $success = $this->track(
+            eventName: 'Contact',
+            userData: $this->normaliseUserData($userData),
+            customData: $mergedCustomData,
+            eventId: $eventId,
+            eventSourceUrl: rtrim((string) config('app.url'), '/').'/contact',
+            eventTime: $contact->created_at?->timestamp ?: now()->timestamp,
+        );
+
+        if ($success) {
+            Cache::put($cacheKey, true, now()->addDays(2));
+        }
+
+        return $success;
     }
 
     /**
@@ -91,10 +200,18 @@ class MetaConversionsService
             return false;
         }
 
+        $eventId = self::purchaseEventId($order);
+
+        // Deduplication guard
+        $cacheKey = 'meta_capi_event_'.$eventId;
+        if (Cache::has($cacheKey)) {
+            return true;
+        }
+
         $order->loadMissing('items');
         $context = is_array($order->meta_event_context) ? $order->meta_event_context : [];
 
-        return $this->track(
+        $success = $this->track(
             eventName: 'Purchase',
             userData: $this->normaliseUserData([
                 'email' => $order->customer_email,
@@ -109,10 +226,16 @@ class MetaConversionsService
                 'client_user_agent' => $context['client_user_agent'] ?? null,
             ]),
             customData: $this->purchaseCustomData($order),
-            eventId: self::purchaseEventId($order),
+            eventId: $eventId,
             eventSourceUrl: rtrim((string) config('app.url'), '/').'/checkout/confirmation',
             eventTime: $order->updated_at?->timestamp,
         );
+
+        if ($success) {
+            Cache::put($cacheKey, true, now()->addDays(2));
+        }
+
+        return $success;
     }
 
     /**

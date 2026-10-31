@@ -39,6 +39,13 @@ class Lead extends Model
         'lost'      => 'danger',
     ];
 
+    protected static function booted(): void
+    {
+        static::created(function (Lead $lead): void {
+            \App\Jobs\SendMetaLeadEvent::dispatch($lead->id)->afterCommit();
+        });
+    }
+
     public function contact(): BelongsTo
     {
         return $this->belongsTo(Contact::class);

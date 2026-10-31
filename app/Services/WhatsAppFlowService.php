@@ -1002,7 +1002,15 @@ class WhatsAppFlowService
         $delivery = $draft['delivery_fee'];
         $total = $subtotal + $delivery;
 
-        $order = Order::create([
+        $attribution = app(\App\Services\OrderAttributionService::class)->getOrderAttributionData(null, [
+            'origin' => 'Source: WhatsApp',
+            'source_type' => 'social',
+            'source' => 'whatsapp',
+            'medium' => 'chat',
+            'campaign' => $contact->meta_ad_name ?? null,
+        ]);
+
+        $order = Order::create(array_merge([
             'channel' => 'whatsapp',
             'contact_id' => $contact->id,
             'customer_name' => $draft['name'],
@@ -1013,7 +1021,7 @@ class WhatsAppFlowService
             'delivery_fee' => $delivery,
             'total' => $total,
             'payment_method' => 'whatsapp',
-        ]);
+        ], $attribution));
 
         foreach ($cart as $item) {
             OrderItem::create([

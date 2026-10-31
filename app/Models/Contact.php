@@ -48,6 +48,7 @@ class Contact extends Model
     {
         static::created(function (Contact $contact): void {
             app(\App\Services\WebhookDispatcher::class)->dispatchCustomer('customer.created', $contact);
+            \App\Jobs\SendMetaContactEvent::dispatch($contact->id)->afterCommit();
         });
 
         static::updated(function (Contact $contact): void {

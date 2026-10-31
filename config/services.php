@@ -51,6 +51,8 @@ return [
             // Set only while using Meta Events Manager's Test Events tool.
             'test_event_code' => env('META_TEST_EVENT_CODE'),
         ],
+        'ad_account_id' => env('META_AD_ACCOUNT_ID'),
+        'custom_audience_id' => env('META_CUSTOM_AUDIENCE_ID'),
     ],
 
     'whatsapp' => [
@@ -69,6 +71,14 @@ return [
         'merchant_id' => env('SABPAISA_MERCHANT_ID'),
         'base_url' => env('SABPAISA_BASE_URL', 'https://staging-sb-merchant-api.sabpaisa.in'),
         'fallback_email' => env('SABPAISA_FALLBACK_EMAIL') ?: env('MAIL_FROM_ADDRESS'),
+    ],
+
+    'razorpay' => [
+        // key_id is safe to give to Razorpay Checkout. key_secret and the
+        // webhook secret are server-only and must never be exposed to Blade.
+        'key_id' => env('RAZORPAY_KEY_ID'),
+        'key_secret' => env('RAZORPAY_KEY_SECRET'),
+        'webhook_secret' => env('RAZORPAY_WEBHOOK_SECRET'),
     ],
 
 ];

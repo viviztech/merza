@@ -19,7 +19,7 @@ class RolesAndAdminSeeder extends Seeder
             Role::firstOrCreate(['name' => $role, 'guard_name' => 'web']);
         }
 
-        $admin = User::firstOrCreate(
+        $admin = User::updateOrCreate(
             ['email' => 'admin@merza.com'],
             [
                 'name'     => 'Merza Admin',

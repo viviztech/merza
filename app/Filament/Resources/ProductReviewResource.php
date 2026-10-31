@@ -21,6 +21,11 @@ class ProductReviewResource extends Resource
     protected static ?string $navigationLabel = 'Product Reviews';
     protected static ?int $navigationSort = 4;
 
+    public static function shouldRegisterNavigation(): bool
+    {
+        return false;
+    }
+
     public static function getNavigationBadge(): ?string
     {
         $pending = static::getModel()::where('is_approved', false)->count();

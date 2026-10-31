@@ -7,11 +7,14 @@ use App\Filament\Exports\ContactExporter;
 use App\Filament\Filters\CreatedAtRangeFilter;
 use App\Filament\Pages\QuickOrder;
 use App\Models\Contact;
+use App\Models\Lead;
 use App\Models\User;
+use App\Services\ExcelExportService;
 use Filament\Actions;
 use Filament\Actions\Action;
 use Filament\Actions\ExportAction;
 use Filament\Actions\ExportBulkAction;
+use Filament\Actions\Exports\Enums\ExportFormat;
 use Filament\Forms;
 use Filament\Infolists;
 use Filament\Notifications\Notification;
@@ -238,17 +241,140 @@ class ContactResource extends Resource
             ])
             ->defaultSort('created_at', 'desc')
             ->headerActions([
+                Action::make('export_excel')
+                    ->label('Export to Excel (.xlsx)')
+                    ->icon('heroicon-o-arrow-down-tray')
+                    ->color('success')
+                    ->action(function ($livewire) {
+                        return app(ExcelExportService::class)
+                            ->exportContacts($livewire->getFilteredTableQuery(), 'contacts_export');
+                    }),
+                Action::make('sync_meta_audience')
+                    ->label('Sync to Meta Audience')
+                    ->icon('heroicon-o-arrow-path')
+                    ->color('info')
+                    ->requiresConfirmation()
+                    ->modalHeading('Sync Filtered Contacts to Meta Audience')
+                    ->modalDescription('Upload all contacts matching the current filters to your Meta Custom Audience list.')
+                    ->action(function ($livewire) {
+                        $service = app(\App\Services\MetaCustomAudienceService::class);
+                        if (! $service->isConfigured()) {
+                            Notification::make()
+                                ->title('Meta Custom Audience Not Configured')
+                                ->body('Please configure META_CUSTOM_AUDIENCE_ID and META_CONVERSIONS_API_ACCESS_TOKEN in .env.')
+                                ->warning()
+                                ->send();
+                            return;
+                        }
+                        $contacts = $livewire->getFilteredTableQuery()->where('is_blocked', false)->get();
+                        $result = $service->syncCustomerList($contacts);
+                        if ($result['success']) {
+                            Notification::make()
+                                ->title('Sync Complete')
+                                ->body("Successfully synced {$result['uploaded_count']} contacts to Meta Audience.")
+                                ->success()
+                                ->send();
+                        } else {
+                            Notification::make()
+                                ->title('Sync Failed')
+                                ->body($result['error'] ?? 'API error')
+                                ->danger()
+                                ->send();
+                        }
+                    }),
                 ExportAction::make()
-                    ->exporter(ContactExporter::class),
+                    ->exporter(ContactExporter::class)
+                    ->formats([ExportFormat::Xlsx, ExportFormat::Csv]),
             ])
             ->filters([
-                CreatedAtRangeFilter::make(),
-                Tables\Filters\SelectFilter::make('source')
-                    ->options(Contact::SOURCE_LABELS),
+                CreatedAtRangeFilter::make('Date Added'),
+                Tables\Filters\SelectFilter::make('lead_stage')
+                    ->label('Lead Status')
+                    ->options(Lead::$stages)
+                    ->query(fn ($query, array $data) => $query->when(
+                        $data['value'] ?? null,
+                        fn ($q, $v) => $q->whereHas('leads', fn ($lq) => $lq->where('stage', $v))
+                    )),
                 Tables\Filters\SelectFilter::make('customer_category')
-                    ->label('Category')
+                    ->label('Contact Status')
                     ->options(Contact::CATEGORY_LABELS),
-                Tables\Filters\TernaryFilter::make('is_customer')->label('Customer'),
+                Tables\Filters\SelectFilter::make('source')
+                    ->label('Lead Source')
+                    ->options(Contact::SOURCE_LABELS),
+                Tables\Filters\Filter::make('customer_name')
+                    ->label('Customer Name')
+                    ->form([
+                        Forms\Components\TextInput::make('name')
+                            ->label('Customer Name')
+                            ->placeholder('Filter by name...'),
+                    ])
+                    ->query(fn ($query, array $data) => $query->when(
+                        $data['name'] ?? null,
+                        fn ($q, $name) => $q->where('name', 'like', "%{$name}%")
+                    ))
+                    ->indicateUsing(fn (array $data) => filled($data['name'] ?? null) ? "Name: {$data['name']}" : null),
+                Tables\Filters\Filter::make('phone')
+                    ->label('Phone Number')
+                    ->form([
+                        Forms\Components\TextInput::make('phone')
+                            ->label('Phone Number')
+                            ->placeholder('Filter by phone...'),
+                    ])
+                    ->query(fn ($query, array $data) => $query->when(
+                        $data['phone'] ?? null,
+                        fn ($q, $phone) => $q->where('phone', 'like', "%{$phone}%")
+                    ))
+                    ->indicateUsing(fn (array $data) => filled($data['phone'] ?? null) ? "Phone: {$data['phone']}" : null),
+                Tables\Filters\Filter::make('email')
+                    ->label('Email Address')
+                    ->form([
+                        Forms\Components\TextInput::make('email')
+                            ->label('Email Address')
+                            ->placeholder('Filter by email...'),
+                    ])
+                    ->query(fn ($query, array $data) => $query->when(
+                        $data['email'] ?? null,
+                        fn ($q, $email) => $q->where('email', 'like', "%{$email}%")
+                    ))
+                    ->indicateUsing(fn (array $data) => filled($data['email'] ?? null) ? "Email: {$data['email']}" : null),
+                Tables\Filters\Filter::make('product_interest')
+                    ->label('Product Interest')
+                    ->form([
+                        Forms\Components\TextInput::make('product_interest')
+                            ->label('Product Interest')
+                            ->placeholder('e.g. Mango'),
+                    ])
+                    ->query(fn ($query, array $data) => $query->when(
+                        $data['product_interest'] ?? null,
+                        fn ($q, $prod) => $q->whereHas('leads', fn ($lq) => $lq->where('product_interest', 'like', "%{$prod}%"))
+                    ))
+                    ->indicateUsing(fn (array $data) => filled($data['product_interest'] ?? null) ? "Interest: {$data['product_interest']}" : null),
+                Tables\Filters\SelectFilter::make('order_status')
+                    ->label('Order Status')
+                    ->options([
+                        'pending' => 'Pending',
+                        'confirmed' => 'Confirmed',
+                        'preparing' => 'Preparing',
+                        'delivering' => 'Delivering',
+                        'delivered' => 'Delivered',
+                        'cancelled' => 'Cancelled',
+                    ])
+                    ->query(fn ($query, array $data) => $query->when(
+                        $data['value'] ?? null,
+                        fn ($q, $v) => $q->whereHas('orders', fn ($oq) => $oq->where('status', $v))
+                    )),
+                Tables\Filters\SelectFilter::make('payment_status')
+                    ->label('Payment Status')
+                    ->options([
+                        'unpaid' => 'Unpaid',
+                        'paid' => 'Paid',
+                        'refunded' => 'Refunded',
+                    ])
+                    ->query(fn ($query, array $data) => $query->when(
+                        $data['value'] ?? null,
+                        fn ($q, $v) => $q->whereHas('orders', fn ($oq) => $oq->where('payment_status', $v))
+                    )),
+                Tables\Filters\TernaryFilter::make('is_customer')->label('Is Customer'),
                 Tables\Filters\TernaryFilter::make('is_blocked')->label('Blocked'),
                 Tables\Filters\SelectFilter::make('assigned_to')
                     ->label('Assigned To')

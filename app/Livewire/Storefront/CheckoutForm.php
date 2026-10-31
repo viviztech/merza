@@ -14,11 +14,13 @@ use App\Services\CartService;
 use App\Services\DeliveryCalculatorService;
 use App\Services\MetaConversionsService;
 use App\Services\PincodeService;
+use App\Services\RazorpayService;
 use App\Services\SabPaisaService;
 use App\Services\WebhookDispatcher;
 use App\Services\WhatsAppMessagePolicy;
 use App\Support\EcommerceData;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Livewire\Attributes\Layout;
@@ -76,8 +78,22 @@ class CheckoutForm extends Component
 
     public bool $screenshotUploaded = false;
 
+    public bool $razorpayPaymentPending = false;
+
+    public bool $razorpayPaymentCancelled = false;
+
+    public ?string $razorpayPaymentError = null;
+
     public function mount(): void
     {
+        if ($pendingId = session()->pull('pending_razorpay_order_id')) {
+            $pendingOrder = Order::where('id', $pendingId)->where('payment_status', 'unpaid')->first();
+            if ($pendingOrder) {
+                $pendingOrder->items()->delete();
+                $pendingOrder->delete();
+            }
+        }
+
         app(AnalyticsTracker::class)->track('checkout_start');
         app(WebhookDispatcher::class)->dispatchCheckoutStarted();
 
@@ -109,6 +125,21 @@ class CheckoutForm extends Component
     {
         return config('payments.gateway') === 'sabpaisa'
             && app(SabPaisaService::class)->isConfigured();
+    }
+
+    /**
+     * This remains separate from the existing SabPaisa switch so both its
+     * hosted checkout and the manual UPI flow continue to work unchanged.
+     */
+    public function razorpayActive(): bool
+    {
+        return config('payments.gateway') === 'razorpay'
+            && app(RazorpayService::class)->isConfigured();
+    }
+
+    public function onlineGatewayActive(): bool
+    {
+        return $this->gatewayActive() || $this->razorpayActive();
     }
 
     protected function rules(): array
@@ -364,6 +395,15 @@ class CheckoutForm extends Component
 
     public function placeOrder(): void
     {
+        if ($this->orderId) {
+            $staleOrder = Order::where('id', $this->orderId)->where('payment_status', 'unpaid')->first();
+            if ($staleOrder) {
+                $staleOrder->items()->delete();
+                $staleOrder->delete();
+            }
+            $this->orderId = null;
+        }
+
         $isPreorderOnly = $this->isPreorderOnlyCart();
 
         if (! $isPreorderOnly) {
@@ -400,7 +440,9 @@ class CheckoutForm extends Component
         try {
             $meta = app(MetaConversionsService::class);
             $hasMetaConsent = $meta->consentGranted();
-            $order = Order::create([
+            $attribution = app(\App\Services\OrderAttributionService::class)->getOrderAttributionData();
+            DB::beginTransaction();
+            $order = Order::create(array_merge([
                 'channel' => 'website',
                 'user_id' => auth()->id(),
                 'customer_name' => $this->customer_name,
@@ -419,7 +461,7 @@ class CheckoutForm extends Component
                 'meta_tracking_consent' => $hasMetaConsent,
                 'meta_tracking_consent_at' => $hasMetaConsent ? now() : null,
                 'meta_event_context' => $hasMetaConsent ? $meta->purchaseContextFromRequest() : null,
-            ]);
+            ], $attribution));
 
             foreach ($cart->items() as $item) {
                 OrderItem::create([
@@ -443,10 +485,46 @@ class CheckoutForm extends Component
                 ]);
             }
 
-            SendOrderWebhookJob::dispatch($order->id, 'order.created')->afterCommit();
+            // Calculate the amount one final time from persisted line items.
+            // Razorpay is never given a value supplied by the browser.
+            $order->recalculateTotals();
+            if ($isPreorderOnly || ! $this->razorpayActive()) {
+                SendOrderWebhookJob::dispatch($order->id, 'order.created')->afterCommit();
+            }
+            DB::commit();
+            $order->refresh();
         } catch (\Throwable $e) {
+            if (DB::transactionLevel() > 0) {
+                DB::rollBack();
+            }
             Log::error('CheckoutForm: order placement failed', ['error' => $e->getMessage()]);
             $this->addError('cart', "Something went wrong placing your order — nothing was charged. Please try again, or message us on WhatsApp and we'll help right away.");
+
+            return;
+        }
+
+        if (! $isPreorderOnly && $this->razorpayActive()) {
+            $checkoutOptions = app(RazorpayService::class)->checkoutOptions($order);
+
+            if ($checkoutOptions) {
+                $this->orderId = $order->id;
+                $this->orderNumber = $order->order_number;
+                session(['pending_razorpay_order_id' => $order->id]);
+                $this->razorpayPaymentPending = true;
+                $this->razorpayPaymentCancelled = false;
+                $this->razorpayPaymentError = null;
+
+                $this->dispatch('razorpay-checkout', checkout: $checkoutOptions);
+            } else {
+                $order->items()->delete();
+                $order->delete();
+                $this->orderId = null;
+                $this->orderNumber = '';
+                $this->razorpayPaymentPending = false;
+                $this->razorpayPaymentCancelled = true;
+                $this->razorpayPaymentError = "We couldn't open the secure payment window. Your order was not saved and nothing was charged. Please try again.";
+                Log::error('CheckoutForm: Razorpay order creation failed', ['order_id' => $order->id]);
+            }
 
             return;
         }
@@ -457,7 +535,7 @@ class CheckoutForm extends Component
         app(AnalyticsTracker::class)->track('order_placed', null, $order->id);
 
         $ga4Purchase = EcommerceData::purchase($order);
-        if (! $isPreorderOnly && $this->gatewayActive()) {
+        if (! $isPreorderOnly && $this->onlineGatewayActive()) {
             // The gateway may still fail; report a purchase only after payment is verified.
             session()->put("ga4_purchase_events.{$order->id}", $ga4Purchase);
         } else {
@@ -482,6 +560,70 @@ class CheckoutForm extends Component
             Log::error('CheckoutForm: SabPaisa session creation failed', ['order_id' => $order->id]);
         }
 
+        $this->showOrderPlaced($order, $isPreorderOnly, $zone);
+    }
+
+    public function cancelRazorpayPayment(?string $message = null): void
+    {
+        if ($this->orderId) {
+            $order = Order::find($this->orderId);
+            if ($order && $order->payment_status !== 'paid') {
+                $order->items()->delete();
+                $order->delete();
+            }
+        }
+
+        session()->forget('pending_razorpay_order_id');
+
+        $this->orderId = null;
+        $this->orderNumber = '';
+        $this->orderPlaced = false;
+        $this->razorpayPaymentPending = false;
+        $this->razorpayPaymentCancelled = true;
+        $this->razorpayPaymentError = $message ?: 'Payment was cancelled. Your order was not saved and nothing was charged. You can review your details and try again.';
+    }
+
+    public function markPaymentCancelled(?string $message = null): void
+    {
+        $this->cancelRazorpayPayment($message);
+    }
+
+    /**
+     * Re-opens the exact same Razorpay order after a checkout dismissal or a
+     * temporary gateway failure. It never creates another Merza order.
+     */
+    public function retryRazorpayPayment(): void
+    {
+        $this->razorpayPaymentError = null;
+        $this->razorpayPaymentCancelled = false;
+        $order = Order::find($this->orderId);
+
+        if (! $order || ! $this->razorpayActive()) {
+            $this->razorpayPaymentError = 'Secure payment is not available right now. Please contact us for help with this order.';
+
+            return;
+        }
+
+        if ($order->payment_status === 'paid') {
+            $this->razorpayPaymentPending = false;
+            $this->razorpayPaymentCancelled = false;
+
+            return;
+        }
+
+        $checkoutOptions = app(RazorpayService::class)->checkoutOptions($order);
+
+        if (! $checkoutOptions) {
+            $this->razorpayPaymentError = "We couldn't start payment yet. Please try again in a moment, or contact us with your order number.";
+
+            return;
+        }
+
+        $this->dispatch('razorpay-checkout', checkout: $checkoutOptions);
+    }
+
+    private function showOrderPlaced(Order $order, bool $isPreorderOnly, ?DeliveryZone $zone): void
+    {
         $this->orderPlaced = true;
         $this->orderId = $order->id;
         $this->orderNumber = $order->order_number;
@@ -501,13 +643,20 @@ class CheckoutForm extends Component
      * "Send WhatsApp Order Update" action already uses. Must never break
      * order placement itself, so failures are logged and swallowed.
      */
-    private function sendWhatsAppConfirmation(Order $order): void
+    public function sendWhatsAppConfirmation(Order $order): void
+    {
+        self::sendOrderConfirmationWhatsApp($order);
+    }
+
+    public static function sendOrderConfirmationWhatsApp(Order $order): void
     {
         try {
             $phone = preg_replace('/[^0-9+]/', '', $order->customer_phone);
-            $digits = $this->normalizedPhone($phone);
+            $digits = substr(preg_replace('/\D/', '', (string) $phone) ?? '', -10);
             $contact = strlen($digits) === 10
-                ? $this->findContactByPhone($digits)
+                ? Contact::where('phone', 'like', '%'.substr($digits, -4))
+                    ->get()
+                    ->first(fn (Contact $c) => substr(preg_replace('/\D/', '', (string) $c->phone) ?? '', -10) === $digits)
                 : null;
 
             if (! $contact) {

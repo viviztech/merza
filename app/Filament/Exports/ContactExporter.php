@@ -3,6 +3,7 @@
 namespace App\Filament\Exports;
 
 use App\Models\Contact;
+use Filament\Actions\Exports\Enums\ExportFormat;
 use Filament\Actions\Exports\ExportColumn;
 use Filament\Actions\Exports\Exporter;
 use Filament\Actions\Exports\Models\Export;
@@ -10,6 +11,14 @@ use Filament\Actions\Exports\Models\Export;
 class ContactExporter extends Exporter
 {
     protected static ?string $model = Contact::class;
+
+    public function getFormats(): array
+    {
+        return [
+            ExportFormat::Xlsx,
+            ExportFormat::Csv,
+        ];
+    }
 
     public static function getColumns(): array
     {

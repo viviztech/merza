@@ -17,7 +17,10 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->trustProxies(at: '*');
         // Browser-owned consent and Meta cookies must not be decrypted by
         // Laravel; they are read only for consented CAPI matching.
-        $middleware->encryptCookies(except: ['merza_meta_consent', '_fbp', '_fbc']);
+        $middleware->encryptCookies(except: ['merza_meta_consent', '_fbp', '_fbc', 'merza_attr_first', 'merza_attr_last']);
+        $middleware->web(append: [
+            \App\Http\Middleware\CaptureOrderAttribution::class,
+        ]);
         $middleware->alias([
             'noindex' => NoindexPage::class,
             'api.key' => AuthenticateApiKey::class,

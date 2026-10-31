@@ -64,23 +64,49 @@ class ContactForm extends Component
             'notes' => $this->message,
         ]);
 
-        $eventId = MetaConversionsService::eventId('Lead');
-        $customData = [
-            'content_name' => 'Contact enquiry',
+        $metaService = app(MetaConversionsService::class);
+
+        // 1. Send Contact conversion event
+        $contactEventId = MetaConversionsService::contactEventId($contact);
+        $contactCustomData = [
+            'content_name' => 'Contact: '.$contact->name,
             'content_category' => 'website_contact',
         ];
-        app(MetaConversionsService::class)->trackFromRequest(
+        $metaService->trackFromRequest(
+            'Contact',
+            customerData: [
+                'email' => $contact->email,
+                'phone' => $contact->phone,
+                'first_name' => $contact->name,
+                'external_id' => (string) $contact->id,
+            ],
+            customData: $contactCustomData,
+            eventId: $contactEventId,
+            eventSourceUrl: route('contact'),
+        );
+        $this->dispatch('meta-event', eventName: 'Contact', eventId: $contactEventId, customData: $contactCustomData);
+
+        // 2. Send Lead conversion event
+        $leadEventId = MetaConversionsService::leadEventId($lead);
+        $leadCustomData = [
+            'content_name' => 'Contact enquiry',
+            'content_category' => 'website_contact',
+            'currency' => 'INR',
+            'value' => 0.0,
+        ];
+        $metaService->trackFromRequest(
             'Lead',
             customerData: [
                 'email' => $contact->email,
                 'phone' => $contact->phone,
+                'first_name' => $contact->name,
                 'external_id' => (string) $lead->id,
             ],
-            customData: $customData,
-            eventId: $eventId,
+            customData: $leadCustomData,
+            eventId: $leadEventId,
             eventSourceUrl: route('contact'),
         );
-        $this->dispatch('meta-event', eventName: 'Lead', eventId: $eventId, customData: $customData);
+        $this->dispatch('meta-event', eventName: 'Lead', eventId: $leadEventId, customData: $leadCustomData);
 
         $this->reset(['name', 'phone', 'email', 'message']);
         $this->submitted = true;

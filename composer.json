@@ -17,6 +17,7 @@
         "laravel/tinker": "^3.0",
         "league/flysystem-aws-s3-v3": "^3.35",
         "livewire/livewire": "^4.0",
+        "razorpay/razorpay": "2.9.3",
         "spatie/laravel-medialibrary": "^11.0",
         "spatie/laravel-permission": "^6.0"
     },

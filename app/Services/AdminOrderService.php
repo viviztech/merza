@@ -33,7 +33,14 @@ class AdminOrderService
             ->get()
             ->keyBy('id');
 
-        $order = Order::create(array_merge($customerData, $orderData, [
+        $attribution = app(\App\Services\OrderAttributionService::class)->getOrderAttributionData(null, [
+            'origin' => 'Admin / Manual',
+            'source_type' => 'admin',
+            'source' => 'admin',
+            'medium' => 'manual',
+        ]);
+
+        $order = Order::create(array_merge($customerData, $orderData, $attribution, [
             'channel'    => 'manual',
             'contact_id' => $contact?->id,
             'lead_id'    => $lead?->id,

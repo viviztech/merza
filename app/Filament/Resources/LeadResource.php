@@ -2,16 +2,20 @@
 
 namespace App\Filament\Resources;
 
+use App\Filament\Exports\LeadExporter;
+use App\Filament\Filters\CreatedAtRangeFilter;
 use App\Filament\Resources\LeadResource\Pages;
 use App\Filament\Resources\OrderResource;
-use App\Filament\Filters\CreatedAtRangeFilter;
 use App\Models\Contact;
 use App\Models\Lead;
 use App\Models\ProductVariant;
 use App\Models\User;
 use App\Services\AdminOrderService;
+use App\Services\ExcelExportService;
 use Filament\Actions;
 use Filament\Actions\Action;
+use Filament\Actions\ExportAction;
+use Filament\Actions\Exports\Enums\ExportFormat;
 use Filament\Forms;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
@@ -144,21 +148,121 @@ class LeadResource extends Resource
                     ->toggleable(),
             ])
             ->defaultSort('created_at', 'desc')
+            ->headerActions([
+                Action::make('export_excel')
+                    ->label('Export to Excel (.xlsx)')
+                    ->icon('heroicon-o-arrow-down-tray')
+                    ->color('success')
+                    ->action(function ($livewire) {
+                        return app(ExcelExportService::class)
+                            ->exportLeads($livewire->getFilteredTableQuery(), 'leads_export');
+                    }),
+                ExportAction::make()
+                    ->exporter(LeadExporter::class)
+                    ->formats([ExportFormat::Xlsx, ExportFormat::Csv]),
+            ])
             ->groups([
                 Tables\Grouping\Group::make('stage')
                     ->label('Stage')
                     ->getTitleFromRecordUsing(fn (Lead $r) => Lead::$stages[$r->stage] ?? $r->stage),
             ])
             ->filters([
-                CreatedAtRangeFilter::make(),
+                CreatedAtRangeFilter::make('Created Date'),
                 Tables\Filters\SelectFilter::make('stage')
+                    ->label('Lead Status')
                     ->options(Lead::$stages),
+                Tables\Filters\SelectFilter::make('contact_status')
+                    ->label('Contact Status')
+                    ->options(Contact::CATEGORY_LABELS)
+                    ->query(fn ($query, array $data) => $query->when(
+                        $data['value'] ?? null,
+                        fn ($q, $v) => $q->whereHas('contact', fn ($cq) => $cq->where('customer_category', $v))
+                    )),
                 Tables\Filters\SelectFilter::make('source')
+                    ->label('Lead Source')
                     ->options([
-                        'meta_ads' => 'Meta Ads', 'whatsapp' => 'WhatsApp',
-                        'referral' => 'Referral', 'walk_in' => 'Walk-in',
-                        'website' => 'Website', 'other' => 'Other',
+                        'meta_ads' => 'Meta Ads',
+                        'whatsapp' => 'WhatsApp',
+                        'referral' => 'Referral',
+                        'walk_in' => 'Walk-in',
+                        'website' => 'Website',
+                        'instagram' => 'Instagram',
+                        'facebook' => 'Facebook',
+                        'other' => 'Other',
                     ]),
+                Tables\Filters\Filter::make('customer_name')
+                    ->label('Customer Name')
+                    ->form([
+                        Forms\Components\TextInput::make('name')
+                            ->label('Customer Name')
+                            ->placeholder('Filter by name...'),
+                    ])
+                    ->query(fn ($query, array $data) => $query->when(
+                        $data['name'] ?? null,
+                        fn ($q, $name) => $q->whereHas('contact', fn ($cq) => $cq->where('name', 'like', "%{$name}%"))
+                    ))
+                    ->indicateUsing(fn (array $data) => filled($data['name'] ?? null) ? "Customer: {$data['name']}" : null),
+                Tables\Filters\Filter::make('phone')
+                    ->label('Phone Number')
+                    ->form([
+                        Forms\Components\TextInput::make('phone')
+                            ->label('Phone Number')
+                            ->placeholder('Filter by phone...'),
+                    ])
+                    ->query(fn ($query, array $data) => $query->when(
+                        $data['phone'] ?? null,
+                        fn ($q, $phone) => $q->whereHas('contact', fn ($cq) => $cq->where('phone', 'like', "%{$phone}%"))
+                    ))
+                    ->indicateUsing(fn (array $data) => filled($data['phone'] ?? null) ? "Phone: {$data['phone']}" : null),
+                Tables\Filters\Filter::make('email')
+                    ->label('Email Address')
+                    ->form([
+                        Forms\Components\TextInput::make('email')
+                            ->label('Email Address')
+                            ->placeholder('Filter by email...'),
+                    ])
+                    ->query(fn ($query, array $data) => $query->when(
+                        $data['email'] ?? null,
+                        fn ($q, $email) => $q->whereHas('contact', fn ($cq) => $cq->where('email', 'like', "%{$email}%"))
+                    ))
+                    ->indicateUsing(fn (array $data) => filled($data['email'] ?? null) ? "Email: {$data['email']}" : null),
+                Tables\Filters\Filter::make('product_interest')
+                    ->label('Product Interest')
+                    ->form([
+                        Forms\Components\TextInput::make('product_interest')
+                            ->label('Product Interest')
+                            ->placeholder('e.g. Mango'),
+                    ])
+                    ->query(fn ($query, array $data) => $query->when(
+                        $data['product_interest'] ?? null,
+                        fn ($q, $prod) => $q->where('product_interest', 'like', "%{$prod}%")
+                    ))
+                    ->indicateUsing(fn (array $data) => filled($data['product_interest'] ?? null) ? "Interest: {$data['product_interest']}" : null),
+                Tables\Filters\SelectFilter::make('order_status')
+                    ->label('Order Status')
+                    ->options([
+                        'pending' => 'Pending',
+                        'confirmed' => 'Confirmed',
+                        'preparing' => 'Preparing',
+                        'delivering' => 'Delivering',
+                        'delivered' => 'Delivered',
+                        'cancelled' => 'Cancelled',
+                    ])
+                    ->query(fn ($query, array $data) => $query->when(
+                        $data['value'] ?? null,
+                        fn ($q, $v) => $q->whereHas('orders', fn ($oq) => $oq->where('status', $v))
+                    )),
+                Tables\Filters\SelectFilter::make('payment_status')
+                    ->label('Payment Status')
+                    ->options([
+                        'unpaid' => 'Unpaid',
+                        'paid' => 'Paid',
+                        'refunded' => 'Refunded',
+                    ])
+                    ->query(fn ($query, array $data) => $query->when(
+                        $data['value'] ?? null,
+                        fn ($q, $v) => $q->whereHas('orders', fn ($oq) => $oq->where('payment_status', $v))
+                    )),
                 Tables\Filters\SelectFilter::make('assigned_to')
                     ->label('Assigned To')
                     ->options(User::pluck('name', 'id')),

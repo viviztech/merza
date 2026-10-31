@@ -31,8 +31,12 @@
                 </span>
             </div>
 
-            <h1 class="text-3xl font-extrabold text-brand-green-dark mb-2">{{ $orderIsPreorderOnly ? 'Pre-booking Confirmed! 🌱' : 'Order Placed! 🥭' }}</h1>
-            <p class="text-stone-500 mb-4">{{ $orderIsPreorderOnly ? 'Your harvest reservation is saved. No payment is needed now.' : 'Your fresh fruits are being prepared.' }}</p>
+            <h1 class="text-3xl font-extrabold text-brand-green-dark mb-2">
+                {{ $orderIsPreorderOnly ? 'Pre-booking Confirmed! 🌱' : 'Order Placed! 🥭' }}
+            </h1>
+            <p class="text-stone-500 mb-4">
+                {{ $orderIsPreorderOnly ? 'Your harvest reservation is saved. No payment is needed now.' : 'Your fresh fruits are being prepared.' }}
+            </p>
 
             <div class="bg-gradient-to-r from-amber-50 to-orange-50 border-2 border-amber-200 rounded-3xl p-5 mb-6">
                 <p class="text-xs text-amber-600 font-bold uppercase tracking-widest mb-1">Order Number</p>
@@ -51,7 +55,7 @@
             </p>
 
             {{-- Payment screenshot upload (not shown for pre-bookings — no payment was collected) --}}
-            @unless($orderIsPreorderOnly)
+            @unless($orderIsPreorderOnly || $razorpayPaymentPending)
             <div class="bg-white border-2 border-amber-100 rounded-3xl p-5 mb-6 text-left max-w-sm mx-auto">
                 @if($screenshotUploaded)
                     <p class="flex items-center gap-2 text-sm font-bold text-emerald-700">
@@ -126,6 +130,19 @@
                 @endforeach
             </div>
         </div>
+
+        @if($razorpayPaymentCancelled && $razorpayPaymentError)
+            <div class="mb-6 rounded-2xl bg-amber-50 border-2 border-amber-300 p-4 text-amber-900 flex items-start gap-3 shadow-sm">
+                <div class="text-2xl flex-shrink-0">⚠️</div>
+                <div class="flex-1">
+                    <p class="font-extrabold text-amber-950 text-base">Payment Cancelled</p>
+                    <p class="text-sm mt-0.5 text-amber-900 leading-relaxed">{{ $razorpayPaymentError }}</p>
+                </div>
+                <button type="button" wire:click="$set('razorpayPaymentCancelled', false)" class="text-amber-600 hover:text-amber-800 text-lg leading-none p-1 font-bold" title="Dismiss">
+                    &times;
+                </button>
+            </div>
+        @endif
 
         <div class="flex items-center gap-3 mb-6">
             <div class="w-10 h-10 rounded-2xl bg-gradient-to-br from-amber-500 to-orange-500 text-white flex items-center justify-center shadow">
@@ -395,8 +412,8 @@
 
                         {{-- Compact marketplace-style payment rows: the selected method expands inline. --}}
                         <div class="space-y-3 p-4 sm:p-5">
-                            @if($this->gatewayActive())
-                                {{-- Hosted gateway checkout — customer picks their method on SabPaisa's page --}}
+                            @if($this->onlineGatewayActive())
+                                {{-- Hosted checkout — customer picks a method on the active gateway page. --}}
                                 <label class="relative flex items-start gap-3 rounded-lg border border-stone-300 bg-white p-4">
                                     <input type="radio" checked disabled class="sr-only">
                                     <div class="mt-0.5 flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full border border-stone-500 bg-white">
@@ -405,8 +422,8 @@
                                     <div class="flex-1 min-w-0">
                                         <div class="flex items-start justify-between gap-2">
                                             <div>
-                                                <p class="text-sm font-bold text-stone-900">Pay online — UPI, cards or net banking</p>
-                                                <p class="mt-0.5 text-xs text-stone-500">Secure payment after placing your order</p>
+                                                <p class="text-sm font-bold text-stone-900">{{ $this->razorpayActive() ? 'Pay securely with Razorpay' : 'Pay online — UPI, cards or net banking' }}</p>
+                                                <p class="mt-0.5 text-xs text-stone-500">Fill in your delivery details, then select Pay Now to open the secure payment window.</p>
                                             </div>
                                             <span class="inline-flex flex-shrink-0 items-center gap-1 text-xs font-semibold text-emerald-700">
                                                 <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="3">
@@ -433,11 +450,29 @@
                                                 </span>
                                             </div>
                                             <p class="text-xs text-stone-500 leading-relaxed">
-                                                You’ll continue to our secure payment page and return here after payment.
+                                                You’ll continue to {{ $this->razorpayActive() ? 'Razorpay’s secure payment window' : 'our secure payment page' }} and return here after payment.
                                             </p>
                                         </div>
                                     </div>
                                 </label>
+
+                                @if($this->razorpayActive())
+                                    <button type="submit"
+                                            wire:loading.attr="disabled"
+                                            wire:target="placeOrder"
+                                            class="w-full rounded-xl bg-amber-400 px-4 py-3.5 text-base font-extrabold text-stone-900 shadow-sm transition-colors hover:bg-amber-500 disabled:opacity-60">
+                                        <span wire:loading.remove wire:target="placeOrder" class="flex items-center justify-center gap-2">
+                                            🔒 Pay Now · ₹{{ number_format($total, 2) }}
+                                        </span>
+                                        <span wire:loading wire:target="placeOrder" class="flex items-center justify-center gap-2">
+                                            <svg class="h-5 w-5 animate-spin" fill="none" viewBox="0 0 24 24">
+                                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                                            </svg>
+                                            Opening secure payment…
+                                        </span>
+                                    </button>
+                                @endif
                             @else
                                 <label class="relative flex items-start gap-3 rounded-lg border border-stone-300 bg-white p-4">
                                     <input type="radio" name="payment_method" checked disabled class="sr-only">
@@ -536,24 +571,26 @@
                     </div>
 
                     {{-- Submit --}}
-                    <button type="submit"
-                            wire:loading.attr="disabled"
-                            class="w-full rounded-lg border border-amber-500 bg-amber-300 py-4 text-base font-bold text-stone-900 shadow-sm transition-colors hover:bg-amber-400 disabled:opacity-60">
-                        <span wire:loading.remove wire:target="placeOrder" class="flex items-center justify-center gap-2">
-                            @if($isPreorderOnly)
-                                📅 Confirm Booking
-                            @else
-                                🔒 Pay ₹{{ number_format($total, 2) }} Securely
-                            @endif
-                        </span>
-                        <span wire:loading wire:target="placeOrder" class="flex items-center justify-center gap-2">
-                            <svg class="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
-                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
-                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
-                            </svg>
-                            Placing your order…
-                        </span>
-                    </button>
+                    @if($isPreorderOnly || ! $this->razorpayActive())
+                        <button type="submit"
+                                wire:loading.attr="disabled"
+                                class="w-full rounded-lg border border-amber-500 bg-amber-300 py-4 text-base font-bold text-stone-900 shadow-sm transition-colors hover:bg-amber-400 disabled:opacity-60">
+                            <span wire:loading.remove wire:target="placeOrder" class="flex items-center justify-center gap-2">
+                                @if($isPreorderOnly)
+                                    📅 Confirm Booking
+                                @else
+                                    🔒 Place Order · ₹{{ number_format($total, 2) }}
+                                @endif
+                            </span>
+                            <span wire:loading wire:target="placeOrder" class="flex items-center justify-center gap-2">
+                                <svg class="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                                </svg>
+                                Placing your order…
+                            </span>
+                        </button>
+                    @endif
 
                     <p class="text-center text-xs text-stone-400">
                         @if($isPreorderOnly)
@@ -567,5 +604,92 @@
             </div>
             </form>
         @endif
+    @endif
+
+    @if($this->razorpayActive())
+        {{-- Razorpay's hosted Checkout script receives only a public key and
+             the server-created Razorpay order ID. --}}
+        <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+        @script
+        <script>
+            (() => {
+                let verificationInProgress = false;
+                let failureShown = false;
+
+                const handleCancellation = (message) => {
+                    $wire?.cancelRazorpayPayment?.(message);
+                };
+
+                const verifyPayment = async (response) => {
+                    verificationInProgress = true;
+
+                    try {
+                        const result = await fetch(@js(route('payment.razorpay.verify')), {
+                            method: 'POST',
+                            credentials: 'same-origin',
+                            headers: {
+                                'Accept': 'application/json',
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '',
+                            },
+                            body: JSON.stringify({
+                                razorpay_order_id: response.razorpay_order_id,
+                                razorpay_payment_id: response.razorpay_payment_id,
+                                razorpay_signature: response.razorpay_signature,
+                            }),
+                        });
+                        const payload = await result.json().catch(() => ({}));
+
+                        if (!result.ok || !payload.redirect_url) {
+                            throw new Error(payload.message || 'We could not confirm the payment yet.');
+                        }
+
+                        window.location.assign(payload.redirect_url);
+                    } catch (error) {
+                        handleCancellation(error.message || 'We could not confirm the payment. Your order was not saved and nothing was charged.');
+                    } finally {
+                        verificationInProgress = false;
+                    }
+                };
+
+                const openCheckout = (event) => {
+                    const options = event?.checkout || event;
+
+                    if (!options || typeof window.Razorpay !== 'function') {
+                        handleCancellation('The secure payment window could not load. Please check your connection and try again.');
+                        return;
+                    }
+
+                    failureShown = false;
+                    options.handler = verifyPayment;
+                    options.modal = {
+                        confirm_close: true,
+                        ondismiss: () => {
+                            if (!verificationInProgress && !failureShown) {
+                                handleCancellation('Payment was cancelled. Your order was not saved and nothing was charged. You can review your details and try again.');
+                            }
+                        },
+                    };
+
+                    const checkout = new window.Razorpay(options);
+                    checkout.on('payment.failed', (response) => {
+                        failureShown = true;
+                        handleCancellation(response?.error?.description || 'Payment was not completed. Your order was not saved and nothing was charged. You can review your details and try again.');
+                    });
+                    checkout.open();
+                };
+
+                const registerCheckoutListener = () => {
+                    window.Livewire?.on('razorpay-checkout', openCheckout);
+                };
+
+                if (window.Livewire) {
+                    registerCheckoutListener();
+                } else {
+                    document.addEventListener('livewire:init', registerCheckoutListener, { once: true });
+                }
+            })();
+        </script>
+        @endscript
     @endif
 </div>

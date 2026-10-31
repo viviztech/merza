@@ -7,8 +7,10 @@ use App\Http\Controllers\Storefront\CategoryController;
 use App\Http\Controllers\Storefront\HomeController;
 use App\Http\Controllers\Storefront\PagesController;
 use App\Http\Controllers\Storefront\PaymentReturnController;
+use App\Http\Controllers\Storefront\RazorpayPaymentController;
 use App\Http\Controllers\Storefront\SeoController;
 use App\Http\Controllers\Webhook\MetaWebhookController;
+use App\Http\Controllers\Webhook\RazorpayWebhookController;
 use App\Http\Controllers\Webhook\SabPaisaWebhookController;
 use App\Http\Middleware\RedirectCanonicalProductSlug;
 use App\Livewire\Storefront\CartPanel;
@@ -106,6 +108,18 @@ Route::middleware(['signed', 'noindex'])->get('/checkout/confirmation/{order}', 
 
 /*
 |--------------------------------------------------------------------------
+| Razorpay Standard Checkout
+|--------------------------------------------------------------------------
+*/
+Route::post('/payment/razorpay/verify', [RazorpayPaymentController::class, 'verify'])
+    ->middleware('throttle:20,1')
+    ->name('payment.razorpay.verify');
+Route::middleware(['signed', 'noindex'])
+    ->get('/checkout/razorpay/confirmation/{order}', [RazorpayPaymentController::class, 'confirmation'])
+    ->name('payment.razorpay.confirmation');
+
+/*
+|--------------------------------------------------------------------------
 | Webhook Routes (Phase 6)
 |--------------------------------------------------------------------------
 */
@@ -113,4 +127,5 @@ Route::prefix('webhook')->name('webhook.')->group(function () {
     Route::get('/meta', [MetaWebhookController::class, 'verify'])->name('meta.verify');
     Route::post('/meta', [MetaWebhookController::class, 'handle'])->name('meta.handle');
     Route::post('/sabpaisa', [SabPaisaWebhookController::class, 'handle'])->name('sabpaisa.handle');
+    Route::post('/razorpay', [RazorpayWebhookController::class, 'handle'])->name('razorpay.handle');
 });

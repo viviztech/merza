@@ -2,16 +2,23 @@
 
 namespace App\Filament\Resources;
 
+use App\Filament\Exports\OrderExporter;
+use App\Filament\Filters\CreatedAtRangeFilter;
 use App\Filament\Resources\OrderResource\Pages;
 use App\Jobs\SendOrderWebhookJob;
 use App\Models\BotSetting;
+use App\Models\Contact;
+use App\Models\Lead;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\ProductVariant;
+use App\Services\ExcelExportService;
 use App\Services\OrderNotificationService;
 use App\Services\OrderTrackingService;
 use Filament\Actions;
 use Filament\Actions\Action;
+use Filament\Actions\ExportAction;
+use Filament\Actions\Exports\Enums\ExportFormat;
 use Filament\Forms;
 use Filament\Infolists\Components\ImageEntry;
 use Filament\Infolists\Components\RepeatableEntry;
@@ -223,6 +230,12 @@ class OrderResource extends Resource
                         'manual' => 'Manual',
                         default => $state,
                     }),
+                TextEntry::make('attribution_origin')
+                    ->label('Origin')
+                    ->badge()
+                    ->state(fn (Order $r) => $r->attribution_origin ?: ($r->channel === 'whatsapp' ? 'Source: WhatsApp' : ($r->channel === 'manual' ? 'Admin / Manual' : 'Direct')))
+                    ->color(fn (Order $r) => $r->getAttributionBadgeColor())
+                    ->placeholder('Direct'),
                 TextEntry::make('status')
                     ->badge()
                     ->color(fn ($state) => match ($state) {
@@ -253,6 +266,28 @@ class OrderResource extends Resource
                 TextEntry::make('payment_reference')
                     ->label('Payment Reference / UTR')
                     ->placeholder('—'),
+                TextEntry::make('razorpay_order_id')
+                    ->label('Razorpay Order ID')
+                    ->visible(fn (Order $r) => ! empty($r->razorpay_order_id))
+                    ->copyable(),
+                TextEntry::make('razorpay_payment_id')
+                    ->label('Razorpay Payment ID')
+                    ->visible(fn (Order $r) => ! empty($r->razorpay_payment_id))
+                    ->copyable(),
+                TextEntry::make('razorpay_payment_status')
+                    ->label('Razorpay Status')
+                    ->visible(fn (Order $r) => ! empty($r->razorpay_payment_status))
+                    ->badge()
+                    ->color(fn ($state) => match ($state) {
+                        'captured' => 'success',
+                        'failed' => 'danger',
+                        'authorized' => 'warning',
+                        default => 'gray',
+                    }),
+                TextEntry::make('payment_verified_at')
+                    ->label('Verified At')
+                    ->dateTime('d M Y, h:i A')
+                    ->visible(fn (Order $r) => ! empty($r->payment_verified_at)),
                 TextEntry::make('created_at')->dateTime('d M Y, h:i A')->label('Ordered At'),
 
                 TextEntry::make('payment_verification_status')
@@ -303,6 +338,71 @@ class OrderResource extends Resource
                 TextEntry::make('postcode')->label('Pincode')->placeholder('—'),
                 TextEntry::make('landmark')->placeholder('—'),
             ])->columns(3),
+
+            SchemaSection::make('Order Attribution')->schema([
+                TextEntry::make('attribution_origin')
+                    ->label('Origin')
+                    ->badge()
+                    ->state(fn (Order $r) => $r->attribution_origin ?: ($r->channel === 'whatsapp' ? 'Source: WhatsApp' : ($r->channel === 'manual' ? 'Admin / Manual' : 'Direct')))
+                    ->color(fn (Order $r) => $r->getAttributionBadgeColor())
+                    ->placeholder('Direct'),
+                TextEntry::make('attribution_source_type')
+                    ->label('Source Type')
+                    ->badge()
+                    ->color('gray')
+                    ->placeholder('direct'),
+                TextEntry::make('attribution_device_type')
+                    ->label('Device')
+                    ->badge()
+                    ->color(fn ($state) => match ($state) {
+                        'Mobile' => 'primary',
+                        'Tablet' => 'info',
+                        default => 'gray',
+                    })
+                    ->placeholder('Desktop'),
+                TextEntry::make('attribution_source')
+                    ->label('Source')
+                    ->placeholder('—'),
+                TextEntry::make('attribution_medium')
+                    ->label('Medium')
+                    ->placeholder('—'),
+                TextEntry::make('attribution_campaign')
+                    ->label('Campaign (utm_campaign)')
+                    ->placeholder('—'),
+                TextEntry::make('attribution_term')
+                    ->label('Term (utm_term)')
+                    ->placeholder('—'),
+                TextEntry::make('attribution_content')
+                    ->label('Content (utm_content)')
+                    ->placeholder('—'),
+                TextEntry::make('attribution_click_id')
+                    ->label('Click ID (gclid / fbclid)')
+                    ->placeholder('—')
+                    ->copyable(),
+                TextEntry::make('attribution_referrer_url')
+                    ->label('Referral URL')
+                    ->placeholder('Direct / None')
+                    ->url(fn ($state) => $state ? $state : null, true)
+                    ->columnSpan(2),
+                TextEntry::make('attribution_landing_url')
+                    ->label('Landing Page')
+                    ->placeholder('—')
+                    ->columnSpan(1),
+                TextEntry::make('first_touch_summary')
+                    ->label('First-Touch Source')
+                    ->state(fn (Order $r) => $r->firstTouchSummary())
+                    ->placeholder('—')
+                    ->columnSpan(2),
+                TextEntry::make('last_touch_summary')
+                    ->label('Last-Touch Source')
+                    ->state(fn (Order $r) => $r->lastTouchSummary())
+                    ->placeholder('—')
+                    ->columnSpan(1),
+                TextEntry::make('attribution_user_agent')
+                    ->label('User Agent')
+                    ->placeholder('—')
+                    ->columnSpanFull(),
+            ])->columns(3)->collapsible(),
 
             SchemaSection::make('Order Items')->schema([
                 RepeatableEntry::make('items')->schema([
@@ -457,23 +557,38 @@ class OrderResource extends Resource
                     })
                     ->toggleable(),
 
+                Tables\Columns\TextColumn::make('attribution_origin')
+                    ->label('Origin')
+                    ->badge()
+                    ->state(fn (Order $r) => $r->attribution_origin ?: ($r->channel === 'whatsapp' ? 'Source: WhatsApp' : ($r->channel === 'manual' ? 'Admin / Manual' : 'Direct')))
+                    ->color(fn (Order $r) => $r->getAttributionBadgeColor())
+                    ->placeholder('Direct')
+                    ->searchable()
+                    ->sortable()
+                    ->toggleable(),
+
                 Tables\Columns\TextColumn::make('created_at')
                     ->dateTime('d M Y')->sortable()->label('Date'),
             ])
             ->modifyQueryUsing(fn ($query) => $query->with('items'))
             ->defaultSort('created_at', 'desc')
+            ->headerActions([
+                Action::make('export_excel')
+                    ->label('Export to Excel (.xlsx)')
+                    ->icon('heroicon-o-arrow-down-tray')
+                    ->color('success')
+                    ->action(function ($livewire) {
+                        return app(ExcelExportService::class)
+                            ->exportOrders($livewire->getFilteredTableQuery(), 'orders_export');
+                    }),
+                ExportAction::make()
+                    ->exporter(OrderExporter::class)
+                    ->formats([ExportFormat::Xlsx, ExportFormat::Csv]),
+            ])
             ->filters([
-                Tables\Filters\Filter::make('preorder')
-                    ->label('Pre-booking Orders')
-                    ->query(fn ($query) => $query->whereHas('items', fn ($q) => $q->where('is_preorder', true))),
-
-                Tables\Filters\SelectFilter::make('channel')
-                    ->options([
-                        'website' => 'Website',
-                        'whatsapp' => 'WhatsApp',
-                        'manual' => 'Manual',
-                    ]),
+                CreatedAtRangeFilter::make('Order Date'),
                 Tables\Filters\SelectFilter::make('status')
+                    ->label('Order Status')
                     ->options([
                         'pending' => 'Pending',
                         'confirmed' => 'Confirmed',
@@ -483,11 +598,111 @@ class OrderResource extends Resource
                         'cancelled' => 'Cancelled',
                     ]),
                 Tables\Filters\SelectFilter::make('payment_status')
+                    ->label('Payment Status')
                     ->options([
                         'unpaid' => 'Unpaid',
                         'paid' => 'Paid',
                         'refunded' => 'Refunded',
                     ]),
+                Tables\Filters\SelectFilter::make('attribution_origin')
+                    ->label('Origin')
+                    ->options([
+                        'Organic: Google' => 'Organic: Google',
+                        'Paid: Facebook' => 'Paid: Facebook',
+                        'Paid: Google' => 'Paid: Google',
+                        'Source: Instagram' => 'Source: Instagram',
+                        'Source: Facebook' => 'Source: Facebook',
+                        'Source: WhatsApp' => 'Source: WhatsApp',
+                        'Source: YouTube' => 'Source: YouTube',
+                        'Direct' => 'Direct',
+                        'Admin / Manual' => 'Admin / Manual',
+                    ]),
+                Tables\Filters\SelectFilter::make('attribution_source_type')
+                    ->label('Origin Type')
+                    ->options([
+                        'organic' => 'Organic Search',
+                        'paid' => 'Paid Ads',
+                        'social' => 'Social',
+                        'referral' => 'Referral',
+                        'direct' => 'Direct',
+                        'admin' => 'Admin / Manual',
+                    ]),
+                Tables\Filters\SelectFilter::make('lead_status')
+                    ->label('Lead Status')
+                    ->options(Lead::$stages)
+                    ->query(fn ($query, array $data) => $query->when(
+                        $data['value'] ?? null,
+                        fn ($q, $v) => $q->whereHas('contact.leads', fn ($lq) => $lq->where('stage', $v))
+                    )),
+                Tables\Filters\SelectFilter::make('contact_status')
+                    ->label('Contact Status')
+                    ->options(Contact::CATEGORY_LABELS)
+                    ->query(fn ($query, array $data) => $query->when(
+                        $data['value'] ?? null,
+                        fn ($q, $v) => $q->whereHas('contact', fn ($cq) => $cq->where('customer_category', $v))
+                    )),
+                Tables\Filters\SelectFilter::make('channel')
+                    ->label('Order Channel')
+                    ->options([
+                        'website' => 'Website',
+                        'whatsapp' => 'WhatsApp',
+                        'manual' => 'Manual',
+                    ]),
+                Tables\Filters\SelectFilter::make('lead_source')
+                    ->label('Lead Source')
+                    ->options(Contact::SOURCE_LABELS)
+                    ->query(fn ($query, array $data) => $query->when(
+                        $data['value'] ?? null,
+                        fn ($q, $v) => $q->whereHas('contact', fn ($cq) => $cq->where('source', $v))
+                    )),
+                Tables\Filters\Filter::make('customer_name')
+                    ->label('Customer Name')
+                    ->form([
+                        Forms\Components\TextInput::make('name')
+                            ->label('Customer Name')
+                            ->placeholder('Filter by customer name...'),
+                    ])
+                    ->query(fn ($query, array $data) => $query->when(
+                        $data['name'] ?? null,
+                        fn ($q, $name) => $q->where('customer_name', 'like', "%{$name}%")
+                    ))
+                    ->indicateUsing(fn (array $data) => filled($data['name'] ?? null) ? "Customer: {$data['name']}" : null),
+                Tables\Filters\Filter::make('customer_phone')
+                    ->label('Phone Number')
+                    ->form([
+                        Forms\Components\TextInput::make('phone')
+                            ->label('Phone Number')
+                            ->placeholder('Filter by phone...'),
+                    ])
+                    ->query(fn ($query, array $data) => $query->when(
+                        $data['phone'] ?? null,
+                        fn ($q, $phone) => $q->where('customer_phone', 'like', "%{$phone}%")
+                    ))
+                    ->indicateUsing(fn (array $data) => filled($data['phone'] ?? null) ? "Phone: {$data['phone']}" : null),
+                Tables\Filters\Filter::make('customer_email')
+                    ->label('Email Address')
+                    ->form([
+                        Forms\Components\TextInput::make('email')
+                            ->label('Email Address')
+                            ->placeholder('Filter by email...'),
+                    ])
+                    ->query(fn ($query, array $data) => $query->when(
+                        $data['email'] ?? null,
+                        fn ($q, $email) => $q->where('customer_email', 'like', "%{$email}%")
+                    ))
+                    ->indicateUsing(fn (array $data) => filled($data['email'] ?? null) ? "Email: {$data['email']}" : null),
+                Tables\Filters\Filter::make('product_name')
+                    ->label('Product / Item Name')
+                    ->form([
+                        Forms\Components\TextInput::make('product_name')
+                            ->label('Product / Item Name')
+                            ->placeholder('Filter by product...'),
+                    ])
+                    ->query(fn ($query, array $data) => $query->when(
+                        $data['product_name'] ?? null,
+                        fn ($q, $prod) => $q->whereHas('items', fn ($iq) => $iq->where('product_name', 'like', "%{$prod}%"))
+                    ))
+                    ->indicateUsing(fn (array $data) => filled($data['product_name'] ?? null) ? "Product: {$data['product_name']}" : null),
                 Tables\Filters\SelectFilter::make('payment_method')
                     ->label('Payment Method')
                     ->options([
@@ -496,8 +711,11 @@ class OrderResource extends Resource
                         'bank_transfer' => 'Bank Transfer',
                         'whatsapp' => 'WhatsApp Order',
                     ]),
+                Tables\Filters\Filter::make('preorder')
+                    ->label('Pre-booking Orders')
+                    ->query(fn ($query) => $query->whereHas('items', fn ($q) => $q->where('is_preorder', true))),
                 Tables\Filters\Filter::make('today')
-                    ->label('Today\'s Orders')
+                    ->label("Today's Orders")
                     ->query(fn ($query) => $query->whereDate('created_at', today())),
             ])
             ->actions([
