@@ -38,4 +38,3 @@ class SendMetaLeadEvent implements ShouldQueue
         }
     }
 }
-

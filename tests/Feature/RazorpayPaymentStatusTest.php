@@ -2,6 +2,8 @@
 
 namespace Tests\Feature;
 
+use App\Jobs\SendOrderWebhookJob;
+use App\Jobs\SendRazorpayOrderConfirmation;
 use App\Models\Order;
 use App\Services\RazorpayService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -75,6 +77,9 @@ class RazorpayPaymentStatusTest extends TestCase
 
         $this->assertSame('paid', $this->order->fresh()->payment_status);
         $this->assertSame(1, Order::where('razorpay_payment_id', 'pay_test_123')->count());
+        $this->assertCount(1, Queue::pushed(SendOrderWebhookJob::class)
+            ->filter(fn ($job) => $job->orderId === $this->order->id && $job->event === 'order.created'));
+        Queue::assertPushed(SendRazorpayOrderConfirmation::class, 1);
     }
 
     public function test_failed_payment_stays_unpaid_and_can_be_retried(): void
@@ -98,7 +103,8 @@ class RazorpayPaymentStatusTest extends TestCase
             ->andReturn($this->order);
         $this->app->instance(RazorpayService::class, $razorpay);
 
-        $this->postJson(route('payment.razorpay.verify'), [
+        $this->withSession(['pending_razorpay_order_id' => $this->order->id])
+            ->postJson(route('payment.razorpay.verify'), [
             'razorpay_order_id' => 'order_test_123',
             'razorpay_payment_id' => 'pay_test_123',
             'razorpay_signature' => 'validly-verified-by-service',
@@ -106,6 +112,55 @@ class RazorpayPaymentStatusTest extends TestCase
         ])->assertOk()
             ->assertJsonPath('status', 'PENDING')
             ->assertJsonStructure(['redirect_url']);
+    }
+
+    public function test_successful_checkout_verification_can_be_retried_without_duplicate_order_created(): void
+    {
+        $this->order->update([
+            'payment_status' => 'paid',
+            'razorpay_payment_id' => 'pay_test_123',
+        ]);
+        $razorpay = Mockery::mock(RazorpayService::class);
+        $razorpay->shouldReceive('verifyCheckoutPayment')->twice()->andReturn($this->order->fresh());
+        $this->app->instance(RazorpayService::class, $razorpay);
+        $payload = [
+            'razorpay_order_id' => 'order_test_123',
+            'razorpay_payment_id' => 'pay_test_123',
+            'razorpay_signature' => 'validly-verified-by-service',
+        ];
+
+        $this->withSession(['pending_razorpay_order_id' => $this->order->id])
+            ->postJson(route('payment.razorpay.verify'), $payload)
+            ->assertOk()->assertJsonPath('status', 'SUCCESS')
+            ->assertSessionHas('completed_razorpay_order_id', $this->order->id);
+        $this->postJson(route('payment.razorpay.verify'), $payload)
+            ->assertOk()->assertJsonPath('status', 'SUCCESS');
+
+        $this->assertCount(0, Queue::pushed(SendOrderWebhookJob::class)
+            ->filter(fn ($job) => $job->event === 'order.created'));
+        Queue::assertNotPushed(SendRazorpayOrderConfirmation::class);
+    }
+
+    public function test_checkout_verification_rejects_another_sessions_order(): void
+    {
+        $other = Order::create([
+            'customer_name' => 'Other Customer',
+            'customer_phone' => '9123456780',
+            'delivery_address' => 'Other address',
+            'subtotal' => 100,
+            'total' => 100,
+            'payment_method' => 'upi',
+            'razorpay_order_id' => 'order_other',
+        ]);
+
+        $this->withSession(['pending_razorpay_order_id' => $other->id])
+            ->postJson(route('payment.razorpay.verify'), [
+                'razorpay_order_id' => 'order_test_123',
+                'razorpay_payment_id' => 'pay_test_123',
+                'razorpay_signature' => 'valid-signature',
+            ])->assertForbidden();
+
+        $this->assertSame('unpaid', $this->order->fresh()->payment_status);
     }
 
     public function test_checkout_options_include_the_project_name_and_logo(): void
@@ -133,8 +188,8 @@ class RazorpayPaymentStatusTest extends TestCase
             'razorpay_order_id' => 'order_nonexistent',
             'razorpay_payment_id' => 'pay_nonexistent',
             'razorpay_signature' => 'some_signature',
-        ])->assertStatus(422)
-            ->assertJsonPath('message', 'This payment does not match an order.');
+        ])->assertStatus(403)
+            ->assertJsonPath('message', 'This payment does not match your checkout session.');
     }
 
     public function test_checkout_confirmation_displays_success_when_paid(): void
@@ -152,6 +207,18 @@ class RazorpayPaymentStatusTest extends TestCase
         $response->assertOk();
         $response->assertSee('Payment Successful!');
         $response->assertSee($this->order->order_number);
+    }
+
+    public function test_webhook_completion_clears_only_the_matching_checkout_session_on_confirmation(): void
+    {
+        $this->sendWebhook('payment.captured')->assertOk();
+        $url = \Illuminate\Support\Facades\URL::signedRoute('payment.razorpay.confirmation', ['order' => $this->order->id]);
+
+        $this->withSession(['pending_razorpay_order_id' => $this->order->id])
+            ->get($url)
+            ->assertOk()
+            ->assertSessionMissing('pending_razorpay_order_id')
+            ->assertSessionHas('completed_razorpay_order_id', $this->order->id);
     }
 
     public function test_checkout_confirmation_displays_failed_when_payment_failed(): void
@@ -241,12 +308,11 @@ class RazorpayPaymentStatusTest extends TestCase
         $component->call('cancelRazorpayPayment')
             ->assertSet('razorpayPaymentCancelled', true)
             ->assertSet('orderPlaced', false)
-            ->assertSee('Payment Cancelled')
-            ->assertSee('Payment was cancelled')
-            ->assertSee('Your order was not saved');
+            ->assertSee('Payment status')
+            ->assertSee('Your payment may still be processing');
 
-        // Order is NOT saved in the database on cancellation
-        $this->assertNull(Order::where('customer_phone', '9123456789')->first());
+        // The order remains available for a late gateway webhook.
+        $this->assertNotNull(Order::where('customer_phone', '9123456789')->first());
 
         // Cart is still intact so customer can checkout again
         $this->assertSame(1, app(\App\Services\CartService::class)->count());

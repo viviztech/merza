@@ -14,6 +14,10 @@ class SendMetaPurchaseEvent implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
+    public int $tries = 3;
+
+    public array $backoff = [10, 60, 300];
+
     public function __construct(public readonly int $orderId) {}
 
     public function handle(MetaConversionsService $meta): void
@@ -26,6 +30,15 @@ class SendMetaPurchaseEvent implements ShouldQueue
             return;
         }
 
-        $meta->trackPurchase($order);
+        // Disabled tracking and missing consent are expected no-ops, not
+        // delivery failures. A configured, consented event that fails must
+        // fail the job so the queue can retry transient Meta outages.
+        if (! $meta->isConfigured() || ! $meta->consentGranted($order->meta_tracking_consent)) {
+            return;
+        }
+
+        if (! $meta->trackPurchase($order)) {
+            throw new \RuntimeException('Meta purchase event delivery failed.');
+        }
     }
 }

@@ -8,7 +8,7 @@ use Illuminate\Console\Command;
 
 class SyncMetaCustomAudienceCommand extends Command
 {
-    protected $signature = 'meta:sync-custom-audience 
+    protected $signature = 'meta:sync-custom-audience
                             {--audience-id= : Custom Audience ID (defaults to config META_CUSTOM_AUDIENCE_ID)}
                             {--category= : Filter by customer category (e.g. purchased_customer, new_lead)}';
 
@@ -50,4 +50,3 @@ class SyncMetaCustomAudienceCommand extends Command
         return self::FAILURE;
     }
 }
-

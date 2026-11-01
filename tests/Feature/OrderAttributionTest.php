@@ -301,4 +301,3 @@ class OrderAttributionTest extends TestCase
         $response->assertSee('Paid: Facebook');
     }
 }
-

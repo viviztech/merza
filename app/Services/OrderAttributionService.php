@@ -363,4 +363,3 @@ class OrderAttributionService
         return is_array($data) ? $data : null;
     }
 }
-

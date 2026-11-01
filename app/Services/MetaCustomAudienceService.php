@@ -197,4 +197,3 @@ class MetaCustomAudienceService
         return $clean !== '' ? hash('sha256', $clean) : null;
     }
 }
-

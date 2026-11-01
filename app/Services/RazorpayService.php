@@ -3,6 +3,8 @@
 namespace App\Services;
 
 use App\Exceptions\RazorpayPaymentException;
+use App\Jobs\SendOrderWebhookJob;
+use App\Jobs\SendRazorpayOrderConfirmation;
 use App\Models\Order;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -312,6 +314,14 @@ class RazorpayService
             }
 
             $lockedOrder->forceFill($attributes)->save();
+
+            // All paths (checkout, webhook and status refresh) converge here.
+            // The row lock and paid-state check ensure only the first captured
+            // transition schedules these effects, even when events race.
+            if ($gatewayStatus === 'captured') {
+                SendOrderWebhookJob::dispatch($lockedOrder->id, 'order.created')->afterCommit();
+                SendRazorpayOrderConfirmation::dispatch($lockedOrder->id)->afterCommit();
+            }
 
             return $lockedOrder->fresh();
         });

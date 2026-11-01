@@ -56,4 +56,3 @@ class LeadExporter extends Exporter
         return $body;
     }
 }
-

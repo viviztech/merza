@@ -12,7 +12,7 @@ class RolesAndAdminSeederTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_seeder_resets_existing_admin_password_to_default(): void
+    public function test_seeder_preserves_existing_admin_credentials(): void
     {
         User::factory()->create([
             'name' => 'Existing Admin',
@@ -24,8 +24,8 @@ class RolesAndAdminSeederTest extends TestCase
 
         $admin = User::where('email', 'admin@merza.com')->firstOrFail();
 
-        $this->assertSame('Merza Admin', $admin->name);
-        $this->assertTrue(Hash::check('password', $admin->password));
+        $this->assertSame('Existing Admin', $admin->name);
+        $this->assertTrue(Hash::check('old-password', $admin->password));
         $this->assertTrue($admin->hasRole('Admin'));
     }
 }

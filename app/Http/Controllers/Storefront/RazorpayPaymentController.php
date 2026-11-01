@@ -28,6 +28,20 @@ class RazorpayPaymentController extends Controller
             'razorpay_signature' => ['required', 'string', 'max:512'],
         ]);
 
+        $pendingOrderId = session()->get('pending_razorpay_order_id');
+        $completedOrderId = session()->get('completed_razorpay_order_id');
+        $sessionOrderIds = array_filter([$pendingOrderId, $completedOrderId]);
+
+        // Gateway identifiers alone do not grant access to another customer's
+        // order, its signed confirmation URL, or the current session's cart.
+        $belongsToSession = Order::query()
+            ->whereIn('id', $sessionOrderIds)
+            ->where('razorpay_order_id', $attributes['razorpay_order_id'])
+            ->exists();
+        if (! $belongsToSession) {
+            return response()->json(['message' => 'This payment does not match your checkout session.'], 403);
+        }
+
         try {
             $order = $razorpay->verifyCheckoutPayment($attributes);
         } catch (RazorpayPaymentException $exception) {
@@ -42,13 +56,7 @@ class RazorpayPaymentController extends Controller
             ], 503);
         }
 
-        if ($order->payment_status === 'paid') {
-            session()->forget('pending_razorpay_order_id');
-            app(\App\Services\CartService::class)->clear();
-            \App\Livewire\Storefront\CheckoutForm::sendOrderConfirmationWhatsApp($order);
-            \App\Jobs\SendOrderWebhookJob::dispatch($order->id, 'order.created')->afterCommit();
-            session()->put("ga4_purchase_events.{$order->id}", \App\Support\EcommerceData::purchase($order));
-        }
+        $this->completeCheckoutSession($order);
 
         return response()->json([
             'status' => $order->payment_status === 'paid' ? 'SUCCESS' : 'PENDING',
@@ -71,6 +79,7 @@ class RazorpayPaymentController extends Controller
         MetaConversionsService $meta,
     ): View {
         $order = $razorpay->refreshPaymentStatus($order)->fresh();
+        $this->completeCheckoutSession($order);
 
         $status = $order->payment_status === 'paid'
             ? 'SUCCESS'
@@ -85,5 +94,19 @@ class RazorpayPaymentController extends Controller
             : null;
 
         return view('storefront.checkout.confirmation', compact('order', 'status', 'metaPurchase', 'ga4Purchase'));
+    }
+
+    private function completeCheckoutSession(Order $order): void
+    {
+        if ($order->payment_status !== 'paid'
+            || (string) session()->get('pending_razorpay_order_id') !== (string) $order->id) {
+            return;
+        }
+
+        session()->forget('pending_razorpay_order_id');
+        // Retain ownership for harmless browser retries after a lost response.
+        session()->put('completed_razorpay_order_id', $order->id);
+        app(\App\Services\CartService::class)->clear();
+        session()->put("ga4_purchase_events.{$order->id}", \App\Support\EcommerceData::purchase($order));
     }
 }

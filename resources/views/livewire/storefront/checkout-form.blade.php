@@ -106,6 +106,25 @@
             </div>
         </div>
 
+    @elseif($razorpayPaymentPending && $orderId)
+        <div class="text-center py-12 max-w-lg mx-auto">
+            <h1 class="text-2xl font-extrabold text-brand-green-dark">Payment status</h1>
+            <p class="mt-4 text-stone-700">Order {{ $orderNumber }} is saved. {{ $razorpayPaymentError ?: 'Your payment may still be processing.' }}</p>
+            @if(! session('razorpay_checkout_started', true))
+                <button type="button" wire:click="retryRazorpayPayment"
+                        class="inline-flex mt-6 items-center justify-center bg-amber-500 text-white font-bold px-6 py-3 rounded-2xl hover:bg-amber-600">
+                    Open payment window
+                </button>
+            @else
+                <p class="mt-3 text-stone-600">Please check the status or contact us before attempting another payment.</p>
+            @endif
+            <a href="{{ URL::temporarySignedRoute('payment.razorpay.confirmation', now()->addMinutes(30), ['order' => $orderId]) }}"
+               class="inline-flex mt-6 items-center justify-center bg-amber-500 text-white font-bold px-6 py-3 rounded-2xl hover:bg-amber-600">
+                Check payment status
+            </a>
+            <a href="https://wa.me/917418673398?text=Hi%2C+I+need+help+with+order+{{ urlencode($orderNumber) }}"
+               target="_blank" rel="noopener noreferrer" class="block mt-4 text-emerald-700 font-bold">Contact us on WhatsApp</a>
+        </div>
     @else
         {{-- ══════════════════════════════════════ --}}
         {{-- CHECKOUT FORM --}}
@@ -646,7 +665,7 @@
 
                         window.location.assign(payload.redirect_url);
                     } catch (error) {
-                        handleCancellation(error.message || 'We could not confirm the payment. Your order was not saved and nothing was charged.');
+                        handleCancellation('We could not confirm the payment yet. It may still be processing; check its status before paying again.');
                     } finally {
                         verificationInProgress = false;
                     }
@@ -666,7 +685,7 @@
                         confirm_close: true,
                         ondismiss: () => {
                             if (!verificationInProgress && !failureShown) {
-                                handleCancellation('Payment was cancelled. Your order was not saved and nothing was charged. You can review your details and try again.');
+                                handleCancellation('The payment window was closed. Check your payment status before paying again.');
                             }
                         },
                     };
@@ -674,7 +693,7 @@
                     const checkout = new window.Razorpay(options);
                     checkout.on('payment.failed', (response) => {
                         failureShown = true;
-                        handleCancellation(response?.error?.description || 'Payment was not completed. Your order was not saved and nothing was charged. You can review your details and try again.');
+                        handleCancellation('The payment could not be confirmed. Check your payment status before paying again.');
                     });
                     checkout.open();
                 };

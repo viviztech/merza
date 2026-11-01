@@ -57,7 +57,13 @@ class WebhookDeliveryService
             ]);
 
         if ($claimed !== 1) {
-            return;
+            if ($delivery->fresh()?->status === 'success') {
+                return;
+            }
+
+            // Redis can retry a crashed worker's job before this lease expires.
+            // Returning here would acknowledge that retry and lose the event.
+            throw new RuntimeException('Webhook delivery is locked by another worker; retry after the lease expires.');
         }
 
         $delivery->refresh();

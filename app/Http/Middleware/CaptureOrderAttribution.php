@@ -43,4 +43,3 @@ class CaptureOrderAttribution
             || str_ends_with($path, '.js');
     }
 }
-

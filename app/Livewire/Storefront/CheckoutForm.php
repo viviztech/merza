@@ -24,6 +24,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Livewire\Attributes\Layout;
+use Livewire\Attributes\Locked;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 use Livewire\WithFileUploads;
@@ -66,6 +67,7 @@ class CheckoutForm extends Component
 
     public bool $orderPlaced = false;
 
+    #[Locked]
     public ?int $orderId = null;
 
     public string $orderNumber = '';
@@ -86,11 +88,15 @@ class CheckoutForm extends Component
 
     public function mount(): void
     {
-        if ($pendingId = session()->pull('pending_razorpay_order_id')) {
-            $pendingOrder = Order::where('id', $pendingId)->where('payment_status', 'unpaid')->first();
+        if ($pendingId = session('pending_razorpay_order_id')) {
+            $pendingOrder = Order::find($pendingId);
             if ($pendingOrder) {
-                $pendingOrder->items()->delete();
-                $pendingOrder->delete();
+                $this->orderId = $pendingOrder->id;
+                $this->orderNumber = $pendingOrder->order_number;
+                $this->razorpayPaymentPending = true;
+                $this->razorpayPaymentError = 'Your payment may still be processing. Check its status before attempting another payment.';
+            } else {
+                session()->forget('pending_razorpay_order_id');
             }
         }
 
@@ -395,13 +401,11 @@ class CheckoutForm extends Component
 
     public function placeOrder(): void
     {
-        if ($this->orderId) {
-            $staleOrder = Order::where('id', $this->orderId)->where('payment_status', 'unpaid')->first();
-            if ($staleOrder) {
-                $staleOrder->items()->delete();
-                $staleOrder->delete();
-            }
-            $this->orderId = null;
+        if (session('pending_razorpay_order_id')) {
+            $this->razorpayPaymentPending = true;
+            $this->razorpayPaymentError = 'A payment is already in progress. Check its status before placing another order.';
+
+            return;
         }
 
         $isPreorderOnly = $this->isPreorderOnlyCart();
@@ -504,25 +508,23 @@ class CheckoutForm extends Component
         }
 
         if (! $isPreorderOnly && $this->razorpayActive()) {
+            $this->orderId = $order->id;
+            $this->orderNumber = $order->order_number;
+            session(['pending_razorpay_order_id' => $order->id]);
+            session(['razorpay_checkout_started' => false]);
             $checkoutOptions = app(RazorpayService::class)->checkoutOptions($order);
 
             if ($checkoutOptions) {
-                $this->orderId = $order->id;
-                $this->orderNumber = $order->order_number;
-                session(['pending_razorpay_order_id' => $order->id]);
+                session(['razorpay_checkout_started' => true]);
                 $this->razorpayPaymentPending = true;
                 $this->razorpayPaymentCancelled = false;
                 $this->razorpayPaymentError = null;
 
                 $this->dispatch('razorpay-checkout', checkout: $checkoutOptions);
             } else {
-                $order->items()->delete();
-                $order->delete();
-                $this->orderId = null;
-                $this->orderNumber = '';
-                $this->razorpayPaymentPending = false;
+                $this->razorpayPaymentPending = true;
                 $this->razorpayPaymentCancelled = true;
-                $this->razorpayPaymentError = "We couldn't open the secure payment window. Your order was not saved and nothing was charged. Please try again.";
+                $this->razorpayPaymentError = "We couldn't open the secure payment window. Your order has been saved; you can try opening it again.";
                 Log::error('CheckoutForm: Razorpay order creation failed', ['order_id' => $order->id]);
             }
 
@@ -565,22 +567,14 @@ class CheckoutForm extends Component
 
     public function cancelRazorpayPayment(?string $message = null): void
     {
-        if ($this->orderId) {
-            $order = Order::find($this->orderId);
-            if ($order && $order->payment_status !== 'paid') {
-                $order->items()->delete();
-                $order->delete();
-            }
+        if (! $this->sessionRazorpayOrder()) {
+            return;
         }
 
-        session()->forget('pending_razorpay_order_id');
-
-        $this->orderId = null;
-        $this->orderNumber = '';
         $this->orderPlaced = false;
-        $this->razorpayPaymentPending = false;
+        $this->razorpayPaymentPending = true;
         $this->razorpayPaymentCancelled = true;
-        $this->razorpayPaymentError = $message ?: 'Payment was cancelled. Your order was not saved and nothing was charged. You can review your details and try again.';
+        $this->razorpayPaymentError = $message ?: 'Your payment may still be processing. Check its status before attempting another payment.';
     }
 
     public function markPaymentCancelled(?string $message = null): void
@@ -596,7 +590,7 @@ class CheckoutForm extends Component
     {
         $this->razorpayPaymentError = null;
         $this->razorpayPaymentCancelled = false;
-        $order = Order::find($this->orderId);
+        $order = $this->sessionRazorpayOrder();
 
         if (! $order || ! $this->razorpayActive()) {
             $this->razorpayPaymentError = 'Secure payment is not available right now. Please contact us for help with this order.';
@@ -604,22 +598,38 @@ class CheckoutForm extends Component
             return;
         }
 
-        if ($order->payment_status === 'paid') {
-            $this->razorpayPaymentPending = false;
-            $this->razorpayPaymentCancelled = false;
+        // If checkout options were never sent to the browser, no payment
+        // could have been initiated through this order. Reuse the order.
+        if (! session('razorpay_checkout_started', true)) {
+            $checkoutOptions = app(RazorpayService::class)->checkoutOptions($order);
+            if ($checkoutOptions) {
+                session(['razorpay_checkout_started' => true]);
+                $this->razorpayPaymentPending = true;
+                $this->dispatch('razorpay-checkout', checkout: $checkoutOptions);
+
+                return;
+            }
+
+            $this->razorpayPaymentError = "We couldn't open the secure payment window. Please try again or contact us.";
 
             return;
         }
 
-        $checkoutOptions = app(RazorpayService::class)->checkoutOptions($order);
+        // A previous gateway attempt may still be captured even when the
+        // browser reported failure. Do not initiate a second payment while
+        // its outcome is uncertain; the signed status page can be refreshed.
+        $this->razorpayPaymentPending = true;
+        $this->razorpayPaymentError = 'Check your payment status or contact us before attempting another payment.';
+    }
 
-        if (! $checkoutOptions) {
-            $this->razorpayPaymentError = "We couldn't start payment yet. Please try again in a moment, or contact us with your order number.";
-
-            return;
+    private function sessionRazorpayOrder(): ?Order
+    {
+        $pendingId = session('pending_razorpay_order_id');
+        if (! $pendingId || (int) $pendingId !== $this->orderId) {
+            return null;
         }
 
-        $this->dispatch('razorpay-checkout', checkout: $checkoutOptions);
+        return Order::find($pendingId);
     }
 
     private function showOrderPlaced(Order $order, bool $isPreorderOnly, ?DeliveryZone $zone): void
